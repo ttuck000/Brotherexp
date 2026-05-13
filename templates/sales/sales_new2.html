@@ -1,0 +1,879 @@
+{% extends "base.html" %}
+
+{% block content %}
+<style>
+    .required::after {
+        content: " *";
+        color: red;
+        font-weight: bold;
+    }
+    /* ── Import data 버튼 ── */
+    .btn-import-data {
+        background-color: #17a2b8;
+        color: white;
+        border: none;
+        padding: 6px 14px;
+        border-radius: 5px;
+        font-size: 14px;
+        font-weight: 500;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        transition: background 0.2s;
+    }
+
+        .btn-import-data:hover {
+            background-color: #138496;
+        }
+    /* ── Import data 모달 ── */
+    #importDataModal {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0,0,0,0.5);
+        z-index: 9999;
+        overflow-y: auto;
+    }
+
+    .import-modal-dialog {
+        background: #fff;
+        margin: 40px auto;
+        padding: 28px 24px;
+        max-width: 1000px;
+        border-radius: 10px;
+        box-shadow: 0 8px 32px rgba(0,0,0,0.18);
+    }
+
+    .import-modal-title {
+        font-size: 18px;
+        font-weight: 700;
+        color: #1a237e;
+        margin-bottom: 16px;
+        border-bottom: 2px solid #4f8cff;
+        padding-bottom: 8px;
+    }
+
+    .import-filter-row {
+        display: flex;
+        gap: 12px;
+        flex-wrap: wrap;
+        align-items: flex-end;
+        margin-bottom: 14px;
+    }
+
+    .import-filter-group {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        font-size: 13px;
+    }
+
+        .import-filter-group label {
+            font-weight: 500;
+            color: #374151;
+        }
+
+        .import-filter-group input,
+        .import-filter-group select {
+            padding: 5px 9px;
+            border: 1px solid #ced4da;
+            border-radius: 4px;
+            font-size: 13px;
+            min-width: 120px;
+        }
+
+    .import-table-wrap {
+        overflow-x: auto;
+        max-height: 380px;
+        overflow-y: auto;
+    }
+
+    .import-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 13px;
+    }
+
+        .import-table th, .import-table td {
+            border: 1px solid #e5e7eb;
+            padding: 7px 8px;
+            text-align: center;
+            white-space: nowrap;
+        }
+
+        .import-table th {
+            background: #e3e8f0;
+            color: #1a237e;
+            font-weight: 600;
+            position: sticky;
+            top: 0;
+            z-index: 1;
+        }
+
+        .import-table tbody tr:hover {
+            background: #f0f4ff;
+            cursor: pointer;
+        }
+
+        .import-table tbody tr.selected {
+            background: #dbeafe;
+        }
+
+    .import-modal-footer {
+        display: flex;
+        justify-content: flex-end;
+        gap: 10px;
+        margin-top: 16px;
+    }
+
+    .btn-import-confirm {
+        background: #4f8cff;
+        color: #fff;
+        border: none;
+        padding: 8px 22px;
+        border-radius: 5px;
+        font-size: 14px;
+        font-weight: 600;
+        cursor: pointer;
+    }
+
+        .btn-import-confirm:hover {
+            background: #2563eb;
+        }
+
+    .btn-import-close {
+        background: #6c757d;
+        color: #fff;
+        border: none;
+        padding: 8px 22px;
+        border-radius: 5px;
+        font-size: 14px;
+        font-weight: 600;
+        cursor: pointer;
+    }
+
+        .btn-import-close:hover {
+            background: #545b62;
+        }
+
+    .import-selected-count {
+        font-size: 13px;
+        color: #4f8cff;
+        font-weight: 600;
+        align-self: center;
+    }
+</style>
+
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title">{{ get_text('sales_register') }}</h5>
+                </div>
+                <div class="card-body">
+                    <form id="salesForm">
+                        <div class="row mb-3">
+                            <div class="col-md-3">
+                                <label for="salesNo" class="form-label">{{ get_text('sales_no') }}</label>
+                                <input type="text" class="form-control" id="salesNo" name="salesNo" readonly>
+                            </div>
+                            <div class="col-md-3">
+                                <label for="poNo" class="form-label">PO.Number</label>
+                                <input type="text" class="form-control" id="poNo" name="poNo">
+                            </div>
+                            <div class="col-md-3">
+                                <label for="salesDate" class="form-label required">{{ get_text('sales_date') }}</label>
+                                <input type="date" class="form-control" id="salesDate" name="salesDate" required>
+                            </div>
+                            <div class="col-md-3">
+                                <label for="customerCode" class="form-label required">{{ get_text('customer') }}</label>
+                                <select class="form-select" id="customerCode" name="customerCode" required>
+                                    <option value="">선택</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="row mb-3">
+                            <div class="col-md-3">
+                                <label for="trCode" class="form-label required">수불유형코드</label>
+                                <select class="form-select" id="trCode" name="trCode" required>
+                                    <option value="">선택</option>
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <label for="currencyCode" class="form-label required">{{ get_text('currency') }}</label>
+                                <select class="form-select" id="currencyCode" name="currencyCode" required>
+                                    <option value="">선택</option>
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <label for="exchangeRate" class="form-label">{{ get_text('exchange_rate') }}</label>
+                                <input type="number" class="form-control" id="exchangeRate" name="exchangeRate" step="0.01" required>
+                            </div>
+                            <div class="col-md-3">
+                                <label for="paymentMethod" class="form-label required">{{ get_text('payment_method') }}</label>
+                                <select class="form-select" id="paymentMethod" name="paymentMethod" required>
+                                    <option value="">선택</option>
+                                    <option value="CASH">{{ get_text('cash') }}</option>
+                                    <option value="CARD">{{ get_text('credit_card') }}</option>
+                                    <option value="BANK">{{ get_text('bank_transfer') }}</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="row mb-3">
+                            <div class="col-md-3">
+                                <label for="paymentDueDate" class="form-label required">{{ get_text('payment_due_date') }}</label>
+                                <input type="date" class="form-control" id="paymentDueDate" name="paymentDueDate" required>
+                            </div>
+                            <div class="col-md-3">
+                                <label for="salesStatus" class="form-label required">{{ get_text('sales_status') }}</label>
+                                <select class="form-select" id="salesStatus" name="salesStatus" required>
+                                    <option value="">{{ get_text('select') }}</option>
+                                    <option value="PROCESS">{{ get_text('sales_status_process') }}</option>
+                                    <option value="COMPLETED">{{ get_text('sales_status_completed') }}</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="remarks">{{ get_text('remark') }}</label>
+                            <textarea id="remarks" name="remarks" class="form-control" rows="3"></textarea>
+                        </div>
+
+                        <div class="card mt-4">
+                            <div class="card-header d-flex justify-content-between align-items-center">
+                                <h6 class="card-title mb-0">{{ get_text('item_info') }}</h6>
+                                <button type="button" class="btn-import-data" onclick="openImportDataModal()">
+                                    <i class="fas fa-file-import"></i> Import data
+                                </button>
+                            </div>
+                            <div class="card-body">
+                                <table class="table table-bordered" id="itemTable">
+                                    <thead>
+                                        <tr>
+                                            <th style="width: 20%">{{ get_text('item_code') }}</th>
+                                            <th style="width: 20%">{{ get_text('item_name') }}</th>
+                                            <th style="width: 20%">{{ get_text('specification') }}</th>
+                                            <th style="width: 10%">{{ get_text('warehouse_code') }}</th>
+                                            <th style="width: 10%">{{ get_text('quantity') }}</th>
+                                            <th style="width: 10%">{{ get_text('unit_price') }}</th>
+                                            <th style="width: 10%">{{ get_text('amount') }}</th>
+                                            <th style="width: 10%">{{ get_text('action') }}</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody></tbody>
+                                    <tfoot>
+                                        <tr class="text-primary">
+                                            <td colspan="3" class="text-end"><strong>{{ get_text('total') }}</strong></td>
+                                            <td></td>
+                                            <td class="text-end"><strong><span id="totalQuantity">0</span></strong></td>
+                                            <td class="text-end"><strong><span id="totalAmount">0</span></strong></td>
+                                            <td></td>
+                                        </tr>
+                                    </tfoot>
+                                </table>
+                                <button type="button" class="btn btn-primary" id="addItemBtn">{{ get_text('add_item') }}</button>
+                            </div>
+                        </div>
+
+                        <div class="row mt-3">
+                            <div class="col-md-4 offset-md-8">
+                                <div class="card">
+                                    <div class="card-body">
+                                        <div class="row mb-2">
+                                            <label class="col-sm-4 col-form-label text-end">{{ get_text('sub_total') }}</label>
+                                            <div class="col-sm-8">
+                                                <input type="text" class="form-control text-end" id="subTotal" readonly>
+                                            </div>
+                                        </div>
+                                        <div class="row mb-2">
+                                            <label class="col-sm-4 col-form-label text-end">{{ get_text('vat') }}</label>
+                                            <div class="col-sm-8">
+                                                <input type="text" class="form-control text-end" id="vat" onchange="formatNumberInput(this); updateGrandTotal();">
+                                            </div>
+                                        </div>
+                                        <div class="row">
+                                            <label class="col-sm-4 col-form-label text-end"><strong>{{ get_text('grand_total') }}</strong></label>
+                                            <div class="col-sm-8">
+                                                <input type="text" class="form-control text-end" id="grandTotal" readonly>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mt-3 text-center">
+                            <button type="button" class="btn btn-secondary" onclick="history.back()">{{ get_text('list') }}</button>
+                            <button type="button" class="btn btn-primary" onclick="saveSales()">{{ get_text('save') }}</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Import Data Modal -->
+<div id="importDataModal">
+    <div class="import-modal-dialog">
+        <div class="import-modal-title">
+            <i class="fas fa-file-import"></i> 수불 출고 데이터 불러오기
+        </div>
+        <div class="import-filter-row">
+            <div class="import-filter-group">
+                <label>시작일</label>
+                <input type="date" id="imp_startDate">
+            </div>
+            <div class="import-filter-group">
+                <label>종료일</label>
+                <input type="date" id="imp_endDate">
+            </div>
+            <div class="import-filter-group">
+                <label>품목코드</label>
+                <input type="text" id="imp_itemCode" placeholder="품목코드 검색">
+            </div>
+            <div class="import-filter-group">
+                <label>창고</label>
+                <select id="imp_warehouseCode"><option value="">전체</option></select>
+            </div>
+            <div class="import-filter-group" style="justify-content:flex-end;">
+                <button type="button" onclick="searchImportData()"
+                        style="background:#4f8cff;color:#fff;border:none;padding:6px 16px;border-radius:4px;font-size:13px;cursor:pointer;margin-top:18px;">
+                    <i class="fas fa-search"></i> 조회
+                </button>
+            </div>
+        </div>
+        <div class="import-table-wrap">
+            <table class="import-table">
+                <thead>
+                    <tr>
+                        <th><input type="checkbox" id="imp_selectAll" title="전체선택"></th>
+                        <th>출고일자</th>
+                        <th>참조번호</th>
+                        <th>창고</th>
+                        <th>품목코드</th>
+                        <th>품목명</th>
+                        <th>규격</th>
+                        <th>단위</th>
+                        <th>출고수량</th>
+                        <th>단가</th>
+                        <th>금액</th>
+                        <th>비고</th>
+                    </tr>
+                </thead>
+                <tbody id="imp_tableBody">
+                    <tr><td colspan="12" style="color:#9ca3af;padding:30px 0;">조건을 입력 후 조회 버튼을 클릭하세요.</td></tr>
+                </tbody>
+            </table>
+        </div>
+        <div class="import-modal-footer">
+            <span class="import-selected-count" id="imp_selectedCount">선택: 0건</span>
+            <button type="button" class="btn-import-confirm" onclick="confirmImportData()">
+                <i class="fas fa-check"></i> 확정
+            </button>
+            <button type="button" class="btn-import-close" onclick="closeImportDataModal()">
+                <i class="fas fa-times"></i> 닫기
+            </button>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        generateSalesNo();
+        loadCustomers();
+        loadCurrencies();
+        loadTransactionCodes();
+
+        const today = new Date().toISOString().split('T')[0];
+        document.getElementById('salesDate').value = today;
+        document.getElementById('paymentDueDate').value = today;
+        document.getElementById('salesStatus').value = 'PROCESS';
+
+        document.getElementById('currencyCode').addEventListener('change', function () {
+            if (this.value === 'KRW') {
+                document.getElementById('exchangeRate').value = '1';
+                document.getElementById('exchangeRate').readOnly = true;
+            } else {
+                document.getElementById('exchangeRate').readOnly = false;
+            }
+        });
+
+        document.getElementById('addItemBtn').addEventListener('click', addNewItemRow);
+
+        // 모달 바깥 클릭 시 닫기
+        document.getElementById('importDataModal').addEventListener('click', function (e) {
+            if (e.target === this) closeImportDataModal();
+        });
+    });
+
+    // ─── 매출번호 생성 ───────────────────────────────
+    function generateSalesNo() {
+        fetch('/sales/api/sales/generate-no')
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('salesNo').value = data.salesNo;
+            })
+            .catch(error => console.error('generateSalesNo Error:', error));
+    }
+
+    // ─── 거래처 목록 ────────────────────────────────
+    function loadCustomers() {
+        fetch('/sales/api/vendor/options')
+            .then(r => r.json())
+            .then(data => {
+                const select = document.getElementById('customerCode');
+                select.innerHTML = '<option value="">선택</option>';
+                data.sort((a, b) => (a.code || '').localeCompare(b.code || ''));
+                data.forEach(c => {
+                    const opt = document.createElement('option');
+                    opt.value = c.code;
+                    opt.textContent = `${c.code} - ${c.name}`;
+                    select.appendChild(opt);
+                });
+            })
+            .catch(error => console.error('loadCustomers Error:', error));
+    }
+
+    // ─── 통화 목록 ──────────────────────────────────
+    function loadCurrencies() {
+        fetch('/sales/api/currencies')
+            .then(r => r.json())
+            .then(data => {
+                const select = document.getElementById('currencyCode');
+                select.innerHTML = '<option value="">선택</option>';
+                data.forEach(c => {
+                    const opt = document.createElement('option');
+                    opt.value = c.code;
+                    opt.textContent = `${c.code} - ${c.name}`;
+                    select.appendChild(opt);
+                });
+                select.value = 'KRW';
+                document.getElementById('exchangeRate').value = '1';
+                document.getElementById('exchangeRate').readOnly = true;
+            })
+            .catch(error => console.error('loadCurrencies Error:', error));
+    }
+
+    // ─── 수불유형코드 ───────────────────────────────
+    function loadTransactionCodes() {
+        fetch('/sales/api/transaction-codes')
+            .then(r => r.json())
+            .then(data => {
+                const select = document.getElementById('trCode');
+                select.innerHTML = '<option value="">선택</option>';
+                data.forEach(c => {
+                    const opt = document.createElement('option');
+                    opt.value = c.tr_code;
+                    opt.textContent = `${c.tr_code} - ${c.tr_name}`;
+                    select.appendChild(opt);
+                });
+            })
+            .catch(error => console.error('loadTransactionCodes Error:', error));
+    }
+
+    // ─── 창고 옵션 로드 (행별) ──────────────────────
+    function loadWarehouseOptionsForItem(selectElement, selectedValue = null) {
+        fetch('/sales/api/warehouse/options')
+            .then(r => r.json())
+            .then(data => {
+                selectElement.innerHTML = '<option value="">선택</option>';
+                data.forEach(w => {
+                    const opt = document.createElement('option');
+                    opt.value = (w.code || '').trim();
+                    opt.textContent = `${(w.code || '').trim()} - ${(w.name || '').trim()}`;
+                    selectElement.appendChild(opt);
+                });
+                if (selectedValue) {
+                    const val = selectedValue.trim();
+                    // 옵션에 없으면 직접 추가 (데이터 불일치 대비)
+                    if (!Array.from(selectElement.options).find(o => o.value === val)) {
+                        const opt = document.createElement('option');
+                        opt.value = val;
+                        opt.textContent = val;
+                        selectElement.appendChild(opt);
+                    }
+                    selectElement.value = val;
+                }
+            })
+            .catch(error => console.error('loadWarehouseOptionsForItem Error:', error));
+    }
+
+    // ─── 품목 옵션 로드 ─────────────────────────────
+    function loadItemOptions(selectElement) {
+        fetch('/sales/api/sales/item/options')
+            .then(r => r.json())
+            .then(data => {
+                const currentValue = selectElement.value;
+                selectElement.innerHTML = '<option value="">선택</option>';
+                data.forEach(item => {
+                    const opt = document.createElement('option');
+                    opt.value = item.item_code;
+                    opt.textContent = `${item.item_code} - ${item.item_name}`;
+                    selectElement.appendChild(opt);
+                });
+                if (currentValue) selectElement.value = currentValue;
+            })
+            .catch(error => console.error('loadItemOptions Error:', error));
+    }
+
+    // ─── 품목 정보 로드 ─────────────────────────────
+    function loadItemInfo(select) {
+        const tr = select.closest('tr');
+        const itemCode = select.value;
+        if (itemCode) {
+            fetch(`/sales/api/sales/item/detail/${itemCode}`)
+                .then(r => r.json())
+                .then(data => {
+                    if (data) {
+                        tr.querySelector('.item-name').value = data.item_name || '';
+                        tr.querySelector('.item-spec').value = data.item_spec || '';
+                        const qtyInput = tr.querySelector('.quantity');
+                        const upInput = tr.querySelector('.unit-price');
+                        upInput.value = data.unit_price !== undefined ? Number(data.unit_price).toFixed(2) : '';
+                        if (!qtyInput.value) qtyInput.value = '1.00';
+                        calculateAmount(upInput);
+                    }
+                })
+                .catch(error => console.error('loadItemInfo Error:', error));
+        } else {
+            tr.querySelector('.item-name').value = '';
+            tr.querySelector('.item-spec').value = '';
+            tr.querySelector('.unit-price').value = '';
+            tr.querySelector('.quantity').value = '1.00';
+            calculateAmount(tr.querySelector('.unit-price'));
+        }
+    }
+
+    // ─── 품목 행 추가 ────────────────────────────────
+    function addNewItemRow(warehouseCode = null) {
+        const tbody = document.querySelector('#itemTable tbody');
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+        <td>
+            <div class="input-group">
+                <select class="form-select item-code" required onchange="loadItemInfo(this)">
+                    <option value="">선택</option>
+                </select>
+                <button class="btn btn-outline-secondary" type="button" onclick="searchItemModal(this)">
+                    <i class="fas fa-search"></i>
+                </button>
+            </div>
+        </td>
+        <td><input type="text" class="form-control item-name" readonly></td>
+        <td><input type="text" class="form-control item-spec" readonly></td>
+        <td><select class="form-select item-warehouse-code" required><option value="">선택</option></select></td>
+        <td><input type="text" class="form-control quantity text-end" value="1.00" required></td>
+        <td><input type="text" class="form-control unit-price text-end" required></td>
+        <td><input type="text" class="form-control amount text-end" readonly></td>
+        <td>
+            <button type="button" class="btn btn-danger btn-sm" onclick="removeItem(this)">
+                <i class="fas fa-trash"></i>
+            </button>
+        </td>
+    `;
+        tbody.appendChild(tr);
+        loadWarehouseOptionsForItem(tr.querySelector('.item-warehouse-code'), warehouseCode); // ← 변경
+        loadItemOptions(tr.querySelector('.item-code'));
+        addInputListenersToRow(tr);
+    }
+
+    // ─── 행별 입력 이벤트 등록 ──────────────────────
+    function addInputListenersToRow(tr) {
+        const qtyInput = tr.querySelector('.quantity');
+        const upInput = tr.querySelector('.unit-price');
+        if (qtyInput) {
+            qtyInput.addEventListener('input', function () { this.value = this.value.replace(/[^\d.]/g, ''); });
+            qtyInput.addEventListener('blur', function () {
+                const n = parseFloat(this.value.replace(/,/g, ''));
+                this.value = isNaN(n) ? '0.00' : formatNumber(n);
+                calculateAmount(this);
+            });
+        }
+        if (upInput) {
+            upInput.addEventListener('input', function () { this.value = this.value.replace(/[^\d.]/g, ''); });
+            upInput.addEventListener('blur', function () {
+                const n = parseFloat(this.value.replace(/,/g, ''));
+                this.value = isNaN(n) ? '0.00' : formatNumber(n);
+                calculateAmount(this);
+            });
+        }
+    }
+
+    // ─── 금액 계산 ───────────────────────────────────
+    function calculateAmount(input) {
+        const tr = input.closest('tr');
+        const qty = parseFloat(tr.querySelector('.quantity').value.replace(/,/g, '')) || 0;
+        const up = parseFloat(tr.querySelector('.unit-price').value.replace(/,/g, '')) || 0;
+        tr.querySelector('.amount').value = formatNumber(qty * up);
+        updateTotals();
+    }
+
+    // ─── 합계 업데이트 ───────────────────────────────
+    function updateTotals() {
+        let totalQty = 0, totalAmt = 0;
+        document.querySelectorAll('#itemTable tbody tr').forEach(row => {
+            totalQty += parseFloat(row.querySelector('.quantity').value.replace(/,/g, '')) || 0;
+            totalAmt += parseFloat(row.querySelector('.amount').value.replace(/,/g, '')) || 0;
+        });
+        document.getElementById('totalQuantity').textContent = formatNumber(totalQty);
+        document.getElementById('totalAmount').textContent = formatNumber(totalAmt);
+        document.getElementById('subTotal').value = formatNumber(totalAmt);
+        const vat = Math.round(totalAmt * 0.07 * 100) / 100;
+        document.getElementById('vat').value = formatNumber(vat);
+        document.getElementById('grandTotal').value = formatNumber(totalAmt + vat);
+    }
+
+    function updateGrandTotal() {
+        const sub = parseFloat(document.getElementById('subTotal').value.replace(/,/g, '')) || 0;
+        const vat = parseFloat(document.getElementById('vat').value.replace(/,/g, '')) || 0;
+        document.getElementById('grandTotal').value = formatNumber(sub + vat);
+    }
+
+    // ─── 행 삭제 ────────────────────────────────────
+    function removeItem(button) {
+        button.closest('tr').remove();
+        updateTotals();
+    }
+
+    // ─── 숫자 포맷 ───────────────────────────────────
+    function formatNumber(num) {
+        if (typeof num !== 'number' || isNaN(num)) return '0.00';
+        return num.toLocaleString('ko-KR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+    function formatNumberInput(input) {
+        const n = parseFloat(input.value.replace(/,/g, ''));
+        input.value = isNaN(n) ? '0.00' : formatNumber(n);
+    }
+
+    // ─── 저장 ────────────────────────────────────────
+    function saveSales() {
+        const requiredFields = [
+            { id: 'salesDate', name: '출고일자' },
+            { id: 'customerCode', name: '거래처' },
+            { id: 'currencyCode', name: '통화' },
+            { id: 'paymentMethod', name: '결제방법' },
+            { id: 'paymentDueDate', name: '결제예정일' },
+            { id: 'salesStatus', name: '매출상태' },
+            { id: 'trCode', name: '수불유형코드' }
+        ];
+        const missing = requiredFields.filter(f => !document.getElementById(f.id).value).map(f => f.name);
+        if (missing.length > 0) { alert('필수 입력값을 확인하세요: ' + missing.join(', ')); return; }
+
+        const items = [];
+        let missingWarehouse = false;
+        document.querySelectorAll('#itemTable tbody tr').forEach(tr => {
+            const itemCode = tr.querySelector('.item-code').value;
+            const warehouseCode = tr.querySelector('.item-warehouse-code').value;
+            const quantity = tr.querySelector('.quantity').value.replace(/,/g, '');
+            const unitPrice = tr.querySelector('.unit-price').value.replace(/,/g, '');
+            const amount = tr.querySelector('.amount').value.replace(/,/g, '');
+            if (!itemCode || !quantity || !unitPrice) return;
+            if (!warehouseCode) missingWarehouse = true;
+            items.push({ itemCode, warehouseCode, quantity: parseFloat(quantity), unitPrice: parseFloat(unitPrice), amount: parseFloat(amount) });
+        });
+        if (missingWarehouse) { alert('모든 품목의 창고코드를 선택하세요.'); return; }
+        if (items.length === 0) { alert('한 개 이상의 품목을 입력하세요.'); return; }
+
+        const data = {
+            salesNo: document.getElementById('salesNo').value,
+            poNo: document.getElementById('poNo').value,
+            salesDate: document.getElementById('salesDate').value,
+            customerCode: document.getElementById('customerCode').value,
+            currencyCode: document.getElementById('currencyCode').value,
+            exchangeRate: parseFloat(document.getElementById('exchangeRate').value.replace(/,/g, '')) || 0,
+            paymentMethod: document.getElementById('paymentMethod').value,
+            paymentDueDate: document.getElementById('paymentDueDate').value,
+            salesStatus: document.getElementById('salesStatus').value,
+            trCode: document.getElementById('trCode').value,
+            remarks: document.getElementById('remarks').value,
+            total_amount: parseFloat(document.getElementById('subTotal').value.replace(/,/g, '')) || 0,
+            total_vat: parseFloat(document.getElementById('vat').value.replace(/,/g, '')) || 0,
+            total_sum_amount: parseFloat(document.getElementById('grandTotal').value.replace(/,/g, '')) || 0,
+            items,
+            skipInventory: true   // ← 재고 처리 제외 플래그
+        };
+
+        fetch('/sales/api/sales/register', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        })
+            .then(r => r.json())
+            .then(result => {
+                if (result.success) {
+                    alert('저장되었습니다.');
+                    window.location.href = '/sales/sales_list2';
+                } else {
+                    alert(result.message || '저장에 실패했습니다.');
+                }
+            })
+            .catch(() => alert('저장 중 오류가 발생했습니다.'));
+    }
+
+    // ═══════════════════════════════════════════════
+    // Import Data 팝업
+    // ═══════════════════════════════════════════════
+    let _importDataList = [];
+
+    function openImportDataModal() {
+        const today = new Date();
+        const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
+        const lastDay = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+        document.getElementById('imp_startDate').value = _toDateStr(firstDay);
+        document.getElementById('imp_endDate').value = _toDateStr(lastDay);
+
+        // 창고 목록 로드
+        const dstSel = document.getElementById('imp_warehouseCode');
+        dstSel.innerHTML = '<option value="">전체</option>';
+        fetch('/sales/api/warehouse/options')
+            .then(r => r.json())
+            .then(data => {
+                data.forEach(w => {
+                    const o = document.createElement('option');
+                    o.value = w.code;
+                    o.textContent = `${w.code} - ${w.name}`;
+                    dstSel.appendChild(o);
+                });
+            });
+
+        document.getElementById('imp_selectAll').onchange = function () {
+            document.querySelectorAll('.imp-row-chk').forEach(chk => {
+                chk.checked = this.checked;
+                chk.closest('tr').classList.toggle('selected', this.checked);
+            });
+            _updateSelectedCount();
+        };
+
+        document.getElementById('importDataModal').style.display = 'block';
+        document.body.style.overflow = 'hidden';
+        searchImportData();
+    }
+
+    function closeImportDataModal() {
+        document.getElementById('importDataModal').style.display = 'none';
+        document.body.style.overflow = '';
+    }
+
+    function _toDateStr(d) {
+        const korea = new Date(d.getTime() + 9 * 60 * 60 * 1000);
+        return korea.toISOString().slice(0, 10);
+    }
+
+    function searchImportData() {
+        const body = {
+            startDate: document.getElementById('imp_startDate').value,
+            endDate: document.getElementById('imp_endDate').value,
+            itemCode: document.getElementById('imp_itemCode').value.trim(),
+            warehouseCode: document.getElementById('imp_warehouseCode').value
+        };
+        const tbody = document.getElementById('imp_tableBody');
+        tbody.innerHTML = '<tr><td colspan="12" style="padding:20px;color:#9ca3af;">조회 중...</td></tr>';
+
+        fetch('/sales/api/inventory-transactions/out', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body)
+        })
+            .then(r => r.json())
+            .then(data => {
+                if (data.status !== 'success') throw new Error(data.message || '조회 오류');
+                _importDataList = data.items;
+                _renderImportTable(data.items);
+            })
+            .catch(err => {
+                tbody.innerHTML = `<tr><td colspan="12" style="color:#dc3545;padding:20px;">오류: ${err.message}</td></tr>`;
+            });
+    }
+
+    function _renderImportTable(items) {
+        const tbody = document.getElementById('imp_tableBody');
+        tbody.innerHTML = '';
+        document.getElementById('imp_selectAll').checked = false;
+        _updateSelectedCount();
+
+        if (!items || items.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="12" style="padding:24px;color:#9ca3af;">조회된 데이터가 없습니다.</td></tr>';
+            return;
+        }
+        items.forEach((item, idx) => {
+            const amount = (item.outQty * item.unitPrice).toLocaleString('en-US', { maximumFractionDigits: 2 });
+            const tr = document.createElement('tr');
+            tr.dataset.idx = idx;
+            tr.innerHTML = `
+            <td><input type="checkbox" class="imp-row-chk" data-idx="${idx}"></td>
+            <td>${item.transDate}</td>
+            <td>${item.refNo || '-'}</td>
+            <td>${item.warehouseName || item.warehouseCode}</td>
+            <td>${item.itemCode}</td>
+            <td>${item.itemName}</td>
+            <td>${item.itemSpec || '-'}</td>
+            <td>${item.unitName || item.unitCode}</td>
+            <td style="text-align:right;">${item.outQty.toLocaleString()}</td>
+            <td style="text-align:right;">${item.unitPrice.toLocaleString('en-US', { maximumFractionDigits: 2 })}</td>
+            <td style="text-align:right;">${amount}</td>
+            <td>${item.remarks || '-'}</td>
+        `;
+            tr.addEventListener('click', function (e) {
+                if (e.target.type === 'checkbox') return;
+                const chk = tr.querySelector('.imp-row-chk');
+                chk.checked = !chk.checked;
+                tr.classList.toggle('selected', chk.checked);
+                _updateSelectedCount();
+            });
+            tr.querySelector('.imp-row-chk').addEventListener('change', function () {
+                tr.classList.toggle('selected', this.checked);
+                _updateSelectedCount();
+            });
+            tbody.appendChild(tr);
+        });
+    }
+
+    function _updateSelectedCount() {
+        const cnt = document.querySelectorAll('.imp-row-chk:checked').length;
+        document.getElementById('imp_selectedCount').textContent = `선택: ${cnt}건`;
+    }
+
+    function confirmImportData() {
+        const checked = document.querySelectorAll('.imp-row-chk:checked');
+        if (checked.length === 0) { alert('불러올 데이터를 선택해 주세요.'); return; }
+
+        const selectedItems = Array.from(checked).map(chk => _importDataList[parseInt(chk.dataset.idx)]);
+        const tbody = document.querySelector('#itemTable tbody');
+
+        // 빈 행 제거
+        Array.from(tbody.querySelectorAll('tr')).forEach(row => {
+            if (!row.querySelector('.item-code').value) row.remove();
+        });
+
+        selectedItems.forEach(item => {
+            addNewItemRow(item.warehouseCode);
+            const lastRow = tbody.lastElementChild;
+
+            // 품목코드 옵션 강제 추가 후 선택
+            const itemCodeSel = lastRow.querySelector('.item-code');
+            if (!Array.from(itemCodeSel.options).find(o => o.value === item.itemCode)) {
+                const opt = document.createElement('option');
+                opt.value = item.itemCode;
+                opt.textContent = `${item.itemCode} - ${item.itemName}`;
+                itemCodeSel.appendChild(opt);
+            }
+            itemCodeSel.value = item.itemCode;
+            lastRow.querySelector('.item-name').value = item.itemName;
+            lastRow.querySelector('.item-spec').value = item.itemSpec || '';
+
+            lastRow.querySelector('.quantity').value = formatNumber(item.outQty);
+            lastRow.querySelector('.unit-price').value = formatNumber(item.unitPrice);
+            calculateAmount(lastRow.querySelector('.unit-price'));
+        });
+
+        closeImportDataModal();
+        alert(`${selectedItems.length}건의 데이터를 불러왔습니다.`);
+    }
+</script>
+{% endblock %}

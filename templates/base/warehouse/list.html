@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ get_text('warehouse_management') }} - MES 시스템</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/product_code.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+    <style>
+        .content-area {
+            flex: 1;
+            padding: 40px 0 40px 0;
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        .form-container {
+            background-color: #fff;
+            border-radius: 8px;
+            padding: 30px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        h2 {
+            font-size: 22px;
+            margin-bottom: 25px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #007bff;
+            color: #2c3e50;
+        }
+
+        .search-section {
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            border: 1px solid #e9ecef;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+        }
+
+        .search-form {
+            display: flex;
+            align-items: flex-end;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+
+        .form-group {
+            margin-bottom: 0;
+            flex: 0 0 auto;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+            color: #333;
+            font-size: 14px;
+        }
+
+        .form-group input {
+            padding: 8px 12px;
+            border: 1px solid #ced4da;
+            border-radius: 4px;
+            font-size: 14px;
+            line-height: 1.5;
+            transition: all 0.2s ease-in-out;
+            width: 100%;
+        }
+
+        .form-group input:focus {
+            border-color: #86b7fe;
+            outline: 0;
+            box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+        }
+
+        #warehouseCode {
+            width: 180px;
+        }
+
+        #warehouseName {
+            width: 250px;
+        }
+
+        .button-section {
+            margin: 20px 0;
+            display: flex;
+            gap: 8px;
+        }
+
+        .btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 4px;
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease-in-out;
+            min-width: 80px;
+        }
+
+        .btn-add {
+            background-color: #28a745;
+            color: white;
+        }
+
+        .btn-edit {
+            background-color: #007bff;
+            color: white;
+        }
+
+        .btn-delete {
+            background-color: #dc3545;
+            color: white;
+        }
+
+        .btn:hover {
+            transform: translateY(-1px);
+        }
+
+        .btn-add:hover {
+            background-color: #218838;
+        }
+
+        .btn-edit:hover {
+            background-color: #0056b3;
+        }
+
+        .btn-delete:hover {
+            background-color: #c82333;
+        }
+
+        .search-btn {
+            background-color: #0d6efd;
+            color: white;
+            border: none;
+            padding: 8px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            min-width: 80px;
+            height: 38px;
+            transition: all 0.2s ease-in-out;
+            margin-left: auto;
+        }
+
+        .search-btn:hover {
+            background-color: #0b5ed7;
+            transform: translateY(-1px);
+        }
+
+        .warehouse-grid {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+
+        .warehouse-grid th,
+        .warehouse-grid td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #dee2e6;
+            font-size: 13px;
+        }
+
+        .warehouse-grid th {
+            background-color: #f8f9fa;
+            font-weight: 600;
+            color: #495057;
+        }
+
+        .warehouse-grid tr:hover {
+            background-color: #f8f9fa;
+        }
+
+        .warehouse-grid input[type="checkbox"] {
+            margin: 0;
+        }
+
+        .text-right {
+            text-align: right;
+        }
+
+        .pagination {
+            display: flex;
+            justify-content: center;
+            margin-top: 20px;
+            gap: 5px;
+        }
+
+        .pagination button {
+            padding: 6px 12px;
+            border: 1px solid #dee2e6;
+            background-color: #fff;
+            color: #007bff;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.2s ease-in-out;
+        }
+
+        .pagination button:hover {
+            background-color: #e9ecef;
+            border-color: #dee2e6;
+            color: #0056b3;
+        }
+
+        .pagination button.active {
+            background-color: #007bff;
+            border-color: #007bff;
+            color: #fff;
+        }
+
+        .pagination button:disabled {
+            color: #6c757d;
+            pointer-events: none;
+            background-color: #fff;
+            border-color: #dee2e6;
+        }
+    </style>
+</head>
+<body>
+        {% include 'nav.html' %}
+    <main class="content-area">
+        <div class="form-container">
+            <h2>{{ get_text('warehouse_list') }}</h2>
+            
+            <!-- 검색 영역 -->
+            <div class="search-section">
+                <form id="searchForm" class="search-form" action="{{ url_for('base.warehouse_search') }}" method="GET">
+                    <div class="form-group">
+                        <label for="warehouseCode">{{ get_text('warehouse_code') }}</label>
+                        <input type="text" id="warehouseCode" name="warehouseCode" value="{{ request.args.get('warehouseCode', '') }}">
+                    </div>
+                    <div class="form-group">
+                        <label for="warehouseName">{{ get_text('warehouse_name') }}</label>
+                        <input type="text" id="warehouseName" name="warehouseName" value="{{ request.args.get('warehouseName', '') }}">
+                    </div>
+                    <div class="form-group">
+                        <button type="submit" class="search-btn">{{ get_text('search') }}</button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- 버튼 영역 -->
+            <div class="button-section">
+                <button class="btn btn-add" onclick="location.href='{{ url_for('base.warehouse_add') }}'">
+                    {{ get_text('add_warehouse') }}
+                </button>
+                <button class="btn btn-edit" id="editBtn">{{ get_text('edit') }}</button>
+                <button class="btn btn-delete" id="deleteBtn">{{ get_text('delete') }}</button>
+                <button class="btn btn-edit" id="excelDownload"><i class="fas fa-file-excel"></i> {{ get_text('excel_download') }}</button>
+            </div>
+
+            <!-- 그리드 영역 -->
+            <table class="warehouse-grid">
+                <thead>
+                    <tr>
+                        <th><input type="checkbox" id="selectAll"></th>
+                        <th>번호</th>
+                        <th>{{ get_text('warehouse_code') }}</th>
+                        <th>{{ get_text('warehouse_name') }}</th>
+                        <th>{{ get_text('location') }}</th>
+                        <th>{{ get_text('manager') }}</th>
+                        <th>{{ get_text('phone') }}</th>
+                        <th>{{ get_text('usage') }}</th>
+                        <th>{{ get_text('remarks') }}</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for warehouse in warehouses %}
+                    <tr>
+                        <td><input type="checkbox" class="warehouse-select" value="{{ warehouse.WH_CODE }}"></td>
+                        <td>{{ loop.index }}</td>
+                        <td>{{ warehouse.WH_CODE }}</td>
+                        <td>{{ warehouse.WH_NAME }}</td>
+                        <td>{{ warehouse.WH_LOCATION }}</td>
+                        <td>{{ warehouse.WH_MANAGER }}</td>
+                        <td>{{ warehouse.WH_PHONE }}</td>
+                        <td>{{ warehouse.usage }}</td>
+                        <td>{{ warehouse.remarks }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+
+            <!-- 페이지네이션 -->
+            <div class="pagination">
+                <button id="prevPage" disabled>&lt;</button>
+                <button class="active">1</button>
+                <button>2</button>
+                <button>3</button>
+                <button id="nextPage">&gt;</button>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        // 전체 선택/해제
+        document.getElementById('selectAll').addEventListener('change', function() {
+            const checkboxes = document.getElementsByClassName('warehouse-select');
+            for (let checkbox of checkboxes) {
+                checkbox.checked = this.checked;
+            }
+        });
+
+        // 수정 버튼 클릭
+        document.getElementById('editBtn').addEventListener('click', function() {
+            const selected = document.querySelector('.warehouse-select:checked');
+            if (!selected) {
+                alert('{{ get_text("please_select_warehouse") }}');
+                return;
+            }
+            location.href = `{{ url_for('base.warehouse_edit', code='') }}${selected.value}`;
+        });
+
+        // 삭제 버튼 클릭
+        document.getElementById('deleteBtn').addEventListener('click', function() {
+            const selected = document.querySelectorAll('.warehouse-select:checked');
+            if (selected.length === 0) {
+                alert('{{ get_text("please_select_warehouse") }}');
+                return;
+            }
+            if (confirm('{{ get_text("confirm_delete") }}')) {
+                const codes = Array.from(selected).map(checkbox => checkbox.value);
+                
+                fetch('/warehouse/delete', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ codes: codes })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        alert('{{ get_text("delete_success") }}');
+                        location.reload();
+                    } else {
+                        alert(data.error || '{{ get_text("delete_failed") }}');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('{{ get_text("delete_failed") }}');
+                });
+            }
+        });
+
+        document.getElementById('excelDownload').addEventListener('click', function() {
+            fetch('/warehouse/excel')
+                .then(response => response.blob())
+                .then(blob => {
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = 'warehouse_list.xlsx';
+                    document.body.appendChild(a);
+                    a.click();
+                    window.URL.revokeObjectURL(url);
+                    a.remove();
+                });
+        });
+    </script>
+</body>
+</html> 

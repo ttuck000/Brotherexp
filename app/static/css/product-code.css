@@ -1,0 +1,53 @@
+/* Product Code Specific Styles */
+.product-code-form {
+    max-width: 800px;
+    margin: 0 auto;
+}
+
+.product-code-table {
+    width: 100%;
+    margin-top: 20px;
+}
+
+.product-code-actions {
+    display: flex;
+    gap: 10px;
+}
+
+.search-box {
+    margin-bottom: 20px;
+}
+
+.status-active {
+    color: #28a745;
+}
+
+.status-inactive {
+    color: #dc3545;
+}
+
+/* Form Layout */
+.form-group {
+    margin-bottom: 15px;
+}
+
+.form-row {
+    display: flex;
+    flex-wrap: wrap;
+    margin-right: -5px;
+    margin-left: -5px;
+}
+
+.form-col {
+    flex: 1;
+    padding: 0 5px;
+    min-width: 200px;
+}
+
+/* Responsive Table */
+@media (max-width: 768px) {
+    .product-code-table {
+        display: block;
+        overflow-x: auto;
+    }
+} 

@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>창고정보 관리 - MES 시스템</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/product_code.css') }}">
+    <script src="https://kit.fontawesome.com/your-code.js" crossorigin="anonymous"></script>
+</head>
+<body>
+    {% include 'nav.html' %}
+
+    <main class="content-area">
+        <div class="warehouse-container">
+            <h2>창고정보 관리</h2>
+            
+            <!-- 검색 영역 -->
+            <div class="search-section">
+                <form class="search-form">
+                    <div class="form-group">
+                        <label for="warehouseCode">창고코드</label>
+                        <input type="text" id="warehouseCode" name="warehouseCode">
+                    </div>
+                    <div class="form-group">
+                        <label for="warehouseName">창고명</label>
+                        <input type="text" id="warehouseName" name="warehouseName">
+                    </div>
+                    <button type="submit" class="search-btn">검색</button>
+                </form>
+            </div>
+
+            <!-- 버튼 영역 -->
+            <div class="button-section">
+                <button class="btn btn-add">신규</button>
+                <button class="btn btn-save">저장</button>
+                <button class="btn btn-delete">삭제</button>
+            </div>
+
+            <!-- 그리드 영역 -->
+            <div class="grid-section">
+                <table class="product-grid">
+                    <thead>
+                        <tr>
+                            <th>선택</th>
+                            <th>창고코드</th>
+                            <th>창고명</th>
+                            <th>위치</th>
+                            <th>관리자</th>
+                            <th>연락처</th>
+                            <th>사용여부</th>
+                            <th>비고</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- 샘플 데이터 -->
+                        <tr>
+                            <td><input type="checkbox"></td>
+                            <td>W001</td>
+                            <td>제1창고</td>
+                            <td>1층 A구역</td>
+                            <td>홍길동</td>
+                            <td>010-1234-5678</td>
+                            <td>Y</td>
+                            <td></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+
+    <footer>
+        <p>&copy; 2024 MES 시스템. All rights reserved.</p>
+    </footer>
+
+    <script>
+        document.querySelectorAll('.nav-item').forEach(item => {
+            item.addEventListener('mouseover', function() {
+                this.querySelector('.submenu').style.display = 'block';
+            });
+            
+            item.addEventListener('mouseout', function() {
+                this.querySelector('.submenu').style.display = 'none';
+            });
+        });
+    </script>
+</body>
+</html> 

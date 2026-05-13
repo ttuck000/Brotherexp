@@ -1,0 +1,3177 @@
+from flask import Blueprint, render_template, request, jsonify, redirect, url_for, flash, send_file, session, current_app
+from app.auth.routes import login_required
+import pyodbc
+from datetime import datetime, date
+import json
+from decimal import Decimal
+from flask import current_app as app
+from sqlalchemy import func
+import xlsxwriter
+import pandas as pd
+import numpy as np
+import re
+from . import bp as purchase
+from app.utils.db_helper import get_db_connection
+
+def get_db_connection():
+    return pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BIGBOY;UID=brother;PWD=jobgate@m1n;')
+
+# 매입관리 메인 페이지
+@purchase.route('/list')
+@login_required
+def purchase_list():
+    return render_template('purchase/list.html')
+
+# 매입관리 상세 페이지
+@purchase.route('/list-detail')
+@login_required
+def purchase_list_detail():
+    return render_template('purchase/purchase_list_detail.html')
+
+# 매입등록 상세 조회/수정 페이지
+@purchase.route('/detail/<purchase_no>')
+@login_required
+def get_purchase_list_detail_page(purchase_no):
+    try:
+        # Simply render the new detail page template
+        return render_template('purchase/purchase_detail.html', purchase_no=purchase_no)
+        
+    except Exception as e:
+        print('Error in get_purchase_list_detail_page:', str(e))
+        flash('매입정보를 불러오는 중 오류가 발생했습니다.', 'error')
+        return redirect(url_for('purchase.purchase_list'))
+
+# 매입 상세 목록 조회 API
+@purchase.route('/api/list-detail', methods=['POST'])
+@login_required
+def get_purchase_list_detail():
+    try:
+        data = request.get_json()
+        start_date = data.get('startDate')
+        end_date = data.get('endDate')
+        vendor_code = data.get('vendorCode')
+        warehouse_code = data.get('warehouseCode')
+        status = data.get('status')
+        page = int(data.get('page', 1))
+        per_page = int(data.get('per_page', 10))
+
+        conn = get_db_connection()
+        cursor = conn.cursor()
+
+        # 기본 쿼리 (페이지네이션 포함)
+        query = """
+            SELECT 
+                p.purchase_date,
+                p.purchase_no,
+                p.vendor_code,
+                v.vd_name as vendor_name,
+                p.warehouse_code,
+                w.WH_NAME as warehouse_name,
+                pd.item_code,
+                i.ItemName as item_name,
+                i.spec as item_spec,
+                u.unit_name,
+                pd.quantity,
+                pd.unit_price,
+                pd.amount,
+                p.currency_code,
+                p.exchange_rate,
+                p.payment_method,
+                p.payment_due_date,
+                p.status,
+                COUNT(*) OVER() as total_count
+            FROM dbo.purchase_master p
+            LEFT JOIN dbo.CODE_VENDOR v ON p.vendor_code = v.vd_code
+            LEFT JOIN dbo.code_warehouse w ON p.warehouse_code = w.WH_CODE
+            JOIN dbo.purchase_detail pd ON p.purchase_no = pd.purchase_no
+            LEFT JOIN dbo.ItemMaster i ON pd.item_code = i.ItemCode
+            LEFT JOIN dbo.code_unit u ON i.unit = u.unit_code
+            WHERE 1=1
+        """
+        params = []
+
+        # 검색 조건 추가
+        filter_clauses = []
+        if start_date:
+            filter_clauses.append(" p.purchase_date >= ?")
+            params.append(start_date)
+        if end_date:
+            filter_clauses.append(" p.purchase_date <= ?")
+            params.append(end_date)
+        if vendor_code:
+            filter_clauses.append(" p.vendor_code = ?")
+            params.append(vendor_code)
+        if warehouse_code:
+             filter_clauses.append(" p.warehouse_code = ?")
+             params.append(warehouse_code)
+        if status:
+            filter_clauses.append(" p.status = ?")
+            params.append(status)
+
+        if filter_clauses:
+            query += " AND " + " AND ".join(filter_clauses)
+
+        # 정렬 및 페이지네이션
+        query += """
+            ORDER BY p.purchase_date DESC, p.purchase_no DESC, pd.seq_no
+            OFFSET ? ROWS FETCH NEXT ? ROWS ONLY
+        """
+        pagination_params = params[:] # 복사하여 페이지네이션 파라미터 추가
+        pagination_params.extend([(page - 1) * per_page, per_page])
+
+        cursor.execute(query, pagination_params)
+        rows = cursor.fetchall()
+
+        total_count = rows[0].total_count if rows else 0
+        total_pages = (total_count + per_page - 1) // per_page
+
+        items = []
+        for row in rows:
+            purchase_date = row.purchase_date.strftime('%Y-%m-%d') if row.purchase_date else None
+            payment_due_date = row.payment_due_date.strftime('%Y-%m-%d') if row.payment_due_date else None
+            
+            items.append({
+                'purchaseDate': purchase_date,
+                'purchaseNo': row.purchase_no,
+                'vendorCode': row.vendor_code.strip() if row.vendor_code else '',
+                'vendorName': row.vendor_name.strip() if row.vendor_name else '',
+                'warehouseCode': row.warehouse_code.strip() if row.warehouse_code else '',
+                'warehouseName': row.warehouse_name.strip() if row.warehouse_name else '',
+                'itemCode': row.item_code.strip() if row.item_code else '',
+                'itemName': row.item_name.strip() if row.item_name else '',
+                'itemSpec': row.item_spec.strip() if row.item_spec else '',
+                'unitName': row.unit_name.strip() if row.unit_name else '',
+                'quantity': float(row.quantity) if row.quantity else 0,
+                'unitPrice': float(row.unit_price) if row.unit_price else 0,
+                'amount': float(row.amount) if row.amount else 0,
+                'currencyCode': row.currency_code.strip() if row.currency_code else '',
+                'exchangeRate': float(row.exchange_rate) if row.exchange_rate else 0,
+                'paymentMethod': row.payment_method.strip() if row.payment_method else '',
+                'paymentDueDate': payment_due_date,
+                'status': row.status.strip() if row.status else ''
+            })
+
+        # 전체 합계 조회 쿼리 (페이지네이션 없음)
+        sum_query = """
+            SELECT 
+                SUM(pd.quantity) as total_quantity,
+                SUM(pd.amount) as total_amount
+            FROM dbo.purchase_master p
+            JOIN dbo.purchase_detail pd ON p.purchase_no = pd.purchase_no
+            LEFT JOIN dbo.ItemMaster i ON pd.item_code = i.ItemCode
+            LEFT JOIN dbo.code_unit u ON i.unit = u.unit_code
+            WHERE 1=1
+        """
+
+        if filter_clauses:
+            sum_query += " AND " + " AND ".join(filter_clauses)
+
+        # 합계 조회 쿼리는 페이지네이션 파라미터 제외
+        sum_params = params[:] 
+        cursor.execute(sum_query, sum_params)
+        sums = cursor.fetchone()
+
+        total_quantity_sum = float(sums.total_quantity) if sums and sums.total_quantity else 0
+        total_amount_sum = float(sums.total_amount) if sums and sums.total_amount else 0
+
+
+        return jsonify({
+            'status': 'success',
+            'items': items,
+            'pagination': {
+                'currentPage': page,
+                'totalPages': total_pages,
+                'totalCount': total_count,
+                'perPage': per_page
+            },
+            'summary': { # 합계 정보 추가
+                'totalQuantity': total_quantity_sum,
+                'totalAmount': total_amount_sum
+            }
+        })
+
+    except Exception as e:
+        print('Error in get_purchase_list_detail:', str(e))
+        return jsonify({
+            'status': 'error',
+            'message': str(e)
+        }), 500
+    finally:
+        if 'conn' in locals():
+            conn.close()
+
+# 매입 상세 목록 Excel 다운로드 API
+@purchase.route('/api/list-detail/excel', methods=['POST'])
+@login_required
+def download_purchase_list_detail_excel():
+    try:
+        data = request.form # Get data from form submission
+        start_date = data.get('startDate')
+        end_date = data.get('endDate')
+        vendor_code = data.get('vendorCode')
+        warehouse_code = data.get('warehouseCode')
+        status = data.get('status')
+
+        # 언어 감지
+        lang = session.get('language', 'ko')
+        if lang == 'th':
+            excel_title = 'สถานะการซื้อ (รายละเอียด)'
+            filename = f'สถานะการซื้อ_รายละเอียด_{start_date}_ถึง_{end_date}.xlsx' if start_date and end_date else 'สถานะการซื้อ_รายละเอียด.xlsx'
+        else:
+            excel_title = '매입 상세 현황'
+            filename = f'매입 상세 현황_{start_date}_부터_{end_date}.xlsx' if start_date and end_date else '매입 상세 현황.xlsx'
+
+        conn = get_db_connection()
+        cursor = conn.cursor()
+
+        # 데이터 조회 쿼리 (페이지네이션 없이 전체 데이터 조회)
+        query = """
+            SELECT 
+                p.purchase_date,
+                p.purchase_no,
+                p.vendor_code,
+                v.vd_name as vendor_name,
+                p.warehouse_code,
+                w.WH_NAME as warehouse_name,
+                pd.item_code,
+                i.ItemName as item_name,
+                i.spec as item_spec,
+                u.unit_name,
+                pd.quantity,
+                pd.unit_price,
+                pd.amount,
+                p.currency_code,
+                p.exchange_rate,
+                p.payment_method,
+                p.payment_due_date,
+                p.status
+            FROM dbo.purchase_master p
+            LEFT JOIN dbo.CODE_VENDOR v ON p.vendor_code = v.vd_code
+            LEFT JOIN dbo.code_warehouse w ON p.warehouse_code = w.WH_CODE
+            JOIN dbo.purchase_detail pd ON p.purchase_no = pd.purchase_no
+            LEFT JOIN dbo.ItemMaster i ON pd.item_code = i.ItemCode
+            LEFT JOIN dbo.code_unit u ON i.unit = u.unit_code
+            WHERE 1=1
+        """
+        params = []
+
+        # 검색 조건 추가
+        if start_date:
+            query += " AND p.purchase_date >= ?"
+            params.append(start_date)
+        if end_date:
+            query += " AND p.purchase_date <= ?"
+            params.append(end_date)
+        if vendor_code:
+            query += " AND p.vendor_code = ?"
+            params.append(vendor_code)
+        if warehouse_code:
+             query += " AND p.warehouse_code = ?"
+             params.append(warehouse_code)
+        if status:
+            query += " AND p.status = ?"
+            params.append(status)
+
+        # 정렬
+        query += """
+            ORDER BY p.purchase_date DESC, p.purchase_no DESC, pd.seq_no
+        """
+
+        cursor.execute(query, params)
+        rows = cursor.fetchall()
+
+        # Excel 파일 생성
+        import pandas as pd
+        from io import BytesIO
+
+        data_for_df = []
+        for row in rows:
+            purchase_date = row.purchase_date.strftime('%Y-%m-%d') if row.purchase_date else ''
+            payment_due_date = row.payment_due_date.strftime('%Y-%m-%d') if row.payment_due_date else ''
+
+            if lang == 'th':
+                data_for_df.append({
+                    'วันที่ซื้อ': purchase_date,
+                    'เลขที่การซื้อ': row.purchase_no,
+                    'ผู้จัดจำหน่าย': row.vendor_name.strip() if row.vendor_name else '',
+                    'คลังสินค้า': row.warehouse_name.strip() if row.warehouse_name else '',
+                    'รหัสสินค้า': row.item_code.strip() if row.item_code else '',
+                    'ชื่อสินค้า': row.item_name.strip() if row.item_name else '',
+                    'คุณลักษณะสินค้า': row.item_spec.strip() if row.item_spec else '',
+                    'หน่วย': row.unit_name.strip() if row.unit_name else '',
+                    'จำนวน': float(row.quantity) if row.quantity else 0,
+                    'ราคาต่อหน่วย': float(row.unit_price) if row.unit_price else 0,
+                    'จำนวนเงิน': float(row.amount) if row.amount else 0,
+                    'สกุลเงิน': row.currency_code.strip() if row.currency_code else '',
+                    'อัตราแลกเปลี่ยน': float(row.exchange_rate) if row.exchange_rate else 0,
+                    'วิธีการชำระเงิน': row.payment_method.strip() if row.payment_method else '',
+                    'วันครบกำหนดชำระ': payment_due_date,
+                    'สถานะ': row.status.strip() if row.status else ''
+                })
+            else:
+                data_for_df.append({
+                    '매입일자': purchase_date,
+                    '매입번호': row.purchase_no,
+                    '공급업체': row.vendor_name.strip() if row.vendor_name else '',
+                    '창고': row.warehouse_name.strip() if row.warehouse_name else '',
+                    '품목코드': row.item_code.strip() if row.item_code else '',
+                    '품목명': row.item_name.strip() if row.item_name else '',
+                    '품목특성': row.item_spec.strip() if row.item_spec else '',
+                    '단위': row.unit_name.strip() if row.unit_name else '',
+                    '수량': float(row.quantity) if row.quantity else 0,
+                    '단가': float(row.unit_price) if row.unit_price else 0,
+                    '금액': float(row.amount) if row.amount else 0,
+                    '통화': row.currency_code.strip() if row.currency_code else '',
+                    '환율': float(row.exchange_rate) if row.exchange_rate else 0,
+                    '결제방법': row.payment_method.strip() if row.payment_method else '',
+                    '결제예정일': payment_due_date,
+                    '상태': row.status.strip() if row.status else ''
+                })
+
+        df = pd.DataFrame(data_for_df)
+
+        output = BytesIO()
+        with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
+            df.to_excel(writer, sheet_name=excel_title, index=False)
+            worksheet = writer.sheets[excel_title]
+
+            # 열 너비 자동 조정
+            for idx, col in enumerate(df.columns):
+                max_length = max(
+                    df[col].astype(str).apply(len).max(),
+                    len(str(col))
+                )
+                worksheet.set_column(idx, idx, max_length + 2)
+
+        output.seek(0)
+        return send_file(
+            output,
+            mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            as_attachment=True,
+            download_name=filename
+        )
+
+    except Exception as e:
+        print('Error in download_purchase_list_detail_excel:', str(e))
+        return jsonify({'error': str(e)}), 500
+    finally:
+        if 'conn' in locals():
+            conn.close()
+
+# 매입 목록 조회 API
+@purchase.route('/api/purchases')
+@login_required
+def get_purchases():
+    try:
+        start_date = request.args.get('startDate')
+        end_date = request.args.get('endDate')
+        vendor_code = request.args.get('vendorCode')
+        status = request.args.get('status')
+        page = int(request.args.get('page', 1))
+        per_page = int(request.args.get('per_page', 10))
+
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        # 기본 쿼리
+        query = """
+            SELECT 
+                p.purchase_date,
+                p.purchase_no,
+                p.vendor_code,
+                v.vd_name as vendor_name,
+                p.warehouse_code,
+                w.WH_NAME as warehouse_name,
+                p.currency_code,
+                p.exchange_rate,
+                p.total_amount,
+                p.payment_method,
+                p.payment_due_date,
+                p.status,
+                COUNT(*) OVER() as total_count
+            FROM dbo.purchase_master p
+            LEFT JOIN dbo.CODE_VENDOR v ON p.vendor_code = v.vd_code
+            LEFT JOIN dbo.code_warehouse w ON p.warehouse_code = w.WH_CODE
+            WHERE 1=1
+        """
+        params = []
+
+        # 검색 조건 추가
+        if start_date:
+            query += " AND p.purchase_date >= ?"
+            params.append(start_date)
+        if end_date:
+            query += " AND p.purchase_date <= ?"
+            params.append(end_date)
+        if vendor_code:
+            query += " AND p.vendor_code = ?"
+            params.append(vendor_code)
+        if status:
+            query += " AND p.status = ?"
+            params.append(status)
+
+        # 정렬 및 페이지네이션
+        query += """
+            ORDER BY p.purchase_date DESC, p.purchase_no DESC
+            OFFSET ? ROWS FETCH NEXT ? ROWS ONLY
+        """
+        params.extend([(page - 1) * per_page, per_page])
+
+        cursor.execute(query, params)
+        rows = cursor.fetchall()
+
+        total_count = rows[0].total_count if rows else 0
+        total_pages = (total_count + per_page - 1) // per_page
+
+        purchases = []
+        for row in rows:
+            purchase_date = row.purchase_date.strftime('%Y-%m-%d') if row.purchase_date else None
+            payment_due_date = row.payment_due_date.strftime('%Y-%m-%d') if row.payment_due_date else None
+
+            # 총수량 쿼리 추가
+            cursor.execute(
+                "SELECT SUM(quantity) FROM purchase_detail WHERE purchase_no = ?", (row.purchase_no,)
+            )
+            total_quantity = cursor.fetchone()[0] or 0
+
+            purchases.append({
+                'purchaseDate': purchase_date,
+                'purchaseNo': row.purchase_no,
+                'vendorCode': row.vendor_code.strip() if row.vendor_code else '',
+                'vendorName': row.vendor_name.strip() if row.vendor_name else '',
+                'warehouseCode': row.warehouse_code.strip() if row.warehouse_code else '',
+                'warehouseName': row.warehouse_name.strip() if row.warehouse_name else '',
+                'currencyCode': row.currency_code.strip() if row.currency_code else '',
+                'exchangeRate': float(row.exchange_rate) if row.exchange_rate else 0,
+                'totalQuantity': float(total_quantity),
+                'totalAmount': float(row.total_amount) if row.total_amount else 0,
+                'paymentMethod': row.payment_method.strip() if row.payment_method else '',
+                'paymentDueDate': payment_due_date,
+                'status': row.status.strip() if row.status else ''
+            })
+
+        return jsonify({
+            'purchases': purchases,
+            'pagination': {
+                'currentPage': page,
+                'totalPages': total_pages,
+                'totalCount': total_count,
+                'perPage': per_page
+            }
+        })
+
+    except Exception as e:
+        print('Error in get_purchases:', str(e))
+        return jsonify({'error': str(e)}), 500
+    finally:
+        if 'conn' in locals():
+            conn.close()
+
+# 매입 상세 조회
+@purchase.route('/purchase/detail/<purchase_no>')
+@login_required
+def purchase_detail(purchase_no):
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        # 매입 헤더 정보 조회
+        cursor.execute("""
+            SELECT 
+                p.*,
+                v.vd_name as vendor_name,
+                w.WH_NAME as warehouse_name,
+                c.currency_name
+            FROM dbo.purchase_master p
+            LEFT JOIN dbo.CODE_VENDOR v ON p.vendor_code = v.vd_code
+            LEFT JOIN dbo.code_warehouse w ON p.warehouse_code = w.WH_CODE
+            LEFT JOIN dbo.code_currency c ON p.currency_code = c.currency_code
+            WHERE p.purchase_no = ?
+        """, (purchase_no,))
+        
+        header = cursor.fetchone()
+        if not header:
+            return jsonify({'error': 'Purchase not found'}), 404
+            
+        # 매입 상세 정보 조회
+        cursor.execute("""
+            SELECT 
+                pd.*,
+                i.item_name,
+                i.spec as item_spec,
+                i.unit_code,
+                u.unit_name
+            FROM dbo.purchase_detail pd
+            LEFT JOIN dbo.ItemMaster i ON pd.item_code = i.ItemCode
+            LEFT JOIN dbo.code_unit u ON i.unit_code = u.unit_code
+            WHERE pd.purchase_no = ?
+            ORDER BY pd.seq_no
+        """, (purchase_no,))
+        
+        details = cursor.fetchall()
+        
+        # 결과 변환
+        result = {
+            'header': {
+                'purchaseNo': header.purchase_no,
+                'purchaseDate': header.purchase_date.strftime('%Y-%m-%d'),
+                'vendorCode': header.vendor_code.strip() if header.vendor_code else '',
+                'vendorName': header.vendor_name.strip() if header.vendor_name else '',
+                'warehouseCode': header.warehouse_code.strip() if header.warehouse_code else '',
+                'warehouseName': header.warehouse_name.strip() if header.warehouse_name else '',
+                'currencyCode': header.currency_code.strip() if header.currency_code else '',
+                'currencyName': header.currency_name.strip() if header.currency_name else '',
+                'exchangeRate': float(header.exchange_rate) if header.exchange_rate else 0,
+                'totalAmount': float(header.total_amount) if header.total_amount else 0,
+                'paymentMethod': header.payment_method.strip() if header.payment_method else '',
+                'paymentDueDate': header.payment_due_date.strftime('%Y-%m-%d') if header.payment_due_date else None,
+                'status': header.status.strip() if header.status else '',
+                'remarks': header.remarks.strip() if header.remarks else ''
+            },
+            'details': [{
+                'seqNo': detail.seq_no,
+                'itemCode': detail.item_code.strip() if detail.item_code else '',
+                'itemName': detail.item_name.strip() if detail.item_name else '',
+                'itemSpec': detail.item_spec.strip() if detail.item_spec else '',
+                'quantity': float(detail.quantity) if detail.quantity else 0,
+                'unitPrice': float(detail.unit_price) if detail.unit_price else 0,
+                'amount': float(detail.amount) if detail.amount else 0,
+                'unitCode': detail.unit_code.strip() if detail.unit_code else '',
+                'unitName': detail.unit_name.strip() if detail.unit_name else '',
+                'remarks': detail.remarks.strip() if detail.remarks else ''
+            } for detail in details]
+        }
+        
+        return jsonify(result)
+        
+    except Exception as e:
+        print('Error in purchase_detail:', str(e))
+        return jsonify({'error': str(e)}), 500
+    finally:
+        if 'conn' in locals():
+            conn.close()
+
+# 매입 저장
+@purchase.route('/save', methods=['POST'])
+@login_required
+def save_purchase():
+    try:
+        data = request.get_json()
+        print('Received data:', data)  # 받은 데이터 로깅
+        
+        # 데이터 구조 매핑
+        mapped_data = {
+            'purchaseDate': data.get('purchaseDate'),
+            'vendorCode': data.get('vendorCode'),
+            'warehouseCode': data.get('warehouseCode'),
+            'currencyCode': data.get('currency'),  # currency → currencyCode
+            'exchangeRate': data.get('exchangeRate'),
+            'paymentMethod': data.get('paymentMethod'),
+            'paymentDueDate': data.get('paymentDueDate'),
+            'status': data.get('status', 'CONFIRMED'),
+            'remarks': data.get('remarks', ''),  # remark → remarks
+            'trCode': data.get('trCode'),
+            'details': []  # items → details로 변환
+        }
+        
+        # items를 details로 변환
+        if 'items' in data and isinstance(data['items'], list):
+            total_amount = 0
+            for item in data['items']:
+                detail = {
+                    'itemCode': item.get('itemCode'),
+                    'quantity': float(item.get('quantity', 0)),
+                    'unitPrice': float(item.get('price', 0)),  # price → unitPrice
+                    'amount': float(item.get('amount', 0))
+                }
+                mapped_data['details'].append(detail)
+                total_amount += detail['amount']
+            
+            mapped_data['totalAmount'] = total_amount
+        
+        # 필수 필드 검증
+        required_fields = ['purchaseDate', 'vendorCode', 'warehouseCode', 'currencyCode', 
+                         'exchangeRate', 'paymentMethod', 'totalAmount', 'details']
+        
+        missing_fields = []
+        for field in required_fields:
+            if field not in mapped_data:
+                missing_fields.append(field)
+            elif field == 'details':
+                if not isinstance(mapped_data[field], list) or len(mapped_data[field]) == 0:
+                    missing_fields.append(field)
+            elif field in ['exchangeRate', 'totalAmount']:
+                try:
+                    float(mapped_data[field])
+                except (TypeError, ValueError):
+                    missing_fields.append(field)
+            elif not str(mapped_data.get(field, '')).strip():
+                missing_fields.append(field)
+        
+        if missing_fields:
+            error_msg = f'필수 입력 필드가 누락되었습니다: {", ".join(missing_fields)}'
+            print('Validation error:', error_msg)
+            return jsonify({
+                'error': error_msg,
+                'missing_fields': missing_fields
+            }), 400
+            
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        # 통화 코드 유효성 검사
+        cursor.execute("""
+            SELECT currency_code 
+            FROM dbo.code_currency 
+            WHERE currency_code = ?
+        """, (mapped_data['currencyCode'],))
+        
+        if not cursor.fetchone():
+            error_msg = f'유효하지 않은 통화 코드입니다: {mapped_data["currencyCode"]}'
+            print('Currency validation error:', error_msg)
+            return jsonify({
+                'error': error_msg,
+                'invalid_field': 'currencyCode'
+            }), 400
+        
+        # 매입번호 생성 또는 기존 번호 사용
+        if 'purchaseNo' in data and data['purchaseNo']:
+            purchase_no = data['purchaseNo']
+        else:
+            today = datetime.now().strftime('%Y%m%d')
+            cursor.execute("""
+                SELECT MAX(CAST(SUBSTRING(purchase_no, 11, 4) AS INT))
+                FROM dbo.purchase_master 
+                WHERE purchase_no LIKE 'PO' + ? + '%'
+            """, (today,))
+            
+            last_seq = cursor.fetchone()[0] or 0
+            next_seq = last_seq + 1
+            purchase_no = f"PO{today}{str(next_seq).zfill(4)}"
+        
+        try:
+            # 매입 헤더 저장
+            cursor.execute("""
+                INSERT INTO dbo.purchase_master (
+                    purchase_no, purchase_date, vendor_code, warehouse_code, currency_code, exchange_rate, payment_method, payment_due_date, status, remarks, total_amount, tr_code, createuser, createdate
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, GETDATE())
+            """, (
+                purchase_no,
+                mapped_data['purchaseDate'],
+                mapped_data['vendorCode'],
+                mapped_data['warehouseCode'],
+                mapped_data['currencyCode'],
+                mapped_data['exchangeRate'],
+                mapped_data['paymentMethod'],
+                mapped_data['paymentDueDate'],
+                mapped_data['status'],
+                mapped_data['remarks'],
+                mapped_data['totalAmount'],
+                mapped_data['trCode'],
+                session.get('username', 'SYSTEM')  # 로그인 사용자 아이디 사용
+            ))
+            
+            # 매입 상세 저장
+            for idx, detail in enumerate(mapped_data['details'], 1):
+                cursor.execute("""
+                    INSERT INTO dbo.purchase_detail (
+                        purchase_no, seq_no, item_code, warehouse_code,
+                        quantity, unit_price, amount, remarks,
+                        createuser, createdate
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, GETDATE())
+                """, (
+                    purchase_no,
+                    idx,
+                    str(detail['itemCode']).strip(),
+                    str(mapped_data['warehouseCode']).strip(),
+                    float(detail['quantity']),
+                    float(detail['unitPrice']),
+                    float(detail['amount']),
+                    str(detail.get('remarks', '')).strip(),
+                    session.get('username', 'SYSTEM')  # 로그인 사용자 아이디 사용
+                ))
+                
+                # 수불내역 저장 (Inventory_Transaction)
+                cursor.execute("""
+                    INSERT INTO dbo.Inventory_Transaction (
+                        TransDate, WarehouseCode, ItemCode, LotNo, TransType, RefNo, 
+                        InQty, OutQty, BalanceQty, Remarks, CreateUser, CreateDate
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, GETDATE())
+                """, (
+                    mapped_data['purchaseDate'],  # TransDate
+                    str(mapped_data['warehouseCode']).strip(),  # WarehouseCode
+                    str(detail['itemCode']).strip(),  # ItemCode
+                    None,  # LotNo (매입의 경우 LotNo는 NULL)
+                    'IN',  # TransType (매입은 입고)
+                    purchase_no,  # RefNo (매입번호)
+                    float(detail['quantity']),  # InQty
+                    0.0,  # OutQty (매입은 입고만)
+                    None,  # BalanceQty (계산 후 업데이트)
+                    f"매입입고 - {purchase_no}",  # Remarks
+                    session.get('username', 'SYSTEM')  # CreateUser
+                ))
+                
+                # 현재고 업데이트 (Inventory)
+                # 1. 기존 재고 확인
+                cursor.execute("""
+                    SELECT InventoryId, CurrentStock
+                    FROM dbo.Inventory
+                    WHERE WarehouseCode = ? AND ItemCode = ?
+                """, (
+                    str(mapped_data['warehouseCode']).strip(),
+                    str(detail['itemCode']).strip()
+                ))
+                
+                inventory_record = cursor.fetchone()
+                
+                if inventory_record:
+                    # 기존 재고가 있으면 업데이트
+                    old_stock = float(inventory_record.CurrentStock)
+                    new_stock = old_stock + float(detail['quantity'])
+                    cursor.execute("""
+                        UPDATE dbo.Inventory
+                        SET CurrentStock = ?
+                        WHERE InventoryId = ?
+                    """, (new_stock, inventory_record.InventoryId))
+                    
+                    print(f"기존 재고 업데이트: {detail['itemCode']} - 기존: {old_stock}, 추가: {detail['quantity']}, 새로운 재고: {new_stock}")
+                    
+                else:
+                    # 기존 재고가 없으면 새로 생성
+                    new_stock = float(detail['quantity'])
+                    cursor.execute("""
+                        INSERT INTO dbo.Inventory (
+                            WarehouseCode, ItemCode, CurrentStock, SafetyStock, MaxStock, remarks
+                        ) VALUES (?, ?, ?, ?, ?, ?)
+                    """, (
+                        str(mapped_data['warehouseCode']).strip(),  # WarehouseCode
+                        str(detail['itemCode']).strip(),  # ItemCode
+                        new_stock,  # CurrentStock
+                        None,  # SafetyStock
+                        None,  # MaxStock
+                        f"매입입고로 생성 - {purchase_no}"  # remarks
+                    ))
+                    
+                    print(f"새 재고 생성: {detail['itemCode']} - 새로운 재고: {new_stock}")
+                
+                # 수불내역의 BalanceQty 업데이트 (마지막에 한 번만)
+                cursor.execute("""
+                    UPDATE dbo.Inventory_Transaction
+                    SET BalanceQty = ?
+                    WHERE TransId = (SELECT MAX(TransId) FROM dbo.Inventory_Transaction WHERE RefNo = ? AND ItemCode = ?)
+                """, (new_stock, purchase_no, str(detail['itemCode']).strip()))
+                
+                print(f"수불내역 BalanceQty 업데이트: {detail['itemCode']} - BalanceQty: {new_stock}")
+            
+            conn.commit()
+            print('Purchase and inventory saved successfully:', purchase_no)
+            return jsonify({
+                'success': True, 
+                'purchaseNo': purchase_no,
+                'message': '매입정보와 재고정보가 성공적으로 저장되었습니다.'
+            })
+            
+        except ValueError as ve:
+            if 'conn' in locals():
+                conn.rollback()
+            print('Data conversion error:', str(ve))
+            return jsonify({'error': str(ve)}), 400
+            
+    except Exception as e:
+        if 'conn' in locals():
+            conn.rollback()
+        print('Unexpected error:', str(e))
+        return jsonify({'error': '매입정보 저장 중 오류가 발생했습니다.'}), 500
+        
+    finally:
+        if 'conn' in locals():
+            conn.close()
+
+# 매입정보 수정 처리
+@purchase.route('/update/<purchase_no>', methods=['POST'])
+@login_required
+def update_purchase(purchase_no):
+    try:
+        data = request.get_json()
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        # 지급 완료 상태 확인 (단순히 지급 기록이 있는지만 확인)
+        cursor.execute("""
+            SELECT COUNT(*) as payment_count
+            FROM dbo.purchase_payment
+            WHERE purchase_no = ?
+        """, (purchase_no,))
+        
+        payment_result = cursor.fetchone()
+        payment_count = payment_result.payment_count if payment_result else 0
+        
+        # 지급 기록이 있으면 수정 불가
+        if payment_count > 0:
+            return jsonify({'error': '지급이 완료된 매입은 수정할 수 없습니다.'}), 400
+        
+        # 기존 수불이력 백업 및 재고 복원
+        print(f"=== 매입 수정 시작: {purchase_no} ===")
+        
+        # 1. 기존 매입 상세 데이터 조회 (재고 복원용) - 삭제 전에 먼저 조회
+        cursor.execute("""
+            SELECT item_code, warehouse_code, quantity
+            FROM dbo.purchase_detail
+            WHERE purchase_no = ?
+        """, (purchase_no,))
+        
+        old_details = cursor.fetchall()
+        
+        # 매입 헤더 수정
+        cursor.execute("""
+            UPDATE dbo.purchase_master SET
+                purchase_date = ?,
+                vendor_code = ?,
+                warehouse_code = ?,
+                currency_code = ?,
+                exchange_rate = ?,
+                payment_method = ?,
+                payment_due_date = ?,
+                status = ?,
+                tr_code = ?,
+                remarks = ?,
+                total_amount = ?,
+                updateuser = ?,
+                updatedate = GETDATE()
+            WHERE purchase_no = ?
+        """, (
+            data['purchaseDate'],
+            data['vendorCode'],
+            data['warehouseCode'],
+            data['currencyCode'],
+            float(data['exchangeRate']),
+            data['paymentMethod'],
+            data['paymentDueDate'],
+            data['status'],
+            data.get('trCode', ''),
+            data.get('remarks', ''),
+            float(data['totalAmount']),
+            session.get('username', 'SYSTEM'),  # 로그인 사용자 아이디 사용
+            purchase_no
+        ))
+        
+        # 기존 데이터를 딕셔너리로 변환 (품목코드별로 그룹화)
+        old_details_dict = {}
+        for old_detail in old_details:
+            key = f"{old_detail.item_code.strip()}_{old_detail.warehouse_code.strip()}"
+            if key in old_details_dict:
+                # 같은 품목이 여러 개 있는 경우 수량 합계
+                old_details_dict[key]['quantity'] += float(old_detail.quantity)
+            else:
+                old_details_dict[key] = {
+                    'item_code': old_detail.item_code.strip(),
+                    'warehouse_code': old_detail.warehouse_code.strip(),
+                    'quantity': float(old_detail.quantity)
+                }
+        
+        # 새로운 데이터를 딕셔너리로 변환 (품목코드별로 그룹화)
+        new_details_dict = {}
+        for item in data['items']:
+            key = f"{item['itemCode'].strip()}_{data['warehouseCode'].strip()}"
+            if key in new_details_dict:
+                # 같은 품목이 여러 개 있는 경우 수량 합계
+                new_details_dict[key]['quantity'] += float(item['quantity'])
+            else:
+                new_details_dict[key] = {
+                    'item_code': item['itemCode'].strip(),
+                    'warehouse_code': data['warehouseCode'].strip(),
+                    'quantity': float(item['quantity'])
+                }
+        
+        print(f"기존 품목: {list(old_details_dict.keys())}")
+        print(f"새로운 품목: {list(new_details_dict.keys())}")
+        
+        # 2. 변경사항 분석
+        has_changes = False
+        deleted_items = []
+        modified_items = []
+        added_items = []
+        
+        # 2-1. 삭제된 품목 확인
+        for key, old_detail in old_details_dict.items():
+            if key not in new_details_dict:
+                deleted_items.append(old_detail)
+                has_changes = True
+                print(f"삭제된 품목: {old_detail['item_code']}")
+        
+        # 2-2. 변경된 품목 확인
+        for key, new_detail in new_details_dict.items():
+            if key in old_details_dict:
+                old_detail = old_details_dict[key]
+                quantity_diff = new_detail['quantity'] - old_detail['quantity']
+                
+                if abs(quantity_diff) > 0.001:  # 수량이 변경된 경우 (부동소수점 오차 고려)
+                    modified_items.append({
+                        'old': old_detail,
+                        'new': new_detail,
+                        'diff': quantity_diff
+                    })
+                    has_changes = True
+                    print(f"수량 변경된 품목: {new_detail['item_code']} - 기존: {old_detail['quantity']}, 새로운: {new_detail['quantity']}, 차이: {quantity_diff}")
+                else:
+                    print(f"변경 없는 품목: {new_detail['item_code']} - 수량 동일")
+            else:
+                added_items.append(new_detail)
+                has_changes = True
+                print(f"새로 추가된 품목: {new_detail['item_code']}")
+        
+        # 3. 변경사항이 있는 경우에만 수불이력 및 재고 처리
+        if has_changes:
+            print("변경사항이 감지되어 수불이력 및 재고를 처리합니다.")
+
+            # 3-1. 삭제된 품목 처리
+            for deleted_item in deleted_items:
+                # 기존 수불이력 삭제
+                cursor.execute("""
+                    DELETE FROM dbo.Inventory_Transaction
+                    WHERE RefNo = ? AND ItemCode = ? AND TransType = 'IN'
+                """, (purchase_no, deleted_item['item_code']))
+
+                # 재고 복원 (기존 수량만큼 차감)
+                cursor.execute("""
+                    SELECT InventoryId, CurrentStock
+                    FROM dbo.Inventory
+                    WHERE WarehouseCode = ? AND ItemCode = ?
+                """, (deleted_item['warehouse_code'], deleted_item['item_code']))
+
+                inventory_record = cursor.fetchone()
+                if inventory_record:
+                    restored_stock = float(inventory_record.CurrentStock) - deleted_item['quantity']
+                    if restored_stock < 0:
+                        restored_stock = 0
+                    cursor.execute("""
+                        UPDATE dbo.Inventory
+                        SET CurrentStock = ?
+                        WHERE InventoryId = ?
+                    """, (restored_stock, inventory_record.InventoryId))
+                    print(f"삭제된 품목 재고 복원: {deleted_item['item_code']} - 기존: {inventory_record.CurrentStock}, 차감: {deleted_item['quantity']}, 복원 후: {restored_stock}")
+
+            # 3-2. 수량 변경된 품목 처리 (핵심 수정)
+            for modified_item in modified_items:
+                # 기존 수불이력 삭제
+                cursor.execute("""
+                    DELETE FROM dbo.Inventory_Transaction
+                    WHERE RefNo = ? AND ItemCode = ? AND TransType = 'IN'
+                """, (purchase_no, modified_item['new']['item_code']))
+
+                # 재고를 '기존 수량만큼' 차감
+                cursor.execute("""
+                    SELECT InventoryId, CurrentStock
+                    FROM dbo.Inventory
+                    WHERE WarehouseCode = ? AND ItemCode = ?
+                """, (modified_item['new']['warehouse_code'], modified_item['new']['item_code']))
+                inventory_record = cursor.fetchone()
+                if inventory_record:
+                    # 1. 기존 수량만큼 차감
+                    stock_minus = float(inventory_record.CurrentStock) - modified_item['old']['quantity']
+                    if stock_minus < 0:
+                        stock_minus = 0
+                    # 2. 새 수량만큼 가산
+                    stock_final = stock_minus + modified_item['new']['quantity']
+                    cursor.execute("""
+                        UPDATE dbo.Inventory
+                        SET CurrentStock = ?
+                        WHERE InventoryId = ?
+                    """, (stock_final, inventory_record.InventoryId))
+                    print(f"수량 변경 재고 조정: {modified_item['new']['item_code']} - 기존: {inventory_record.CurrentStock}, 차감: {modified_item['old']['quantity']}, 가산: {modified_item['new']['quantity']}, 최종: {stock_final}")
+        else:
+            print("변경사항이 없어 수불이력 및 재고 처리를 건너뜁니다.")
+        
+        # 4. 기존 상세 데이터 삭제 (변경사항 분석 후)
+        cursor.execute("DELETE FROM dbo.purchase_detail WHERE purchase_no = ?", (purchase_no,))
+        
+        # 5. 새로운 상세 데이터 저장
+        for idx, item in enumerate(data['items'], 1):
+            cursor.execute("""
+                INSERT INTO dbo.purchase_detail (
+                    purchase_no, seq_no, item_code, warehouse_code,
+                    quantity, unit_price, amount, remarks,
+                    createuser, createdate
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, GETDATE())
+            """, (
+                purchase_no,
+                idx,
+                item['itemCode'],
+                data['warehouseCode'],
+                float(item['quantity']),
+                float(item['unitPrice']),
+                float(item['amount']),
+                item.get('remarks', ''),
+                session.get('username', 'SYSTEM')  # 로그인 사용자 아이디 사용
+            ))
+            
+            # 변경사항이 있는 경우에만 수불이력 생성
+            if has_changes:
+                item_key = f"{item['itemCode'].strip()}_{data['warehouseCode'].strip()}"
+                should_create_transaction = False
+                
+                if item_key not in old_details_dict:
+                    # 새로 추가된 품목
+                    should_create_transaction = True
+                    print(f"새 품목 수불이력 생성: {item['itemCode']}")
+                else:
+                    old_detail = old_details_dict[item_key]
+                    quantity_diff = float(item['quantity']) - old_detail['quantity']
+                    if abs(quantity_diff) > 0.001:  # 수량이 변경된 경우
+                        should_create_transaction = True
+                        print(f"수량 변경 품목 수불이력 생성: {item['itemCode']}")
+                    else:
+                        print(f"변경 없는 품목 - 수불이력 생성 안함: {item['itemCode']}")
+                
+                if should_create_transaction:
+                    # 현재고 조회 (항상 최신값)
+                    cursor.execute("""
+                        SELECT InventoryId, CurrentStock
+                        FROM dbo.Inventory
+                        WHERE WarehouseCode = ? AND ItemCode = ?
+                    """, (
+                        str(data['warehouseCode']).strip(),
+                        str(item['itemCode']).strip()
+                    ))
+                    inventory_record = cursor.fetchone()
+                    if inventory_record:
+                        new_stock = float(inventory_record.CurrentStock)
+                    else:
+                        # 기존 재고가 없으면 새로 생성
+                        new_stock = float(item['quantity'])
+                        cursor.execute("""
+                            INSERT INTO dbo.Inventory (
+                                WarehouseCode, ItemCode, CurrentStock, SafetyStock, MaxStock, remarks
+                            ) VALUES (?, ?, ?, ?, ?, ?)
+                        """, (
+                            str(data['warehouseCode']).strip(),
+                            str(item['itemCode']).strip(),
+                            new_stock,
+                            None,
+                            None,
+                            f"매입입고(수정)로 생성 - {purchase_no}"
+                        ))
+                        print(f"새 재고 생성: {item['itemCode']} - 새로운 재고: {new_stock}")
+                    # 새로운 수불내역 저장 (Inventory_Transaction)
+                    cursor.execute("""
+                        INSERT INTO dbo.Inventory_Transaction (
+                            TransDate, WarehouseCode, ItemCode, LotNo, TransType, RefNo, 
+                            InQty, OutQty, BalanceQty, Remarks, CreateUser, CreateDate
+                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, GETDATE())
+                    """, (
+                        data['purchaseDate'],  # TransDate
+                        str(data['warehouseCode']).strip(),  # WarehouseCode
+                        str(item['itemCode']).strip(),  # ItemCode
+                        None,  # LotNo (매입의 경우 LotNo는 NULL)
+                        'IN',  # TransType (매입은 입고)
+                        purchase_no,  # RefNo (매입번호)
+                        float(item['quantity']),  # InQty
+                        0.0,  # OutQty (매입은 입고만)
+                        new_stock,  # BalanceQty (항상 최신 재고와 일치)
+                        f"매입입고(수정) - {purchase_no}",  # Remarks
+                        session.get('username', 'SYSTEM')  # CreateUser
+                    ))
+                    print(f"수불내역 BalanceQty 업데이트: {item['itemCode']} - BalanceQty: {new_stock}")
+        
+        conn.commit()
+        print(f"매입 수정 완료: {purchase_no}")
+        return jsonify({'success': True, 'message': '매입정보와 재고정보가 수정되었습니다.'})
+        
+    except Exception as e:
+        if 'conn' in locals():
+            conn.rollback()
+        print('Error in update_purchase:', str(e))
+        return jsonify({'error': '매입정보 수정 중 오류가 발생했습니다.'}), 500
+    finally:
+        if 'conn' in locals():
+            conn.close()
+
+# 매입 삭제
+@purchase.route('/delete', methods=['POST'])
+@login_required
+def delete_purchase():
+    try:
+        data = request.get_json()
+        purchase_nos = data.get('purchaseNos', [])
+        
+        if not purchase_nos:
+            return jsonify({'error': 'No purchase numbers provided'}), 400
+            
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        for purchase_no in purchase_nos:
+            # 지급 이력 확인
+            cursor.execute("SELECT COUNT(*) FROM purchase_payment WHERE purchase_no = ?", (purchase_no,))
+            payment_count = cursor.fetchone()[0]
+            if payment_count > 0:
+                return jsonify({'error': f'[{purchase_no}]는 대금지급이 완료되어 삭제할 수 없습니다.'}), 400
+
+            # 1. 삭제 전, 해당 매입의 상세 품목 목록 조회
+            cursor.execute("""
+                SELECT item_code, warehouse_code, quantity
+                FROM purchase_detail
+                WHERE purchase_no = ?
+            """, (purchase_no,))
+            details = cursor.fetchall()
+
+            # 2. 각 품목별로 수불이력 삭제 및 재고 차감
+            for detail in details:
+                item_code = detail.item_code.strip()
+                warehouse_code = detail.warehouse_code.strip()
+                qty = float(detail.quantity)
+                # 2-1. 수불이력 삭제
+                cursor.execute("""
+                    DELETE FROM Inventory_Transaction
+                    WHERE RefNo = ? AND ItemCode = ? AND WarehouseCode = ? AND TransType = 'IN'
+                """, (purchase_no, item_code, warehouse_code))
+                # 2-2. 재고 차감
+                cursor.execute("""
+                    SELECT InventoryId, CurrentStock
+                    FROM Inventory
+                    WHERE WarehouseCode = ? AND ItemCode = ?
+                """, (warehouse_code, item_code))
+                inv = cursor.fetchone()
+                if inv:
+                    new_stock = float(inv.CurrentStock) - qty
+                    if new_stock < 0:
+                        new_stock = 0
+                    cursor.execute("""
+                        UPDATE Inventory
+                        SET CurrentStock = ?
+                        WHERE InventoryId = ?
+                    """, (new_stock, inv.InventoryId))
+            # 3. 상세 데이터 삭제
+            cursor.execute("DELETE FROM purchase_detail WHERE purchase_no = ?", (purchase_no,))
+            # 4. 헤더 데이터 삭제
+            cursor.execute("DELETE FROM purchase_master WHERE purchase_no = ?", (purchase_no,))
+        
+        conn.commit()
+        return jsonify({'success': True})
+        
+    except Exception as e:
+        if 'conn' in locals():
+            conn.rollback()
+        return jsonify({'error': str(e)}), 500
+    finally:
+        if 'conn' in locals():
+            conn.close()
+
+# 매입대금 지급 관리
+@purchase.route('/payment')
+@login_required
+def purchase_payment():
+    # Import get_text if it's not globally available in this module
+    # from app.app import get_text # Removed incorrect import
+    return render_template('purchase/purchase_payment/payment_list.html') # Reverted render_template call
+
+@purchase.route('/api/purchase_payments')
+@login_required
+def get_purchase_payments():
+    try:
+        start_date = request.args.get('startDate')
+        end_date = request.args.get('endDate')
+        vendor_code = request.args.get('vendorCode')
+        purchase_status = request.args.get('purchaseStatus')
+        payment_status = request.args.get('paymentStatus')
+        
+        # 페이지 파라미터 안전하게 처리
+        try:
+            page = int(request.args.get('page', 1))
+            if page < 1:
+                page = 1
+        except (ValueError, TypeError):
+            page = 1
+            
+        try:
+            per_page = int(request.args.get('per_page', 10))
+            if per_page < 1:
+                per_page = 10
+        except (ValueError, TypeError):
+            per_page = 10
+
+        conn = get_db_connection()
+        cursor = conn.cursor()
+
+        # Base query with necessary joins
+        query = """
+            SELECT 
+                p.purchase_no,
+                p.purchase_date,
+                p.vendor_code,
+                v.vd_name as vendor_name,
+                p.currency_code,
+                p.exchange_rate,
+                p.total_amount,
+                p.payment_due_date,
+                p.status,
+                COUNT(*) OVER() as total_count
+            FROM dbo.purchase_master p
+            LEFT JOIN dbo.CODE_VENDOR v ON p.vendor_code = v.vd_code
+            WHERE 1=1
+        """
+        params = []
+
+        # Apply filters
+        if start_date:
+            query += " AND p.purchase_date >= ?"
+            params.append(start_date)
+        if end_date:
+            query += " AND p.purchase_date <= ?"
+            params.append(end_date)
+        if vendor_code:
+            query += " AND p.vendor_code = ?"
+            params.append(vendor_code)
+        if purchase_status:
+            query += " AND p.status = ?"
+            params.append(purchase_status)
+
+        # Get total count for pagination
+        cursor.execute(query, params)
+        total_count = cursor.rowcount
+
+        # Apply pagination
+        query += " ORDER BY p.purchase_date DESC, p.purchase_no DESC OFFSET ? ROWS FETCH NEXT ? ROWS ONLY"
+        params.extend([(page - 1) * per_page, per_page])
+
+        # Execute query
+        cursor.execute(query, params)
+        rows = cursor.fetchall()
+
+        # Get payment information for each purchase
+        result = []
+        for row in rows:
+            # Calculate paid amount from purchase_payment table
+            cursor.execute("""
+                SELECT 
+                    SUM(amount) as paid_amount,
+                    SUM(vat) as paid_vat
+                FROM dbo.purchase_payment
+                WHERE purchase_no = ?
+            """, (row.purchase_no,))
+            
+            payment_info = cursor.fetchone()
+            paid_amount = payment_info.paid_amount if payment_info and payment_info.paid_amount else Decimal('0')
+            paid_vat = payment_info.paid_vat if payment_info and payment_info.paid_vat else Decimal('0')
+
+            # Calculate amounts
+            total_amount = row.total_amount or Decimal('0')
+            vat_amount = total_amount * Decimal('0.07')  # 7% VAT
+            sum_amount = total_amount + vat_amount
+            remaining_amount = sum_amount - (paid_amount + paid_vat)
+
+            # Determine payment status
+            # Consider remaining_amount close to zero for COMPLETED status due to potential floating point inaccuracies
+            if paid_amount == Decimal('0') and paid_vat == Decimal('0'):
+                payment_status = 'UNPAID'
+            elif remaining_amount <= Decimal('0.005'): # Use a small tolerance for completion check
+                payment_status = 'COMPLETED'
+            else:
+                payment_status = 'PARTIAL'
+
+            # Apply payment status filter if provided
+            if payment_status and payment_status != payment_status:
+                continue
+
+            # 디버깅을 위한 로그 추가
+            print(f"Purchase {row.purchase_no}: status = '{row.status}', purchaseStatus = '{row.status.strip() if row.status else ''}'")
+            
+            result.append({
+                'purchaseNo': row.purchase_no,
+                'purchaseDate': row.purchase_date.strftime('%Y-%m-%d') if row.purchase_date else None,
+                'vendorCode': row.vendor_code,
+                'vendorName': row.vendor_name,
+                'currencyCode': row.currency_code,
+                'exchangeRate': float(row.exchange_rate) if row.exchange_rate else 0,
+                'totalAmount': round(float(total_amount), 5),
+                'totalVat': round(float(vat_amount), 5),
+                'sumAmount': round(float(sum_amount), 5),
+                'paidAmount': round(float(paid_amount), 5),
+                'paidVat': round(float(paid_vat), 5),
+                'remainingAmount': round(float(remaining_amount), 5),
+                'paymentDueDate': row.payment_due_date.strftime('%Y-%m-%d') if row.payment_due_date else None,
+                'purchaseStatus': row.status.strip() if row.status else 'PROCESS',  # 기본값을 PROCESS로 설정
+                'paymentStatus': payment_status
+            })
+
+        # Calculate summary totals
+        summary = {
+            'totalAmount': round(sum(item['totalAmount'] for item in result), 5),
+            'totalVat': round(sum(item['totalVat'] for item in result), 5),
+            'sumAmount': round(sum(item['sumAmount'] for item in result), 5),  # 총합계금액
+            'paidAmount': round(sum(item['paidAmount'] for item in result), 5),  # 총지급액
+            'totalPaid': round(sum(item['paidAmount'] for item in result), 5),  # 기존 totalPaid(호환)
+            'totalPaidVat': round(sum(item['paidVat'] for item in result), 5),
+            'remainingAmount': round(sum(item['remainingAmount'] for item in result), 5)
+        }
+
+        return jsonify({
+            'payments': result,
+            'pagination': {
+                'totalCount': total_count,
+                'currentPage': page,
+                'perPage': per_page,
+                'totalPages': (total_count + per_page - 1) // per_page
+            },
+            'summary': summary
+        })
+
+    except Exception as e:
+        print(f"Error in get_purchase_payments: {str(e)}")
+        raise
+
+@purchase.route('/purchase_payment/save', methods=['POST'])
+@login_required
+def save_purchase_payment():
+    try:
+        data = request.get_json()
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        # 지급 정보 저장
+        cursor.execute("""
+            INSERT INTO dbo.purchase_payment (
+                purchase_no, payment_date, payment_method,
+                amount, vat, -- Removed transfer_fee
+                remarks,
+                createuser, createdate
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, GETDATE())
+        """, (
+            data['purchaseNo'],
+            data['paymentDate'],
+            data['paymentMethod'],
+            data['amount'],
+            data.get('vat', 0),  # 부가세
+            # data.get('transferFee', 0),  # Removed 이체수수료
+            data.get('remarks', ''),
+            'SYSTEM'
+        ))
+        
+        # 매입 상태 업데이트 (지급완료 여부 확인)
+        cursor.execute("""
+            WITH PaymentSum AS (
+                SELECT purchase_no, SUM(amount) as total_paid
+                FROM dbo.purchase_payment
+                WHERE purchase_no = ?
+                GROUP BY purchase_no
+            )
+            UPDATE dbo.purchase_master SET
+                status = CASE 
+                    WHEN p.total_amount <= ps.total_paid THEN 'COMPLETED'
+                    ELSE 'CONFIRMED'
+                END
+            FROM dbo.purchase_master p
+            JOIN PaymentSum ps ON p.purchase_no = ps.purchase_no
+            WHERE p.purchase_no = ?
+        """, (data['purchaseNo'], data['purchaseNo']))
+        
+        conn.commit()
+        return jsonify({'success': True})
+        
+    except Exception as e:
+        if 'conn' in locals():
+            conn.rollback()
+        print('Error in save_purchase_payment:', str(e))
+        return jsonify({'error': str(e)}), 500
+    finally:
+        if 'conn' in locals():
+            conn.close()
+
+@purchase.route('/purchase_payment/detail/<purchase_no>')
+@login_required
+def get_purchase_payment_detail(purchase_no):
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        # 매입 정보 조회
+        cursor.execute("""
+            SELECT 
+                p.*,
+                v.vd_name as vendor_name,
+                COALESCE(pp.total_paid, 0) as paid_amount,
+                COALESCE(pp.total_vat, 0) as total_vat
+                -- Removed COALESCE(pp.total_transfer_fee, 0) as total_transfer_fee
+            FROM dbo.purchase_master p
+            LEFT JOIN dbo.CODE_VENDOR v ON p.vendor_code = v.vd_code
+            LEFT JOIN (
+                SELECT 
+                    purchase_no, 
+                    SUM(amount) as total_paid,
+                    SUM(vat) as total_vat
+                    -- Removed SUM(transfer_fee) as total_transfer_fee
+                FROM dbo.purchase_payment
+                GROUP BY purchase_no
+            ) pp ON p.purchase_no = pp.purchase_no
+            WHERE p.purchase_no = ?
+        """, (purchase_no,))
+        
+        purchase = cursor.fetchone()
+        if not purchase:
+            return jsonify({'error': 'Purchase not found'}), 404
+            
+        # 지급 이력 조회
+        cursor.execute("""
+            SELECT *
+            FROM dbo.purchase_payment
+            WHERE purchase_no = ?
+            ORDER BY payment_date DESC
+        """, (purchase_no,))
+        
+        payments = cursor.fetchall()
+        
+        result = {
+            'purchase': {
+                'purchaseNo': purchase.purchase_no,
+                'purchaseDate': purchase.purchase_date.strftime('%Y-%m-%d'),
+                'vendorCode': purchase.vendor_code.strip() if purchase.vendor_code else '',
+                'vendorName': purchase.vendor_name.strip() if purchase.vendor_name else '',
+                'totalAmount': float(purchase.total_amount) if purchase.total_amount else 0,
+                'paidAmount': float(purchase.paid_amount) if purchase.paid_amount else 0,
+                'totalVat': float(purchase.total_vat) if purchase.total_vat else 0,
+                'remainingAmount': float(purchase.total_amount - purchase.paid_amount) if purchase.total_amount and purchase.paid_amount else float(purchase.total_amount),
+                'paymentDueDate': purchase.payment_due_date.strftime('%Y-%m-%d') if purchase.payment_due_date else None,
+                'status': '완료' if purchase.total_amount <= purchase.paid_amount else '미완료'
+            },
+            'payments': [{
+                'paymentId': payment.payment_id,
+                'paymentDate': payment.payment_date.strftime('%Y-%m-%d'),
+                'paymentMethod': payment.payment_method.strip() if payment.payment_method else '',
+                'amount': float(payment.amount) if payment.amount else 0,
+                'vat': float(payment.vat) if payment.vat else 0,
+                # Removed 'transferFee': float(payment.transfer_fee) if payment.transfer_fee else 0,
+                'remarks': payment.remarks.strip() if payment.remarks else ''
+            } for payment in payments]
+        }
+        
+        return jsonify(result)
+        
+    except Exception as e:
+        print('Error in get_purchase_payment_detail:', str(e))
+        return jsonify({'error': str(e)}), 500
+    finally:
+        if 'conn' in locals():
+            conn.close()
+
+@purchase.route('/api/payment/summary', methods=['POST'], endpoint='get_purchase_payment_summary_api')
+@login_required
+def get_purchase_payment_summary():
+    try:
+        data = request.get_json()
+        start_date = data.get('startDate')
+        end_date = data.get('endDate')
+        vendor_code = data.get('vendorCode')
+        
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        # 기본 쿼리
+        query = """
+            SELECT 
+                v.vd_code as vendor_code,
+                v.vd_name as vendor_name,
+                p.purchase_date,
+                p.currency_code,
+                p.exchange_rate,
+                p.total_amount,
+                p.total_amount * 0.07 as vat_amount,
+                p.total_amount * 1.07 as sum_amount,
+                COALESCE(pp.paid_amount, 0) as paid_amount
+            FROM dbo.purchase_master p
+            LEFT JOIN dbo.CODE_VENDOR v ON p.vendor_code = v.vd_code
+            LEFT JOIN (
+                SELECT 
+                    purchase_no, 
+                    SUM(amount) as paid_amount
+                FROM dbo.purchase_payment
+                GROUP BY purchase_no
+            ) pp ON p.purchase_no = pp.purchase_no
+            WHERE 1=1
+        """
+        params = []
+        
+        # 검색 조건 추가
+        if start_date:
+            query += " AND p.purchase_date >= ?"
+            params.append(start_date)
+        if end_date:
+            query += " AND p.purchase_date <= ?"
+            params.append(end_date)
+        if vendor_code:
+            query += " AND p.vendor_code = ?"
+            params.append(vendor_code)
+        
+        # 정렬
+        query += " ORDER BY p.purchase_date DESC, v.vd_code"
+
+        cursor.execute(query, params)
+        rows = cursor.fetchall()
+
+        items = []
+        for row in rows:
+            payment_date = row.purchase_date.strftime('%Y-%m-%d') if row.purchase_date else None
+            
+            items.append({
+                'vendorName': row.vendor_name.strip() if row.vendor_name else '',
+                'paymentDate': payment_date,
+                'currency': row.currency_code.strip() if row.currency_code else '',
+                'exchangeRate': float(row.exchange_rate) if row.exchange_rate else 0,
+                'totalAmount': float(row.total_amount) if row.total_amount else 0,
+                'vatAmount': float(row.vat_amount) if row.vat_amount else 0,
+                'sumAmount': float(row.sum_amount) if row.sum_amount else 0,
+                'paidAmount': float(row.paid_amount) if row.paid_amount else 0,
+                'paidVat': float(row.paid_vat) if row.paid_vat else 0,
+                'remainingAmount': float(row.total_amount - row.paid_amount) if row.total_amount and row.paid_amount else float(row.total_amount),
+                'paymentDueDate': row.payment_due_date.strftime('%Y-%m-%d') if row.payment_due_date else None,
+                'purchaseStatus': row.status.strip() if row.status else 'PROCESS',  # 기본값을 PROCESS로 설정
+                'paymentStatus': payment_status
+            })
+
+        # Calculate summary totals
+        summary = {
+            'totalAmount': round(sum(item['totalAmount'] for item in result), 5),
+            'totalVat': round(sum(item['totalVat'] for item in result), 5),
+            'sumAmount': round(sum(item['sumAmount'] for item in result), 5),  # 총합계금액
+            'paidAmount': round(sum(item['paidAmount'] for item in result), 5),  # 총지급액
+            'totalPaid': round(sum(item['paidAmount'] for item in result), 5),  # 기존 totalPaid(호환)
+            'totalPaidVat': round(sum(item['paidVat'] for item in result), 5),
+            'remainingAmount': round(sum(item['remainingAmount'] for item in result), 5)
+        }
+
+        return jsonify({
+            'payments': result,
+            'pagination': {
+                'totalCount': total_count,
+                'currentPage': page,
+                'perPage': per_page,
+                'totalPages': (total_count + per_page - 1) // per_page
+            },
+            'summary': summary
+        })
+
+    except Exception as e:
+        print(f"Error in get_purchase_payments: {str(e)}")
+        raise
+
+@purchase.route('/purchase_payment/save', methods=['POST'])
+@login_required
+def save_purchase_payment():
+    try:
+        data = request.get_json()
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        # 지급 정보 저장
+        cursor.execute("""
+            INSERT INTO dbo.purchase_payment (
+                purchase_no, payment_date, payment_method,
+                amount, vat, -- Removed transfer_fee
+                remarks,
+                createuser, createdate
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, GETDATE())
+        """, (
+            data['purchaseNo'],
+            data['paymentDate'],
+            data['paymentMethod'],
+            data['amount'],
+            data.get('vat', 0),  # 부가세
+            # data.get('transferFee', 0),  # Removed 이체수수료
+            data.get('remarks', ''),
+            'SYSTEM'
+        ))
+        
+        # 매입 상태 업데이트 (지급완료 여부 확인)
+        cursor.execute("""
+            WITH PaymentSum AS (
+                SELECT purchase_no, SUM(amount) as total_paid
+                FROM dbo.purchase_payment
+                WHERE purchase_no = ?
+                GROUP BY purchase_no
+            )
+            UPDATE dbo.purchase_master SET
+                status = CASE 
+                    WHEN p.total_amount <= ps.total_paid THEN 'COMPLETED'
+                    ELSE 'CONFIRMED'
+                END
+            FROM dbo.purchase_master p
+            JOIN PaymentSum ps ON p.purchase_no = ps.purchase_no
+            WHERE p.purchase_no = ?
+        """, (data['purchaseNo'], data['purchaseNo']))
+        
+        conn.commit()
+        return jsonify({'success': True})
+        
+    except Exception as e:
+        if 'conn' in locals():
+            conn.rollback()
+        print('Error in save_purchase_payment:', str(e))
+        return jsonify({'error': str(e)}), 500
+    finally:
+        if 'conn' in locals():
+            conn.close()
+
+@purchase.route('/purchase_payment/detail/<purchase_no>')
+@login_required
+def get_purchase_payment_detail(purchase_no):
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        # 매입 정보 조회
+        cursor.execute("""
+            SELECT 
+                p.*,
+                v.vd_name as vendor_name,
+                COALESCE(pp.total_paid, 0) as paid_amount,
+                COALESCE(pp.total_vat, 0) as total_vat
+                -- Removed COALESCE(pp.total_transfer_fee, 0) as total_transfer_fee
+            FROM dbo.purchase_master p
+            LEFT JOIN dbo.CODE_VENDOR v ON p.vendor_code = v.vd_code
+            LEFT JOIN (
+                SELECT 
+                    purchase_no, 
+                    SUM(amount) as total_paid,
+                    SUM(vat) as total_vat
+                    -- Removed SUM(transfer_fee) as total_transfer_fee
+                FROM dbo.purchase_payment
+                GROUP BY purchase_no
+            ) pp ON p.purchase_no = pp.purchase_no
+            WHERE p.purchase_no = ?
+        """, (purchase_no,))
+        
+        purchase = cursor.fetchone()
+        if not purchase:
+            return jsonify({'error': 'Purchase not found'}), 404
+            
+        # 지급 이력 조회
+        cursor.execute("""
+            SELECT *
+            FROM dbo.purchase_payment
+            WHERE purchase_no = ?
+            ORDER BY payment_date DESC
+        """, (purchase_no,))
+        
+        payments = cursor.fetchall()
+        
+        result = {
+            'purchase': {
+                'purchaseNo': purchase.purchase_no,
+                'purchaseDate': purchase.purchase_date.strftime('%Y-%m-%d'),
+                'vendorCode': purchase.vendor_code.strip() if purchase.vendor_code else '',
+                'vendorName': purchase.vendor_name.strip() if purchase.vendor_name else '',
+                'totalAmount': float(purchase.total_amount) if purchase.total_amount else 0,
+                'paidAmount': float(purchase.paid_amount) if purchase.paid_amount else 0,
+                'totalVat': float(purchase.total_vat) if purchase.total_vat else 0,
+                'remainingAmount': float(purchase.total_amount - purchase.paid_amount) if purchase.total_amount and purchase.paid_amount else float(purchase.total_amount),
+                'paymentDueDate': purchase.payment_due_date.strftime('%Y-%m-%d') if purchase.payment_due_date else None,
+                'status': '완료' if purchase.total_amount <= purchase.paid_amount else '미완료'
+            },
+            'payments': [{
+                'paymentId': payment.payment_id,
+                'paymentDate': payment.payment_date.strftime('%Y-%m-%d'),
+                'paymentMethod': payment.payment_method.strip() if payment.payment_method else '',
+                'amount': float(payment.amount) if payment.amount else 0,
+                'vat': float(payment.vat) if payment.vat else 0,
+                # Removed 'transferFee': float(payment.transfer_fee) if payment.transfer_fee else 0,
+                'remarks': payment.remarks.strip() if payment.remarks else ''
+            } for payment in payments]
+        }
+        
+        return jsonify(result)
+        
+    except Exception as e:
+        print('Error in get_purchase_payment_detail:', str(e))
+        return jsonify({'error': str(e)}), 500
+    finally:
+        if 'conn' in locals():
+            conn.close()
+
+@purchase.route('/api/payment/summary', methods=['POST'], endpoint='get_purchase_payment_summary_api')
+@login_required
+def get_purchase_payment_summary():
+    try:
+        data = request.get_json()
+        start_date = data.get('startDate')
+        end_date = data.get('endDate')
+        vendor_code = data.get('vendorCode')
+        
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        # 기본 쿼리
+        query = """
+            SELECT 
+                v.vd_code as vendor_code,
+                v.vd_name as vendor_name,
+                p.purchase_date,
+                p.currency_code,
+                p.exchange_rate,
+                p.total_amount,
+                p.total_amount * 0.07 as vat_amount,
+                p.total_amount * 1.07 as sum_amount,
+                COALESCE(pp.paid_amount, 0) as paid_amount
+            FROM dbo.purchase_master p
+            LEFT JOIN dbo.CODE_VENDOR v ON p.vendor_code = v.vd_code
+            LEFT JOIN (
+                SELECT 
+                    purchase_no, 
+                    SUM(amount) as paid_amount
+                FROM dbo.purchase_payment
+                GROUP BY purchase_no
+            ) pp ON p.purchase_no = pp.purchase_no
+            WHERE 1=1
+        """
+        params = []
+        
+        # 검색 조건 추가
+        if start_date:
+            query += " AND p.purchase_date >= ?"
+            params.append(start_date)
+        if end_date:
+            query += " AND p.purchase_date <= ?"
+            params.append(end_date)
+        if vendor_code:
+            query += " AND p.vendor_code = ?"
+            params.append(vendor_code)
+        
+        # 정렬
+        query += " ORDER BY p.purchase_date DESC, v.vd_code"
+
+        cursor.execute(query, params)
+        rows = cursor.fetchall()
+
+        items = []
+        for row in rows:
+            payment_date = row.purchase_date.strftime('%Y-%m-%d') if row.purchase_date else None
+            
+            items.append({
+                'vendorName': row.vendor_name.strip() if row.vendor_name else '',
+                'paymentDate': payment_date,
+                'currency': row.currency_code.strip() if row.currency_code else '',
+                'exchangeRate': float(row.exchange_rate) if row.exchange_rate else 0,
+                'totalAmount': float(row.total_amount) if row.total_amount else 0,
+                'vatAmount': float(row.vat_amount) if row.vat_amount else 0,
+                'sumAmount': float(row.sum_amount) if row.sum_amount else 0,
+                'paidAmount': float(row.paid_amount) if row.paid_amount else 0,
+                'paidVat': float(row.paid_vat) if row.paid_vat else 0,
+                'remainingAmount': float(row.total_amount - row.paid_amount) if row.total_amount and row.paid_amount else float(row.total_amount),
+                'paymentDueDate': row.payment_due_date.strftime('%Y-%m-%d') if row.payment_due_date else None,
+                'purchaseStatus': row.status.strip() if row.status else 'PROCESS',  # 기본값을 PROCESS로 설정
+                'paymentStatus': payment_status
+            })
+
+        # Calculate summary totals
+        summary = {
+            'totalAmount': round(sum(item['totalAmount'] for item in result), 5),
+            'totalVat': round(sum(item['totalVat'] for item in result), 5),
+            'sumAmount': round(sum(item['sumAmount'] for item in result), 5),  # 총합계금액
+            'paidAmount': round(sum(item['paidAmount'] for item in result), 5),  # 총지급액
+            'totalPaid': round(sum(item['paidAmount'] for item in result), 5),  # 기존 totalPaid(호환)
+            'totalPaidVat': round(sum(item['paidVat'] for item in result), 5),
+            'remainingAmount': round(sum(item['remainingAmount'] for item in result), 5)
+        }
+
+        return jsonify({
+            'payments': result,
+            'pagination': {
+                'totalCount': total_count,
+                'currentPage': page,
+                'perPage': per_page,
+                'totalPages': (total_count + per_page - 1) // per_page
+            },
+            'summary': summary
+        })
+
+    except Exception as e:
+        print(f"Error in get_purchase_payments: {str(e)}")
+        raise
+
+@purchase.route('/purchase_payment/save', methods=['POST'])
+@login_required
+def save_purchase_payment():
+    try:
+        data = request.get_json()
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        # 지급 정보 저장
+        cursor.execute("""
+            INSERT INTO dbo.purchase_payment (
+                purchase_no, payment_date, payment_method,
+                amount, vat, -- Removed transfer_fee
+                remarks,
+                createuser, createdate
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, GETDATE())
+        """, (
+            data['purchaseNo'],
+            data['paymentDate'],
+            data['paymentMethod'],
+            data['amount'],
+            data.get('vat', 0),  # 부가세
+            # data.get('transferFee', 0),  # Removed 이체수수료
+            data.get('remarks', ''),
+            'SYSTEM'
+        ))
+        
+        # 매입 상태 업데이트 (지급완료 여부 확인)
+        cursor.execute("""
+            WITH PaymentSum AS (
+                SELECT purchase_no, SUM(amount) as total_paid
+                FROM dbo.purchase_payment
+                WHERE purchase_no = ?
+                GROUP BY purchase_no
+            )
+            UPDATE dbo.purchase_master SET
+                status = CASE 
+                    WHEN p.total_amount <= ps.total_paid THEN 'COMPLETED'
+                    ELSE 'CONFIRMED'
+                END
+            FROM dbo.purchase_master p
+            JOIN PaymentSum ps ON p.purchase_no = ps.purchase_no
+            WHERE p.purchase_no = ?
+        """, (data['purchaseNo'], data['purchaseNo']))
+        
+        conn.commit()
+        return jsonify({'success': True})
+        
+    except Exception as e:
+        if 'conn' in locals():
+            conn.rollback()
+        print('Error in save_purchase_payment:', str(e))
+        return jsonify({'error': str(e)}), 500
+    finally:
+        if 'conn' in locals():
+            conn.close()
+
+@purchase.route('/purchase_payment/detail/<purchase_no>')
+@login_required
+def get_purchase_payment_detail(purchase_no):
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        # 매입 정보 조회
+        cursor.execute("""
+            SELECT 
+                p.*,
+                v.vd_name as vendor_name,
+                COALESCE(pp.total_paid, 0) as paid_amount,
+                COALESCE(pp.total_vat, 0) as total_vat
+                -- Removed COALESCE(pp.total_transfer_fee, 0) as total_transfer_fee
+            FROM dbo.purchase_master p
+            LEFT JOIN dbo.CODE_VENDOR v ON p.vendor_code = v.vd_code
+            LEFT JOIN (
+                SELECT 
+                    purchase_no, 
+                    SUM(amount) as total_paid,
+                    SUM(vat) as total_vat
+                    -- Removed SUM(transfer_fee) as total_transfer_fee
+                FROM dbo.purchase_payment
+                GROUP BY purchase_no
+            ) pp ON p.purchase_no = pp.purchase_no
+            WHERE p.purchase_no = ?
+        """, (purchase_no,))
+        
+        purchase = cursor.fetchone()
+        if not purchase:
+            return jsonify({'error': 'Purchase not found'}), 404
+            
+        # 지급 이력 조회
+        cursor.execute("""
+            SELECT *
+            FROM dbo.purchase_payment
+            WHERE purchase_no = ?
+            ORDER BY payment_date DESC
+        """, (purchase_no,))
+        
+        payments = cursor.fetchall()
+        
+        result = {
+            'purchase': {
+                'purchaseNo': purchase.purchase_no,
+                'purchaseDate': purchase.purchase_date.strftime('%Y-%m-%d'),
+                'vendorCode': purchase.vendor_code.strip() if purchase.vendor_code else '',
+                'vendorName': purchase.vendor_name.strip() if purchase.vendor_name else '',
+                'totalAmount': float(purchase.total_amount) if purchase.total_amount else 0,
+                'paidAmount': float(purchase.paid_amount) if purchase.paid_amount else 0,
+                'totalVat': float(purchase.total_vat) if purchase.total_vat else 0,
+                'remainingAmount': float(purchase.total_amount - purchase.paid_amount) if purchase.total_amount and purchase.paid_amount else float(purchase.total_amount),
+                'paymentDueDate': purchase.payment_due_date.strftime('%Y-%m-%d') if purchase.payment_due_date else None,
+                'status': '완료' if purchase.total_amount <= purchase.paid_amount else '미완료'
+            },
+            'payments': [{
+                'paymentId': payment.payment_id,
+                'paymentDate': payment.payment_date.strftime('%Y-%m-%d'),
+                'paymentMethod': payment.payment_method.strip() if payment.payment_method else '',
+                'amount': float(payment.amount) if payment.amount else 0,
+                'vat': float(payment.vat) if payment.vat else 0,
+                # Removed 'transferFee': float(payment.transfer_fee) if payment.transfer_fee else 0,
+                'remarks': payment.remarks.strip() if payment.remarks else ''
+            } for payment in payments]
+        }
+        
+        return jsonify(result)
+        
+    except Exception as e:
+        print('Error in get_purchase_payment_detail:', str(e))
+        return jsonify({'error': str(e)}), 500
+    finally:
+        if 'conn' in locals():
+            conn.close()
+
+@purchase.route('/api/payment/summary', methods=['POST'], endpoint='get_purchase_payment_summary_api')
+@login_required
+def get_purchase_payment_summary():
+    try:
+        data = request.get_json()
+        start_date = data.get('startDate')
+        end_date = data.get('endDate')
+        vendor_code = data.get('vendorCode')
+        
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        # 기본 쿼리
+        query = """
+            SELECT 
+                v.vd_code as vendor_code,
+                v.vd_name as vendor_name,
+                p.purchase_date,
+                p.currency_code,
+                p.exchange_rate,
+                p.total_amount,
+                p.total_amount * 0.07 as vat_amount,
+                p.total_amount * 1.07 as sum_amount,
+                COALESCE(pp.paid_amount, 0) as paid_amount
+            FROM dbo.purchase_master p
+            LEFT JOIN dbo.CODE_VENDOR v ON p.vendor_code = v.vd_code
+            LEFT JOIN (
+                SELECT 
+                    purchase_no, 
+                    SUM(amount) as paid_amount
+                FROM dbo.purchase_payment
+                GROUP BY purchase_no
+            ) pp ON p.purchase_no = pp.purchase_no
+            WHERE 1=1
+        """
+        params = []
+        
+        # 검색 조건 추가
+        if start_date:
+            query += " AND p.purchase_date >= ?"
+            params.append(start_date)
+        if end_date:
+            query += " AND p.purchase_date <= ?"
+            params.append(end_date)
+        if vendor_code:
+            query += " AND p.vendor_code = ?"
+            params.append(vendor_code)
+        
+        # 정렬
+        query += " ORDER BY p.purchase_date DESC, v.vd_code"
+
+        cursor.execute(query, params)
+        rows = cursor.fetchall()
+
+        items = []
+        for row in rows:
+            payment_date = row.purchase_date.strftime('%Y-%m-%d') if row.purchase_date else None
+            
+            items.append({
+                'vendorName': row.vendor_name.strip() if row.vendor_name else '',
+                'paymentDate': payment_date,
+                'currency': row.currency_code.strip() if row.currency_code else '',
+                'exchangeRate': float(row.exchange_rate) if row.exchange_rate else 0,
+                'totalAmount': float(row.total_amount) if row.total_amount else 0,
+                'vatAmount': float(row.vat_amount) if row.vat_amount else 0,
+                'sumAmount': float(row.sum_amount) if row.sum_amount else 0,
+                'paidAmount': float(row.paid_amount) if row.paid_amount else 0,
+                'paidVat': float(row.paid_vat) if row.paid_vat else 0,
+                'remainingAmount': float(row.total_amount - row.paid_amount) if row.total_amount and row.paid_amount else float(row.total_amount),
+                'paymentDueDate': row.payment_due_date.strftime('%Y-%m-%d') if row.payment_due_date else None,
+                'purchaseStatus': row.status.strip() if row.status else 'PROCESS',  # 기본값을 PROCESS로 설정
+                'paymentStatus': payment_status
+            })
+
+        # Calculate summary totals
+        summary = {
+            'totalAmount': round(sum(item['totalAmount'] for item in result), 5),
+            'totalVat': round(sum(item['totalVat'] for item in result), 5),
+            'sumAmount': round(sum(item['sumAmount'] for item in result), 5),  # 총합계금액
+            'paidAmount': round(sum(item['paidAmount'] for item in result), 5),  # 총지급액
+            'totalPaid': round(sum(item['paidAmount'] for item in result), 5),  # 기존 totalPaid(호환)
+            'totalPaidVat': round(sum(item['paidVat'] for item in result), 5),
+            'remainingAmount': round(sum(item['remainingAmount'] for item in result), 5)
+        }
+
+        return jsonify({
+            'payments': result,
+            'pagination': {
+                'totalCount': total_count,
+                'currentPage': page,
+                'perPage': per_page,
+                'totalPages': (total_count + per_page - 1) // per_page
+            },
+            'summary': summary
+        })
+
+    except Exception as e:
+        print(f"Error in get_purchase_payments: {str(e)}")
+        raise
+
+@purchase.route('/purchase_payment/save', methods=['POST'])
+@login_required
+def save_purchase_payment():
+    try:
+        data = request.get_json()
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        # 지급 정보 저장
+        cursor.execute("""
+            INSERT INTO dbo.purchase_payment (
+                purchase_no, payment_date, payment_method,
+                amount, vat, -- Removed transfer_fee
+                remarks,
+                createuser, createdate
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, GETDATE())
+        """, (
+            data['purchaseNo'],
+            data['paymentDate'],
+            data['paymentMethod'],
+            data['amount'],
+            data.get('vat', 0),  # 부가세
+            # data.get('transferFee', 0),  # Removed 이체수수료
+            data.get('remarks', ''),
+            'SYSTEM'
+        ))
+        
+        # 매입 상태 업데이트 (지급완료 여부 확인)
+        cursor.execute("""
+            WITH PaymentSum AS (
+                SELECT purchase_no, SUM(amount) as total_paid
+                FROM dbo.purchase_payment
+                WHERE purchase_no = ?
+                GROUP BY purchase_no
+            )
+            UPDATE dbo.purchase_master SET
+                status = CASE 
+                    WHEN p.total_amount <= ps.total_paid THEN 'COMPLETED'
+                    ELSE 'CONFIRMED'
+                END
+            FROM dbo.purchase_master p
+            JOIN PaymentSum ps ON p.purchase_no = ps.purchase_no
+            WHERE p.purchase_no = ?
+        """, (data['purchaseNo'], data['purchaseNo']))
+        
+        conn.commit()
+        return jsonify({'success': True})
+        
+    except Exception as e:
+        if 'conn' in locals():
+            conn.rollback()
+        print('Error in save_purchase_payment:', str(e))
+        return jsonify({'error': str(e)}), 500
+    finally:
+        if 'conn' in locals():
+            conn.close()
+
+@purchase.route('/purchase_payment/detail/<purchase_no>')
+@login_required
+def get_purchase_payment_detail(purchase_no):
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        # 매입 정보 조회
+        cursor.execute("""
+            SELECT 
+                p.*,
+                v.vd_name as vendor_name,
+                COALESCE(pp.total_paid, 0) as paid_amount,
+                COALESCE(pp.total_vat, 0) as total_vat
+                -- Removed COALESCE(pp.total_transfer_fee, 0) as total_transfer_fee
+            FROM dbo.purchase_master p
+            LEFT JOIN dbo.CODE_VENDOR v ON p.vendor_code = v.vd_code
+            LEFT JOIN (
+                SELECT 
+                    purchase_no, 
+                    SUM(amount) as total_paid,
+                    SUM(vat) as total_vat
+                    -- Removed SUM(transfer_fee) as total_transfer_fee
+                FROM dbo.purchase_payment
+                GROUP BY purchase_no
+            ) pp ON p.purchase_no = pp.purchase_no
+            WHERE p.purchase_no = ?
+        """, (purchase_no,))
+        
+        purchase = cursor.fetchone()
+        if not purchase:
+            return jsonify({'error': 'Purchase not found'}), 404
+            
+        # 지급 이력 조회
+        cursor.execute("""
+            SELECT *
+            FROM dbo.purchase_payment
+            WHERE purchase_no = ?
+            ORDER BY payment_date DESC
+        """, (purchase_no,))
+        
+        payments = cursor.fetchall()
+        
+        result = {
+            'purchase': {
+                'purchaseNo': purchase.purchase_no,
+                'purchaseDate': purchase.purchase_date.strftime('%Y-%m-%d'),
+                'vendorCode': purchase.vendor_code.strip() if purchase.vendor_code else '',
+                'vendorName': purchase.vendor_name.strip() if purchase.vendor_name else '',
+                'totalAmount': float(purchase.total_amount) if purchase.total_amount else 0,
+                'paidAmount': float(purchase.paid_amount) if purchase.paid_amount else 0,
+                'totalVat': float(purchase.total_vat) if purchase.total_vat else 0,
+                'remainingAmount': float(purchase.total_amount - purchase.paid_amount) if purchase.total_amount and purchase.paid_amount else float(purchase.total_amount),
+                'paymentDueDate': purchase.payment_due_date.strftime('%Y-%m-%d') if purchase.payment_due_date else None,
+                'status': '완료' if purchase.total_amount <= purchase.paid_amount else '미완료'
+            },
+            'payments': [{
+                'paymentId': payment.payment_id,
+                'paymentDate': payment.payment_date.strftime('%Y-%m-%d'),
+                'paymentMethod': payment.payment_method.strip() if payment.payment_method else '',
+                'amount': float(payment.amount) if payment.amount else 0,
+                'vat': float(payment.vat) if payment.vat else 0,
+                # Removed 'transferFee': float(payment.transfer_fee) if payment.transfer_fee else 0,
+                'remarks': payment.remarks.strip() if payment.remarks else ''
+            } for payment in payments]
+        }
+        
+        return jsonify(result)
+        
+    except Exception as e:
+        print('Error in get_purchase_payment_detail:', str(e))
+        return jsonify({'error': str(e)}), 500
+    finally:
+        if 'conn' in locals():
+            conn.close()
+
+@purchase.route('/api/payment/summary', methods=['POST'], endpoint='get_purchase_payment_summary_api')
+@login_required
+def get_purchase_payment_summary():
+    try:
+        data = request.get_json()
+        start_date = data.get('startDate')
+        end_date = data.get('endDate')
+        vendor_code = data.get('vendorCode')
+        
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        # 기본 쿼리
+        query = """
+            SELECT 
+                v.vd_code as vendor_code,
+                v.vd_name as vendor_name,
+                p.purchase_date,
+                p.currency_code,
+                p.exchange_rate,
+                p.total_amount,
+                p.total_amount * 0.07 as vat_amount,
+                p.total_amount * 1.07 as sum_amount,
+                COALESCE(pp.paid_amount, 0) as paid_amount
+            FROM dbo.purchase_master p
+            LEFT JOIN dbo.CODE_VENDOR v ON p.vendor_code = v.vd_code
+            LEFT JOIN (
+                SELECT 
+                    purchase_no, 
+                    SUM(amount) as paid_amount
+                FROM dbo.purchase_payment
+                GROUP BY purchase_no
+            ) pp ON p.purchase_no = pp.purchase_no
+            WHERE 1=1
+        """
+        params = []
+        
+        # 검색 조건 추가
+        if start_date:
+            query += " AND p.purchase_date >= ?"
+            params.append(start_date)
+        if end_date:
+            query += " AND p.purchase_date <= ?"
+            params.append(end_date)
+        if vendor_code:
+            query += " AND p.vendor_code = ?"
+            params.append(vendor_code)
+        
+        # 정렬
+        query += " ORDER BY p.purchase_date DESC, v.vd_code"
+
+        cursor.execute(query, params)
+        rows = cursor.fetchall()
+
+        items = []
+        for row in rows:
+            payment_date = row.purchase_date.strftime('%Y-%m-%d') if row.purchase_date else None
+            
+            items.append({
+                'vendorName': row.vendor_name.strip() if row.vendor_name else '',
+                'paymentDate': payment_date,
+                'currency': row.currency_code.strip() if row.currency_code else '',
+                'exchangeRate': float(row.exchange_rate) if row.exchange_rate else 0,
+                'totalAmount': float(row.total_amount) if row.total_amount else 0,
+                'vatAmount': float(row.vat_amount) if row.vat_amount else 0,
+                'sumAmount': float(row.sum_amount) if row.sum_amount else 0,
+                'paidAmount': float(row.paid_amount) if row.paid_amount else 0,
+                'paidVat': float(row.paid_vat) if row.paid_vat else 0,
+                'remainingAmount': float(row.total_amount - row.paid_amount) if row.total_amount and row.paid_amount else float(row.total_amount),
+                'paymentDueDate': row.payment_due_date.strftime('%Y-%m-%d') if row.payment_due_date else None,
+                'purchaseStatus': row.status.strip() if row.status else 'PROCESS',  # 기본값을 PROCESS로 설정
+                'paymentStatus': payment_status
+            })
+
+        # Calculate summary totals
+        summary = {
+            'totalAmount': round(sum(item['totalAmount'] for item in result), 5),
+            'totalVat': round(sum(item['totalVat'] for item in result), 5),
+            'sumAmount': round(sum(item['sumAmount'] for item in result), 5),  # 총합계금액
+            'paidAmount': round(sum(item['paidAmount'] for item in result), 5),  # 총지급액
+            'totalPaid': round(sum(item['paidAmount'] for item in result), 5),  # 기존 totalPaid(호환)
+            'totalPaidVat': round(sum(item['paidVat'] for item in result), 5),
+            'remainingAmount': round(sum(item['remainingAmount'] for item in result), 5)
+        }
+
+        return jsonify({
+            'payments': result,
+            'pagination': {
+                'totalCount': total_count,
+                'currentPage': page,
+                'perPage': per_page,
+                'totalPages': (total_count + per_page - 1) // per_page
+            },
+            'summary': summary
+        })
+
+    except Exception as e:
+        print(f"Error in get_purchase_payments: {str(e)}")
+        raise
+
+@purchase.route('/purchase_payment/save', methods=['POST'])
+@login_required
+def save_purchase_payment():
+    try:
+        data = request.get_json()
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        # 지급 정보 저장
+        cursor.execute("""
+            INSERT INTO dbo.purchase_payment (
+                purchase_no, payment_date, payment_method,
+                amount, vat, -- Removed transfer_fee
+                remarks,
+                createuser, createdate
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, GETDATE())
+        """, (
+            data['purchaseNo'],
+            data['paymentDate'],
+            data['paymentMethod'],
+            data['amount'],
+            data.get('vat', 0),  # 부가세
+            # data.get('transferFee', 0),  # Removed 이체수수료
+            data.get('remarks', ''),
+            'SYSTEM'
+        ))
+        
+        # 매입 상태 업데이트 (지급완료 여부 확인)
+        cursor.execute("""
+            WITH PaymentSum AS (
+                SELECT purchase_no, SUM(amount) as total_paid
+                FROM dbo.purchase_payment
+                WHERE purchase_no = ?
+                GROUP BY purchase_no
+            )
+            UPDATE dbo.purchase_master SET
+                status = CASE 
+                    WHEN p.total_amount <= ps.total_paid THEN 'COMPLETED'
+                    ELSE 'CONFIRMED'
+                END
+            FROM dbo.purchase_master p
+            JOIN PaymentSum ps ON p.purchase_no = ps.purchase_no
+            WHERE p.purchase_no = ?
+        """, (data['purchaseNo'], data['purchaseNo']))
+        
+        conn.commit()
+        return jsonify({'success': True})
+        
+    except Exception as e:
+        if 'conn' in locals():
+            conn.rollback()
+        print('Error in save_purchase_payment:', str(e))
+        return jsonify({'error': str(e)}), 500
+    finally:
+        if 'conn' in locals():
+            conn.close()
+
+@purchase.route('/purchase_payment/detail/<purchase_no>')
+@login_required
+def get_purchase_payment_detail(purchase_no):
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        # 매입 정보 조회
+        cursor.execute("""
+            SELECT 
+                p.*,
+                v.vd_name as vendor_name,
+                COALESCE(pp.total_paid, 0) as paid_amount,
+                COALESCE(pp.total_vat, 0) as total_vat
+                -- Removed COALESCE(pp.total_transfer_fee, 0) as total_transfer_fee
+            FROM dbo.purchase_master p
+            LEFT JOIN dbo.CODE_VENDOR v ON p.vendor_code = v.vd_code
+            LEFT JOIN (
+                SELECT 
+                    purchase_no, 
+                    SUM(amount) as total_paid,
+                    SUM(vat) as total_vat
+                    -- Removed SUM(transfer_fee) as total_transfer_fee
+                FROM dbo.purchase_payment
+                GROUP BY purchase_no
+            ) pp ON p.purchase_no = pp.purchase_no
+            WHERE p.purchase_no = ?
+        """, (purchase_no,))
+        
+        purchase = cursor.fetchone()
+        if not purchase:
+            return jsonify({'error': 'Purchase not found'}), 404
+            
+        # 지급 이력 조회
+        cursor.execute("""
+            SELECT *
+            FROM dbo.purchase_payment
+            WHERE purchase_no = ?
+            ORDER BY payment_date DESC
+        """, (purchase_no,))
+        
+        payments = cursor.fetchall()
+        
+        result = {
+            'purchase': {
+                'purchaseNo': purchase.purchase_no,
+                'purchaseDate': purchase.purchase_date.strftime('%Y-%m-%d'),
+                'vendorCode': purchase.vendor_code.strip() if purchase.vendor_code else '',
+                'vendorName': purchase.vendor_name.strip() if purchase.vendor_name else '',
+                'totalAmount': float(purchase.total_amount) if purchase.total_amount else 0,
+                'paidAmount': float(purchase.paid_amount) if purchase.paid_amount else 0,
+                'totalVat': float(purchase.total_vat) if purchase.total_vat else 0,
+                'remainingAmount': float(purchase.total_amount - purchase.paid_amount) if purchase.total_amount and purchase.paid_amount else float(purchase.total_amount),
+                'paymentDueDate': purchase.payment_due_date.strftime('%Y-%m-%d') if purchase.payment_due_date else None,
+                'status': '완료' if purchase.total_amount <= purchase.paid_amount else '미완료'
+            },
+            'payments': [{
+                'paymentId': payment.payment_id,
+                'paymentDate': payment.payment_date.strftime('%Y-%m-%d'),
+                'paymentMethod': payment.payment_method.strip() if payment.payment_method else '',
+                'amount': float(payment.amount) if payment.amount else 0,
+                'vat': float(payment.vat) if payment.vat else 0,
+                # Removed 'transferFee': float(payment.transfer_fee) if payment.transfer_fee else 0,
+                'remarks': payment.remarks.strip() if payment.remarks else ''
+            } for payment in payments]
+        }
+        
+        return jsonify(result)
+        
+    except Exception as e:
+        print('Error in get_purchase_payment_detail:', str(e))
+        return jsonify({'error': str(e)}), 500
+    finally:
+        if 'conn' in locals():
+            conn.close()
+
+@purchase.route('/api/payment/summary', methods=['POST'], endpoint='get_purchase_payment_summary_api')
+@login_required
+def get_purchase_payment_summary():
+    try:
+        data = request.get_json()
+        start_date = data.get('startDate')
+        end_date = data.get('endDate')
+        vendor_code = data.get('vendorCode')
+        
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        # 기본 쿼리
+        query = """
+            SELECT 
+                v.vd_code as vendor_code,
+                v.vd_name as vendor_name,
+                p.purchase_date,
+                p.currency_code,
+                p.exchange_rate,
+                p.total_amount,
+                p.total_amount * 0.07 as vat_amount,
+                p.total_amount * 1.07 as sum_amount,
+                COALESCE(pp.paid_amount, 0) as paid_amount
+            FROM dbo.purchase_master p
+            LEFT JOIN dbo.CODE_VENDOR v ON p.vendor_code = v.vd_code
+            LEFT JOIN (
+                SELECT 
+                    purchase_no, 
+                    SUM(amount) as paid_amount
+                FROM dbo.purchase_payment
+                GROUP BY purchase_no
+            ) pp ON p.purchase_no = pp.purchase_no
+            WHERE 1=1
+        """
+        params = []
+        
+        # 검색 조건 추가
+        if start_date:
+            query += " AND p.purchase_date >= ?"
+            params.append(start_date)
+        if end_date:
+            query += " AND p.purchase_date <= ?"
+            params.append(end_date)
+        if vendor_code:
+            query += " AND p.vendor_code = ?"
+            params.append(vendor_code)
+        
+        # 정렬
+        query += " ORDER BY p.purchase_date DESC, v.vd_code"
+
+        cursor.execute(query, params)
+        rows = cursor.fetchall()
+
+        items = []
+        for row in rows:
+            payment_date = row.purchase_date.strftime('%Y-%m-%d') if row.purchase_date else None
+            
+            items.append({
+                'vendorName': row.vendor_name.strip() if row.vendor_name else '',
+                'paymentDate': payment_date,
+                'currency': row.currency_code.strip() if row.currency_code else '',
+                'exchangeRate': float(row.exchange_rate) if row.exchange_rate else 0,
+                'totalAmount': float(row.total_amount) if row.total_amount else 0,
+                'vatAmount': float(row.vat_amount) if row.vat_amount else 0,
+                'sumAmount': float(row.sum_amount) if row.sum_amount else 0,
+                'paidAmount': float(row.paid_amount) if row.paid_amount else 0,
+                'paidVat': float(row.paid_vat) if row.paid_vat else 0,
+                'remainingAmount': float(row.total_amount - row.paid_amount) if row.total_amount and row.paid_amount else float(row.total_amount),
+                'paymentDueDate': row.payment_due_date.strftime('%Y-%m-%d') if row.payment_due_date else None,
+                'purchaseStatus': row.status.strip() if row.status else 'PROCESS',  # 기본값을 PROCESS로 설정
+                'paymentStatus': payment_status
+            })
+
+        # Calculate summary totals
+        summary = {
+            'totalAmount': round(sum(item['totalAmount'] for item in result), 5),
+            'totalVat': round(sum(item['totalVat'] for item in result), 5),
+            'sumAmount': round(sum(item['sumAmount'] for item in result), 5),  # 총합계금액
+            'paidAmount': round(sum(item['paidAmount'] for item in result), 5),  # 총지급액
+            'totalPaid': round(sum(item['paidAmount'] for item in result), 5),  # 기존 totalPaid(호환)
+            'totalPaidVat': round(sum(item['paidVat'] for item in result), 5),
+            'remainingAmount': round(sum(item['remainingAmount'] for item in result), 5)
+        }
+
+        return jsonify({
+            'payments': result,
+            'pagination': {
+                'totalCount': total_count,
+                'currentPage': page,
+                'perPage': per_page,
+                'totalPages': (total_count + per_page - 1) // per_page
+            },
+            'summary': summary
+        })
+
+    except Exception as e:
+        print(f"Error in get_purchase_payments: {str(e)}")
+        raise
+
+@purchase.route('/purchase_payment/save', methods=['POST'])
+@login_required
+def save_purchase_payment():
+    try:
+        data = request.get_json()
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        # 지급 정보 저장
+        cursor.execute("""
+            INSERT INTO dbo.purchase_payment (
+                purchase_no, payment_date, payment_method,
+                amount, vat, -- Removed transfer_fee
+                remarks,
+                createuser, createdate
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, GETDATE())
+        """, (
+            data['purchaseNo'],
+            data['paymentDate'],
+            data['paymentMethod'],
+            data['amount'],
+            data.get('vat', 0),  # 부가세
+            # data.get('transferFee', 0),  # Removed 이체수수료
+            data.get('remarks', ''),
+            'SYSTEM'
+        ))
+        
+        # 매입 상태 업데이트 (지급완료 여부 확인)
+        cursor.execute("""
+            WITH PaymentSum AS (
+                SELECT purchase_no, SUM(amount) as total_paid
+                FROM dbo.purchase_payment
+                WHERE purchase_no = ?
+                GROUP BY purchase_no
+            )
+            UPDATE dbo.purchase_master SET
+                status = CASE 
+                    WHEN p.total_amount <= ps.total_paid THEN 'COMPLETED'
+                    ELSE 'CONFIRMED'
+                END
+            FROM dbo.purchase_master p
+            JOIN PaymentSum ps ON p.purchase_no = ps.purchase_no
+            WHERE p.purchase_no = ?
+        """, (data['purchaseNo'], data['purchaseNo']))
+        
+        conn.commit()
+        return jsonify({'success': True})
+        
+    except Exception as e:
+        if 'conn' in locals():
+            conn.rollback()
+        print('Error in save_purchase_payment:', str(e))
+        return jsonify({'error': str(e)}), 500
+    finally:
+        if 'conn' in locals():
+            conn.close()
+
+@purchase.route('/purchase_payment/detail/<purchase_no>')
+@login_required
+def get_purchase_payment_detail(purchase_no):
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        # 매입 정보 조회
+        cursor.execute("""
+            SELECT 
+                p.*,
+                v.vd_name as vendor_name,
+                COALESCE(pp.total_paid, 0) as paid_amount,
+                COALESCE(pp.total_vat, 0) as total_vat
+                -- Removed COALESCE(pp.total_transfer_fee, 0) as total_transfer_fee
+            FROM dbo.purchase_master p
+            LEFT JOIN dbo.CODE_VENDOR v ON p.vendor_code = v.vd_code
+            LEFT JOIN (
+                SELECT 
+                    purchase_no, 
+                    SUM(amount) as total_paid,
+                    SUM(vat) as total_vat
+                    -- Removed SUM(transfer_fee) as total_transfer_fee
+                FROM dbo.purchase_payment
+                GROUP BY purchase_no
+            ) pp ON p.purchase_no = pp.purchase_no
+            WHERE p.purchase_no = ?
+        """, (purchase_no,))
+        
+        purchase = cursor.fetchone()
+        if not purchase:
+            return jsonify({'error': 'Purchase not found'}), 404
+            
+        # 지급 이력 조회
+        cursor.execute("""
+            SELECT *
+            FROM dbo.purchase_payment
+            WHERE purchase_no = ?
+            ORDER BY payment_date DESC
+        """, (purchase_no,))
+        
+        payments = cursor.fetchall()
+        
+        result = {
+            'purchase': {
+                'purchaseNo': purchase.purchase_no,
+                'purchaseDate': purchase.purchase_date.strftime('%Y-%m-%d'),
+                'vendorCode': purchase.vendor_code.strip() if purchase.vendor_code else '',
+                'vendorName': purchase.vendor_name.strip() if purchase.vendor_name else '',
+                'totalAmount': float(purchase.total_amount) if purchase.total_amount else 0,
+                'paidAmount': float(purchase.paid_amount) if purchase.paid_amount else 0,
+                'totalVat': float(purchase.total_vat) if purchase.total_vat else 0,
+                'remainingAmount': float(purchase.total_amount - purchase.paid_amount) if purchase.total_amount and purchase.paid_amount else float(purchase.total_amount),
+                'paymentDueDate': purchase.payment_due_date.strftime('%Y-%m-%d') if purchase.payment_due_date else None,
+                'status': '완료' if purchase.total_amount <= purchase.paid_amount else '미완료'
+            },
+            'payments': [{
+                'paymentId': payment.payment_id,
+                'paymentDate': payment.payment_date.strftime('%Y-%m-%d'),
+                'paymentMethod': payment.payment_method.strip() if payment.payment_method else '',
+                'amount': float(payment.amount) if payment.amount else 0,
+                'vat': float(payment.vat) if payment.vat else 0,
+                # Removed 'transferFee': float(payment.transfer_fee) if payment.transfer_fee else 0,
+                'remarks': payment.remarks.strip() if payment.remarks else ''
+            } for payment in payments]
+        }
+        
+        return jsonify(result)
+        
+    except Exception as e:
+        print('Error in get_purchase_payment_detail:', str(e))
+        return jsonify({'error': str(e)}), 500
+    finally:
+        if 'conn' in locals():
+            conn.close()
+
+@purchase.route('/api/payment/summary', methods=['POST'], endpoint='get_purchase_payment_summary_api')
+@login_required
+def get_purchase_payment_summary():
+    try:
+        data = request.get_json()
+        start_date = data.get('startDate')
+        end_date = data.get('endDate')
+        vendor_code = data.get('vendorCode')
+        
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        # 기본 쿼리
+        query = """
+            SELECT 
+                v.vd_code as vendor_code,
+                v.vd_name as vendor_name,
+                p.purchase_date,
+                p.currency_code,
+                p.exchange_rate,
+                p.total_amount,
+                p.total_amount * 0.07 as vat_amount,
+                p.total_amount * 1.07 as sum_amount,
+                COALESCE(pp.paid_amount, 0) as paid_amount
+            FROM dbo.purchase_master p
+            LEFT JOIN dbo.CODE_VENDOR v ON p.vendor_code = v.vd_code
+            LEFT JOIN (
+                SELECT 
+                    purchase_no, 
+                    SUM(amount) as paid_amount
+                FROM dbo.purchase_payment
+                GROUP BY purchase_no
+            ) pp ON p.purchase_no = pp.purchase_no
+            WHERE 1=1
+        """
+        params = []
+        
+        # 검색 조건 추가
+        if start_date:
+            query += " AND p.purchase_date >= ?"
+            params.append(start_date)
+        if end_date:
+            query += " AND p.purchase_date <= ?"
+            params.append(end_date)
+        if vendor_code:
+            query += " AND p.vendor_code = ?"
+            params.append(vendor_code)
+        
+        # 정렬
+        query += " ORDER BY p.purchase_date DESC, v.vd_code"
+
+        cursor.execute(query, params)
+        rows = cursor.fetchall()
+
+        items = []
+        for row in rows:
+            payment_date = row.purchase_date.strftime('%Y-%m-%d') if row.purchase_date else None
+            
+            items.append({
+                'vendorName': row.vendor_name.strip() if row.vendor_name else '',
+                'paymentDate': payment_date,
+                'currency': row.currency_code.strip() if row.currency_code else '',
+                'exchangeRate': float(row.exchange_rate) if row.exchange_rate else 0,
+                'totalAmount': float(row.total_amount) if row.total_amount else 0,
+                'vatAmount': float(row.vat_amount) if row.vat_amount else 0,
+                'sumAmount': float(row.sum_amount) if row.sum_amount else 0,
+                'paidAmount': float(row.paid_amount) if row.paid_amount else 0,
+                'paidVat': float(row.paid_vat) if row.paid_vat else 0,
+                'remainingAmount': float(row.total_amount - row.paid_amount) if row.total_amount and row.paid_amount else float(row.total_amount),
+                'paymentDueDate': row.payment_due_date.strftime('%Y-%m-%d') if row.payment_due_date else None,
+                'purchaseStatus': row.status.strip() if row.status else 'PROCESS',  # 기본값을 PROCESS로 설정
+                'paymentStatus': payment_status
+            })
+
+        # Calculate summary totals
+        summary = {
+            'totalAmount': round(sum(item['totalAmount'] for item in result), 5),
+            'totalVat': round(sum(item['totalVat'] for item in result), 5),
+            'sumAmount': round(sum(item['sumAmount'] for item in result), 5),  # 총합계금액
+            'paidAmount': round(sum(item['paidAmount'] for item in result), 5),  # 총지급액
+            'totalPaid': round(sum(item['paidAmount'] for item in result), 5),  # 기존 totalPaid(호환)
+            'totalPaidVat': round(sum(item['paidVat'] for item in result), 5),
+            'remainingAmount': round(sum(item['remainingAmount'] for item in result), 5)
+        }
+
+        return jsonify({
+            'payments': result,
+            'pagination': {
+                'totalCount': total_count,
+                'currentPage': page,
+                'perPage': per_page,
+                'totalPages': (total_count + per_page - 1) // per_page
+            },
+            'summary': summary
+        })
+
+    except Exception as e:
+        print(f"Error in get_purchase_payments: {str(e)}")
+        raise
+
+@purchase.route('/purchase_payment/save', methods=['POST'])
+@login_required
+def save_purchase_payment():
+    try:
+        data = request.get_json()
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        # 지급 정보 저장
+        cursor.execute("""
+            INSERT INTO dbo.purchase_payment (
+                purchase_no, payment_date, payment_method,
+                amount, vat, -- Removed transfer_fee
+                remarks,
+                createuser, createdate
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, GETDATE())
+        """, (
+            data['purchaseNo'],
+            data['paymentDate'],
+            data['paymentMethod'],
+            data['amount'],
+            data.get('vat', 0),  # 부가세
+            # data.get('transferFee', 0),  # Removed 이체수수료
+            data.get('remarks', ''),
+            'SYSTEM'
+        ))
+        
+        # 매입 상태 업데이트 (지급완료 여부 확인)
+        cursor.execute("""
+            WITH PaymentSum AS (
+                SELECT purchase_no, SUM(amount) as total_paid
+                FROM dbo.purchase_payment
+                WHERE purchase_no = ?
+                GROUP BY purchase_no
+            )
+            UPDATE dbo.purchase_master SET
+                status = CASE 
+                    WHEN p.total_amount <= ps.total_paid THEN 'COMPLETED'
+                    ELSE 'CONFIRMED'
+                END
+            FROM dbo.purchase_master p
+            JOIN PaymentSum ps ON p.purchase_no = ps.purchase_no
+            WHERE p.purchase_no = ?
+        """, (data['purchaseNo'], data['purchaseNo']))
+        
+        conn.commit()
+        return jsonify({'success': True})
+        
+    except Exception as e:
+        if 'conn' in locals():
+            conn.rollback()
+        print('Error in save_purchase_payment:', str(e))
+        return jsonify({'error': str(e)}), 500
+    finally:
+        if 'conn' in locals():
+            conn.close()
+
+@purchase.route('/purchase_payment/detail/<purchase_no>')
+@login_required
+def get_purchase_payment_detail(purchase_no):
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        # 매입 정보 조회
+        cursor.execute("""
+            SELECT 
+                p.*,
+                v.vd_name as vendor_name,
+                COALESCE(pp.total_paid, 0) as paid_amount,
+                COALESCE(pp.total_vat, 0) as total_vat
+                -- Removed COALESCE(pp.total_transfer_fee, 0) as total_transfer_fee
+            FROM dbo.purchase_master p
+            LEFT JOIN dbo.CODE_VENDOR v ON p.vendor_code = v.vd_code
+            LEFT JOIN (
+                SELECT 
+                    purchase_no, 
+                    SUM(amount) as total_paid,
+                    SUM(vat) as total_vat
+                    -- Removed SUM(transfer_fee) as total_transfer_fee
+                FROM dbo.purchase_payment
+                GROUP BY purchase_no
+            ) pp ON p.purchase_no = pp.purchase_no
+            WHERE p.purchase_no = ?
+        """, (purchase_no,))
+        
+        purchase = cursor.fetchone()
+        if not purchase:
+            return jsonify({'error': 'Purchase not found'}), 404
+            
+        # 지급 이력 조회
+        cursor.execute("""
+            SELECT *
+            FROM dbo.purchase_payment
+            WHERE purchase_no = ?
+            ORDER BY payment_date DESC
+        """, (purchase_no,))
+        
+        payments = cursor.fetchall()
+        
+        result = {
+            'purchase': {
+                'purchaseNo': purchase.purchase_no,
+                'purchaseDate': purchase.purchase_date.strftime('%Y-%m-%d'),
+                'vendorCode': purchase.vendor_code.strip() if purchase.vendor_code else '',
+                'vendorName': purchase.vendor_name.strip() if purchase.vendor_name else '',
+                'totalAmount': float(purchase.total_amount) if purchase.total_amount else 0,
+                'paidAmount': float(purchase.paid_amount) if purchase.paid_amount else 0,
+                'totalVat': float(purchase.total_vat) if purchase.total_vat else 0,
+                'remainingAmount': float(purchase.total_amount - purchase.paid_amount) if purchase.total_amount and purchase.paid_amount else float(purchase.total_amount),
+                'paymentDueDate': purchase.payment_due_date.strftime('%Y-%m-%d') if purchase.payment_due_date else None,
+                'status': '완료' if purchase.total_amount <= purchase.paid_amount else '미완료'
+            },
+            'payments': [{
+                'paymentId': payment.payment_id,
+                'paymentDate': payment.payment_date.strftime('%Y-%m-%d'),
+                'paymentMethod': payment.payment_method.strip() if payment.payment_method else '',
+                'amount': float(payment.amount) if payment.amount else 0,
+                'vat': float(payment.vat) if payment.vat else 0,
+                # Removed 'transferFee': float(payment.transfer_fee) if payment.transfer_fee else 0,
+                'remarks': payment.remarks.strip() if payment.remarks else ''
+            } for payment in payments]
+        }
+        
+        return jsonify(result)
+        
+    except Exception as e:
+        print('Error in get_purchase_payment_detail:', str(e))
+        return jsonify({'error': str(e)}), 500
+    finally:
+        if 'conn' in locals():
+            conn.close()
+
+@purchase.route('/api/payment/summary', methods=['POST'], endpoint='get_purchase_payment_summary_api')
+@login_required
+def get_purchase_payment_summary():
+    try:
+        data = request.get_json()
+        start_date = data.get('startDate')
+        end_date = data.get('endDate')
+        vendor_code = data.get('vendorCode')
+        
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        # 기본 쿼리
+        query = """
+            SELECT 
+                v.vd_code as vendor_code,
+                v.vd_name as vendor_name,
+                p.purchase_date,
+                p.currency_code,
+                p.exchange_rate,
+                p.total_amount,
+                p.total_amount * 0.07 as vat_amount,
+                p.total_amount * 1.07 as sum_amount,
+                COALESCE(pp.paid_amount, 0) as paid_amount
+            FROM dbo.purchase_master p
+            LEFT JOIN dbo.CODE_VENDOR v ON p.vendor_code = v.vd_code
+            LEFT JOIN (
+                SELECT 
+                    purchase_no, 
+                    SUM(amount) as paid_amount
+                FROM dbo.purchase_payment
+                GROUP BY purchase_no
+            ) pp ON p.purchase_no = pp.purchase_no
+            WHERE 1=1
+        """
+        params = []
+        
+        # 검색 조건 추가
+        if start_date:
+            query += " AND p.purchase_date >= ?"
+            params.append(start_date)
+        if end_date:
+            query += " AND p.purchase_date <= ?"
+            params.append(end_date)
+        if vendor_code:
+            query += " AND p.vendor_code = ?"
+            params.append(vendor_code)
+        
+        # 정렬
+        query += " ORDER BY p.purchase_date DESC, v.vd_code"
+
+        cursor.execute(query, params)
+        rows = cursor.fetchall()
+
+        items = []
+        for row in rows:
+            payment_date = row.purchase_date.strftime('%Y-%m-%d') if row.purchase_date else None
+            
+            items.append({
+                'vendorName': row.vendor_name.strip() if row.vendor_name else '',
+                'paymentDate': payment_date,
+                'currency': row.currency_code.strip() if row.currency_code else '',
+                'exchangeRate': float(row.exchange_rate) if row.exchange_rate else 0,
+                'totalAmount': float(row.total_amount) if row.total_amount else 0,
+                'vatAmount': float(row.vat_amount) if row.vat_amount else 0,
+                'sumAmount': float(row.sum_amount) if row.sum_amount else 0,
+                'paidAmount': float(row.paid_amount) if row.paid_amount else 0,
+                'paidVat': float(row.paid_vat) if row.paid_vat else 0,
+                'remainingAmount': float(row.total_amount - row.paid_amount) if row.total_amount and row.paid_amount else float(row.total_amount),
+                'paymentDueDate': row.payment_due_date.strftime('%Y-%m-%d') if row.payment_due_date else None,
+                'purchaseStatus': row.status.strip() if row.status else 'PROCESS',  # 기본값을 PROCESS로 설정
+                'paymentStatus': payment_status
+            })
+
+        # Calculate summary totals
+        summary = {
+            'totalAmount': round(sum(item['totalAmount'] for item in result), 5),
+            'totalVat': round(sum(item['totalVat'] for item in result), 5),
+            'sumAmount': round(sum(item['sumAmount'] for item in result), 5),  # 총합계금액
+            'paidAmount': round(sum(item['paidAmount'] for item in result), 5),  # 총지급액
+            'totalPaid': round(sum(item['paidAmount'] for item in result), 5),  # 기존 totalPaid(호환)
+            'totalPaidVat': round(sum(item['paidVat'] for item in result), 5),
+            'remainingAmount': round(sum(item['remainingAmount'] for item in result), 5)
+        }
+
+        return jsonify({
+            'payments': result,
+            'pagination': {
+                'totalCount': total_count,
+                'currentPage': page,
+                'perPage': per_page,
+                'totalPages': (total_count + per_page - 1) // per_page
+            },
+            'summary': summary
+        })
+
+    except Exception as e:
+        print(f"Error in get_purchase_payments: {str(e)}")
+        raise
+
+@purchase.route('/purchase_payment/save', methods=['POST'])
+@login_required
+def save_purchase_payment():
+    try:
+        data = request.get_json()
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        # 지급 정보 저장
+        cursor.execute("""
+            INSERT INTO dbo.purchase_payment (
+                purchase_no, payment_date, payment_method,
+                amount, vat, -- Removed transfer_fee
+                remarks,
+                createuser, createdate
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, GETDATE())
+        """, (
+            data['purchaseNo'],
+            data['paymentDate'],
+            data['paymentMethod'],
+            data['amount'],
+            data.get('vat', 0),  # 부가세
+            # data.get('transferFee', 0),  # Removed 이체수수료
+            data.get('remarks', ''),
+            'SYSTEM'
+        ))
+        
+        # 매입 상태 업데이트 (지급완료 여부 확인)
+        cursor.execute("""
+            WITH PaymentSum AS (
+                SELECT purchase_no, SUM(amount) as total_paid
+                FROM dbo.purchase_payment
+                WHERE purchase_no = ?
+                GROUP BY purchase_no
+            )
+            UPDATE dbo.purchase_master SET
+                status = CASE 
+                    WHEN p.total_amount <= ps.total_paid THEN 'COMPLETED'
+                    ELSE 'CONFIRMED'
+                END
+            FROM dbo.purchase_master p
+            JOIN PaymentSum ps ON p.purchase_no = ps.purchase_no
+            WHERE p.purchase_no = ?
+        """, (data['purchaseNo'], data['purchaseNo']))
+        
+        conn.commit()
+        return jsonify({'success': True})
+        
+    except Exception as e:
+        if 'conn' in locals():
+            conn.rollback()
+        print('Error in save_purchase_payment:', str(e))
+        return jsonify({'error': str(e)}), 500
+    finally:
+        if 'conn' in locals():
+            conn.close()
+
+@purchase.route('/purchase_payment/detail/<purchase_no>')
+@login_required
+def get_purchase_payment_detail(purchase_no):
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        # 매입 정보 조회
+        cursor.execute("""
+            SELECT 
+                p.*,
+                v.vd_name as vendor_name,
+                COALESCE(pp.total_paid, 0) as paid_amount,
+                COALESCE(pp.total_vat, 0) as total_vat
+                -- Removed COALESCE(pp.total_transfer_fee, 0) as total_transfer_fee
+            FROM dbo.purchase_master p
+            LEFT JOIN dbo.CODE_VENDOR v ON p.vendor_code = v.vd_code
+            LEFT JOIN (
+                SELECT 
+                    purchase_no, 
+                    SUM(amount) as total_paid,
+                    SUM(vat) as total_vat
+                    -- Removed SUM(transfer_fee) as total_transfer_fee
+                FROM dbo.purchase_payment
+                GROUP BY purchase_no
+            ) pp ON p.purchase_no = pp.purchase_no
+            WHERE p.purchase_no = ?
+        """, (purchase_no,))
+        
+        purchase = cursor.fetchone()
+        if not purchase:
+            return jsonify({'error': 'Purchase not found'}), 404
+            
+        # 지급 이력 조회
+        cursor.execute("""
+            SELECT *
+            FROM dbo.purchase_payment
+            WHERE purchase_no = ?
+            ORDER BY payment_date DESC
+        """, (purchase_no,))
+        
+        payments = cursor.fetchall()
+        
+        result = {
+            'purchase': {
+                'purchaseNo': purchase.purchase_no,
+                'purchaseDate': purchase.purchase_date.strftime('%Y-%m-%d'),
+                'vendorCode': purchase.vendor_code.strip() if purchase.vendor_code else '',
+                'vendorName': purchase.vendor_name.strip() if purchase.vendor_name else '',
+                'totalAmount': float(purchase.total_amount) if purchase.total_amount else 0,
+                'paidAmount': float(purchase.paid_amount) if purchase.paid_amount else 0,
+                'totalVat': float(purchase.total_vat) if purchase.total_vat else 0,
+                'remainingAmount': float(purchase.total_amount - purchase.paid_amount) if purchase.total_amount and purchase.paid_amount else float(purchase.total_amount),
+                'paymentDueDate': purchase.payment_due_date.strftime('%Y-%m-%d') if purchase.payment_due_date else None,
+                'status': '완료' if purchase.total_amount <= purchase.paid_amount else '미완료'
+            },
+            'payments': [{
+                'paymentId': payment.payment_id,
+                'paymentDate': payment.payment_date.strftime('%Y-%m-%d'),
+                'paymentMethod': payment.payment_method.strip() if payment.payment_method else '',
+                'amount': float(payment.amount) if payment.amount else 0,
+                'vat': float(payment.vat) if payment.vat else 0,
+                # Removed 'transferFee': float(payment.transfer_fee) if payment.transfer_fee else 0,
+                'remarks': payment.remarks.strip() if payment.remarks else ''
+            } for payment in payments]
+        }
+        
+        return jsonify(result)
+        
+    except Exception as e:
+        print('Error in get_purchase_payment_detail:', str(e))
+        return jsonify({'error': str(e)}), 500
+    finally:
+        if 'conn' in locals():
+            conn.close()
+
+# vendors API 추가
+@purchase.route('/vendors')
+@login_required
+def get_vendors():
+    try:
+        with get_db_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT vd_code, vd_name FROM CODE_VENDOR WHERE usage = 'Y' ORDER BY vd_name")
+            rows = cursor.fetchall()
+            vendors = []
+            for row in rows:
+                vendors.append({
+                    "code": row.vd_code.strip() if row.vd_code else "",
+                    "name": row.vd_name.strip() if row.vd_name else ""
+                })
+            cursor.close()
+            return jsonify(vendors)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+# purchases API 추가 (검색 기능 포함)
+@purchase.route('/purchases')
+@login_required
+def get_purchases():
+    try:
+        start_date = request.args.get('startDate', '')
+        end_date = request.args.get('endDate', '')
+        vendor_code = request.args.get('vendorCode', '')
+        status = request.args.get('status', '')
+        
+        with get_db_connection() as conn:
+            cursor = conn.cursor()
+            
+            query = """
+                SELECT p.id, p.purchase_date, p.purchase_no, p.vendor_code, 
+                       v.vd_name as vendor_name, p.warehouse_code, 
+                       p.currency_code, p.exchange_rate, p.total_amount,
+                       p.vat, p.sum_amount, p.paid_amount, p.unpaid_amount,
+                       p.payment_method, p.payment_due_date, p.status
+                FROM purchase_master p
+                LEFT JOIN CODE_VENDOR v ON p.vendor_code = v.vd_code
+                WHERE 1=1
+            """
+            params = []
+            
+            if start_date:
+                query += " AND p.purchase_date >= ?"
+                params.append(start_date)
+            if end_date:
+                query += " AND p.purchase_date <= ?"
+                params.append(end_date)
+            if vendor_code:
+                query += " AND p.vendor_code = ?"
+                params.append(vendor_code)
+            if status:
+                query += " AND p.status = ?"
+                params.append(status)
+            
+            query += " ORDER BY p.purchase_date DESC, p.purchase_no DESC"
+            
+            cursor.execute(query, params)
+            rows = cursor.fetchall()
+            purchases = []
+            for row in rows:
+                purchases.append({
+                    "id": row.id,
+                    "purchase_date": str(row.purchase_date) if row.purchase_date else "",
+                    "purchase_no": row.purchase_no if row.purchase_no else "",
+                    "vendor_code": row.vendor_code if row.vendor_code else "",
+                    "vendor_name": row.vendor_name if row.vendor_name else "",
+                    "warehouse_code": row.warehouse_code if row.warehouse_code else "",
+                    "currency_code": row.currency_code if row.currency_code else "",
+                    "exchange_rate": float(row.exchange_rate) if row.exchange_rate else 1.0,
+                    "total_amount": float(row.total_amount) if row.total_amount else 0,
+                    "vat": float(row.vat) if row.vat else 0,
+                    "sum_amount": float(row.sum_amount) if row.sum_amount else 0,
+                    "paid_amount": float(row.paid_amount) if row.paid_amount else 0,
+                    "unpaid_amount": float(row.unpaid_amount) if row.unpaid_amount else 0,
+                    "payment_method": row.payment_method if row.payment_method else "",
+                    "payment_due_date": str(row.payment_due_date) if row.payment_due_date else "",
+                    "status": row.status if row.status else "진행중"
+                })
+            cursor.close()
+            return jsonify(purchases)
+    except Exception as e:
+        from flask import current_app
+        current_app.logger.error(f"Error in get_purchases: {str(e)}")
+        return jsonify({"error": str(e)}), 500
+    finally:
+        if 'conn' in locals():
+            conn.close()

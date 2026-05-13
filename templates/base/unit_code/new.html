@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ get_text('unit_code_new') }} - MES 시스템</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/product_code.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+    <style>
+   /* Content Area Styles- SMALL */
+.content-area {
+    max-width: 1200px;
+    margin: 20px auto;
+    padding: 20px;
+    background-color: white;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    border-radius: 4px;
+}
+
+
+        .form-container {
+            background-color: #fff;
+            border-radius: 8px;
+            padding: 30px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        h2 {
+            font-size: 22px;
+            margin-bottom: 25px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #007bff;
+            color: #2c3e50;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 500;
+            color: #495057;
+            font-size: 14px;
+        }
+
+        .form-group input,
+        .form-group select,
+        .form-group textarea {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid #ced4da;
+            border-radius: 4px;
+            font-size: 14px;
+            line-height: 1.5;
+            transition: border-color 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+        }
+
+        .form-group textarea {
+            height: 100px;
+            resize: vertical;
+        }
+
+        .button-section {
+            margin-top: 30px;
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+        }
+
+        .btn {
+            padding: 8px 20px;
+            border: none;
+            border-radius: 4px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease-in-out;
+            min-width: 100px;
+        }
+
+        .btn-save {
+            background-color: #007bff;
+            color: white;
+        }
+
+        .btn-cancel {
+            background-color: #6c757d;
+            color: white;
+        }
+
+        .btn:hover {
+            transform: translateY(-1px);
+        }
+
+        .btn-save:hover {
+            background-color: #0056b3;
+        }
+
+        .btn-cancel:hover {
+            background-color: #5a6268;
+        }
+
+        .required::after {
+            content: " *";
+            color: #dc3545;
+        }
+    </style>
+</head>
+<body>
+    <nav class="main-nav">
+        {% include 'nav.html' %}
+    </nav>
+    <main class="content-area">
+        <div class="form-container">
+            <h2>{{ get_text('unit_code_new') }}</h2>
+            <form id="unitForm">
+                <div class="form-group">
+                    <label for="unitCode" class="required">{{ get_text('unit_code') }}</label>
+                    <input type="text" id="unitCode" name="unitCode" required maxlength="20" placeholder="{{ get_text('enter_unit_code') }}">
+                </div>
+                <div class="form-group">
+                    <label for="unitName" class="required">{{ get_text('unit_name') }}</label>
+                    <input type="text" id="unitName" name="unitName" required maxlength="50" placeholder="{{ get_text('enter_unit_name') }}">
+                </div>
+                <div class="form-group">
+                    <label for="usage">{{ get_text('usage') }}</label>
+                    <select id="usage" name="usage">
+                        <option value="Y">{{ get_text('use') }}</option>
+                        <option value="N">{{ get_text('unuse') }}</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="remark">{{ get_text('remarks') }}</label>
+                    <textarea id="remark" name="remark" maxlength="200" placeholder="{{ get_text('enter_remarks') }}"></textarea>
+                </div>
+                <div class="button-section">
+                    <button type="submit" class="btn btn-save">{{ get_text('save') }}</button>
+                    <button type="button" class="btn btn-cancel" onclick="history.back()">{{ get_text('cancel') }}</button>
+                </div>
+            </form>
+        </div>
+    </main>
+
+    <footer>
+        <p>&copy; 2024 MES 시스템. All rights reserved.</p>
+    </footer>
+
+    <script>
+        let isCodeValid = false;
+
+        // 단위코드 입력 필드의 값이 변경될 때마다 중복 체크
+        document.getElementById('unitCode').addEventListener('input', function() {
+            const code = this.value.trim();
+            if (code) {
+                checkDuplicateCode(code);
+            }
+        });
+
+        // 중복 체크 함수
+        function checkDuplicateCode(code) {
+            fetch(`/unit_code/check/${code}`)
+            .then(response => response.json())
+            .then(data => {
+                isCodeValid = !data.exists;
+                const unitCodeInput = document.getElementById('unitCode');
+                
+                if (data.exists) {
+                    unitCodeInput.setCustomValidity("{{ get_text('unit_code_exists') }}");
+                    unitCodeInput.style.borderColor = '#dc3545';
+                } else {
+                    unitCodeInput.setCustomValidity('');
+                    unitCodeInput.style.borderColor = '#28a745';
+                }
+                
+                unitCodeInput.reportValidity();
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                document.getElementById('unitCode').setCustomValidity("{{ get_text('check_failed') }}");
+            });
+        }
+
+        document.getElementById('unitForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            if (!isCodeValid) {
+                alert("{{ get_text('unit_code_exists') }}");
+                return;
+            }
+
+            const formData = {
+                code: document.getElementById('unitCode').value.trim(),
+                name: document.getElementById('unitName').value.trim(),
+                usage: document.getElementById('usage').value,
+                remark: document.getElementById('remark').value.trim()
+            };
+
+            // 필수 필드 검증
+            if (!formData.code || !formData.name) {
+                alert("{{ get_text('required_fields') }}");
+                return;
+            }
+
+            fetch('/unit_code/save', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(formData)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert("{{ get_text('save_success') }}");
+                    window.location.href = '/unit_code';
+                } else {
+                    alert(data.error || "{{ get_text('save_failed') }}");
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert("{{ get_text('save_failed') }}");
+            });
+        });
+    </script>   
+
+    <script>
+        document.querySelectorAll('.nav-item').forEach(item => {
+            item.addEventListener('mouseover', function() {
+                this.querySelector('.submenu').style.display = 'block';
+            });
+            
+            item.addEventListener('mouseout', function() {
+                this.querySelector('.submenu').style.display = 'none';
+            });
+        });
+    </script>
+</body>
+</html> 

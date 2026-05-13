@@ -1,0 +1,686 @@
+{% extends "base.html" %}
+
+{% block title %}{{ get_text('financial_summary') }}{% endblock %}
+
+{% block content %}
+<div class="financial-dashboard">
+    <!-- 헤더 섹션 -->
+    <div class="dashboard-header">
+        <div class="header-content">
+            <div class="header-title">
+                <div class="title-icon">
+                    <i class="fas fa-chart-line"></i>
+                </div>
+                <div class="title-text">
+                    <h1>{{ get_text('financial_summary') }}</h1>
+                    <p>{{ get_text('financial_summary_desc') }}</p>
+                </div>
+            </div>
+            <div class="header-actions">
+                <div class="date-filter">
+                    <form method="GET" class="filter-form">
+                        <div class="date-inputs">
+                            <div class="date-group">
+                                <label for="start_date">{{ get_text('start_date') }}</label>
+                                <input type="date" class="date-input" id="start_date" name="start_date" 
+                                       value="{{ request.args.get('start_date', default_start_date) }}">
+                            </div>
+                            <div class="date-separator">
+                                <i class="fas fa-arrow-right"></i>
+                            </div>
+                            <div class="date-group">
+                                <label for="end_date">{{ get_text('end_date') }}</label>
+                                <input type="date" class="date-input" id="end_date" name="end_date" 
+                                       value="{{ request.args.get('end_date', default_end_date) }}">
+                            </div>
+                        </div>
+                        <div class="filter-buttons">
+                            <button type="submit" class="btn-search">
+                                <i class="fas fa-search"></i>
+                                <span>{{ get_text('search') }}</span>
+                            </button>
+                            <a href="{{ url_for('financial.financial_summary') }}" class="btn-reset">
+                                <i class="fas fa-refresh"></i>
+                                <span>{{ get_text('reset') }}</span>
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 메인 콘텐츠 -->
+    <div class="dashboard-content">
+
+        <!-- 손익 계산 -->
+        <div class="profit-loss-section">
+            <div class="profit-loss-card">
+                <div class="profit-loss-header">
+                    <div class="header-icon">
+                        <i class="fas fa-calculator"></i>
+                    </div>
+                    <h3>{{ get_text('profit_loss_calculation') }}</h3>
+                </div>
+                <div class="profit-loss-content">
+                    <div class="profit-item sales">
+                        <div class="item-icon">
+                            <i class="fas fa-arrow-up"></i>
+                        </div>
+                        <div class="item-content">
+                            <div class="item-label">{{ get_text('total_sales') }}</div>
+                            <div class="item-value">{{ "{:,.0f}".format(sales_summary.total_sales or 0) }}</div>
+                        </div>
+                    </div>
+                    
+                    <div class="profit-item purchase">
+                        <div class="item-icon">
+                            <i class="fas fa-arrow-down"></i>
+                        </div>
+                        <div class="item-content">
+                            <div class="item-label">{{ get_text('total_purchase') }}</div>
+                            <div class="item-value">{{ "{:,.0f}".format(purchase_summary.total_purchase or 0) }}</div>
+                        </div>
+                    </div>
+                    
+                    <div class="profit-item result">
+                        <div class="item-icon">
+                            <i class="fas fa-equals"></i>
+                        </div>
+                        <div class="item-content">
+                            <div class="item-label">{{ get_text('gross_profit') }}</div>
+                            <div class="item-value">{{ "{:,.0f}".format((sales_summary.total_sales or 0) - (purchase_summary.total_purchase or 0)) }}</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 매입/매출 요약 카드 -->
+        <div class="summary-cards">
+            <div class="card purchase-card">
+                <div class="card-icon">
+                    <i class="fas fa-shopping-cart"></i>
+                </div>
+                <div class="card-content">
+                    <h3 class="card-title">{{ get_text('purchase_summary') }}</h3>
+                    <div class="card-value">
+                        {{ "{:,.0f}".format(purchase_summary.total_purchase or 0) }}
+                    </div>
+                    <div class="card-subtitle">{{ get_text('total_purchase_amount') }}</div>
+                </div>
+                <div class="card-trend">
+                    <i class="fas fa-arrow-up"></i>
+                    <span>매입</span>
+                </div>
+            </div>
+
+            <div class="card sales-card">
+                <div class="card-icon">
+                    <i class="fas fa-chart-line"></i>
+                </div>
+                <div class="card-content">
+                    <h3 class="card-title">{{ get_text('sales_summary') }}</h3>
+                    <div class="card-value">
+                        {{ "{:,.0f}".format(sales_summary.total_sales or 0) }}
+                    </div>
+                    <div class="card-subtitle">{{ get_text('total_sales_amount') }}</div>
+                </div>
+                <div class="card-trend">
+                    <i class="fas fa-arrow-up"></i>
+                    <span>매출</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- 지급/수금 요약 카드 -->
+        <div class="summary-cards">
+            <div class="card payment-card">
+                <div class="card-icon">
+                    <i class="fas fa-money-check"></i>
+                </div>
+                <div class="card-content">
+                    <h3 class="card-title">{{ get_text('purchase_payment_summary') }}</h3>
+                    <div class="card-value">
+                        {{ "{:,.0f}".format(purchase_summary.total_purchase_payment or 0) }}
+                    </div>
+                    <div class="card-subtitle">{{ get_text('total_purchase_payment_amount') }}</div>
+                </div>
+                <div class="card-trend">
+                    <i class="fas fa-arrow-down"></i>
+                    <span>지급</span>
+                </div>
+            </div>
+
+            <div class="card receipt-card">
+                <div class="card-icon">
+                    <i class="fas fa-money-bill-wave"></i>
+                </div>
+                <div class="card-content">
+                    <h3 class="card-title">{{ get_text('sales_payment_summary') }}</h3>
+                    <div class="card-value">
+                        {{ "{:,.0f}".format(sales_summary.total_sales_payment or 0) }}
+                    </div>
+                    <div class="card-subtitle">{{ get_text('total_sales_payment_amount') }}</div>
+                </div>
+                <div class="card-trend">
+                    <i class="fas fa-arrow-up"></i>
+                    <span>수금</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- 미지급/미수금 요약 -->
+        <div class="summary-cards">
+            <div class="card unpaid-purchase-card">
+                <div class="card-icon">
+                    <i class="fas fa-exclamation-triangle"></i>
+                </div>
+                <div class="card-content">
+                    <h3 class="card-title">{{ get_text('unpaid_purchase') }}</h3>
+                    <div class="card-value">
+                        {{ "{:,.0f}".format((purchase_summary.total_purchase or 0) - (purchase_summary.total_purchase_payment or 0)) }}
+                    </div>
+                    <div class="card-subtitle">{{ get_text('unpaid_purchase_amount') }}</div>
+                </div>
+                <div class="card-trend warning">
+                    <i class="fas fa-exclamation"></i>
+                    <span>미지급</span>
+                </div>
+            </div>
+
+            <div class="card unpaid-sales-card">
+                <div class="card-icon">
+                    <i class="fas fa-clock"></i>
+                </div>
+                <div class="card-content">
+                    <h3 class="card-title">{{ get_text('unpaid_sales') }}</h3>
+                    <div class="card-value">
+                        {{ "{:,.0f}".format((sales_summary.total_sales or 0) - (sales_summary.total_sales_payment or 0)) }}
+                    </div>
+                    <div class="card-subtitle">{{ get_text('unpaid_sales_amount') }}</div>
+                </div>
+                <div class="card-trend warning">
+                    <i class="fas fa-clock"></i>
+                    <span>미수금</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+</div>
+
+<style>
+/* 전체 대시보드 스타일 */
+.financial-dashboard {
+    min-height: 100vh;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    padding: 15px;
+}
+
+/* 헤더 스타일 */
+.dashboard-header {
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(10px);
+    border-radius: 16px;
+    padding: 20px;
+    margin-bottom: 20px;
+    box-shadow: 0 6px 24px rgba(0, 0, 0, 0.1);
+}
+
+.header-content {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 20px;
+}
+
+.header-title {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+}
+
+.title-icon {
+    width: 50px;
+    height: 50px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 20px;
+}
+
+.title-text h1 {
+    margin: 0;
+    font-size: 24px;
+    font-weight: 700;
+    color: #2d3748;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.title-text p {
+    margin: 3px 0 0 0;
+    color: #718096;
+    font-size: 14px;
+}
+
+/* 필터 스타일 */
+.date-filter {
+    background: #f7fafc;
+    border-radius: 12px;
+    padding: 15px;
+    border: 1px solid #e2e8f0;
+}
+
+.filter-form {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    flex-wrap: wrap;
+}
+
+.date-inputs {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.date-group {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.date-group label {
+    font-size: 11px;
+    font-weight: 600;
+    color: #4a5568;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.date-input {
+    padding: 8px 12px;
+    border: 2px solid #e2e8f0;
+    border-radius: 8px;
+    font-size: 13px;
+    transition: all 0.3s ease;
+    background: white;
+}
+
+.date-input:focus {
+    outline: none;
+    border-color: #667eea;
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+.date-separator {
+    color: #a0aec0;
+    font-size: 14px;
+}
+
+.filter-buttons {
+    display: flex;
+    gap: 10px;
+}
+
+.btn-search, .btn-reset {
+    padding: 10px 16px;
+    border: none;
+    border-radius: 8px;
+    font-weight: 600;
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    text-decoration: none;
+}
+
+.btn-search {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+}
+
+.btn-search:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(102, 126, 234, 0.3);
+}
+
+.btn-reset {
+    background: #e2e8f0;
+    color: #4a5568;
+}
+
+.btn-reset:hover {
+    background: #cbd5e0;
+    transform: translateY(-2px);
+}
+
+/* 메인 콘텐츠 */
+.dashboard-content {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+/* 카드 스타일 */
+.summary-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 18px;
+}
+
+.card {
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(10px);
+    border-radius: 16px;
+    padding: 20px;
+    box-shadow: 0 6px 24px rgba(0, 0, 0, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    position: relative;
+    overflow: hidden;
+    transition: all 0.3s ease;
+}
+
+.card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 15px 40px rgba(0, 0, 0, 0.15);
+}
+
+.card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: linear-gradient(90deg, var(--card-color), var(--card-color-light));
+}
+
+.card-icon {
+    width: 45px;
+    height: 45px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    color: white;
+    margin-bottom: 15px;
+    background: linear-gradient(135deg, var(--card-color), var(--card-color-light));
+}
+
+.card-content {
+    margin-bottom: 15px;
+}
+
+.card-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: #4a5568;
+    margin-bottom: 8px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    text-align: center;
+}
+
+.card-value {
+    font-size: 32px;
+    font-weight: 700;
+    color: #2d3748;
+    margin-bottom: 4px;
+    text-align: center;
+}
+
+.card-subtitle {
+    font-size: 12px;
+    color: #718096;
+    text-align: center;
+}
+
+.card-trend {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.card-trend i {
+    font-size: 12px;
+}
+
+/* 카드 색상 변수 */
+.purchase-card {
+    --card-color: #3182ce;
+    --card-color-light: #4299e1;
+}
+
+.sales-card {
+    --card-color: #38a169;
+    --card-color-light: #48bb78;
+}
+
+.payment-card {
+    --card-color: #d69e2e;
+    --card-color-light: #ecc94b;
+}
+
+.receipt-card {
+    --card-color: #3182ce;
+    --card-color-light: #4299e1;
+}
+
+.unpaid-purchase-card {
+    --card-color: #e53e3e;
+    --card-color-light: #f56565;
+}
+
+.unpaid-sales-card {
+    --card-color: #dd6b20;
+    --card-color-light: #ed8936;
+}
+
+/* 트렌드 스타일 */
+.card-trend {
+    color: var(--card-color);
+}
+
+.card-trend.warning {
+    color: #e53e3e;
+}
+
+/* 손익 계산 섹션 */
+.profit-loss-section {
+    margin-top: 15px;
+}
+
+.profit-loss-card {
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(10px);
+    border-radius: 16px;
+    padding: 20px;
+    box-shadow: 0 6px 24px rgba(0, 0, 0, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.profit-loss-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 20px;
+}
+
+.header-icon {
+    width: 40px;
+    height: 40px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 16px;
+}
+
+.profit-loss-header h3 {
+    margin: 0;
+    font-size: 20px;
+    font-weight: 700;
+    color: #2d3748;
+}
+
+.profit-loss-content {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 20px;
+}
+
+.profit-item {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    padding: 18px;
+    border-radius: 12px;
+    background: #f7fafc;
+    border: 1px solid #e2e8f0;
+    transition: all 0.3s ease;
+}
+
+.profit-item:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.1);
+}
+
+.profit-item.sales {
+    border-left: 4px solid #38a169;
+}
+
+.profit-item.purchase {
+    border-left: 4px solid #e53e3e;
+}
+
+.profit-item.result {
+    border-left: 4px solid #3182ce;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+}
+
+.profit-item.result .item-label,
+.profit-item.result .item-value {
+    color: white;
+}
+
+.item-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    color: white;
+}
+
+.profit-item.sales .item-icon {
+    background: #38a169;
+}
+
+.profit-item.purchase .item-icon {
+    background: #e53e3e;
+}
+
+.profit-item.result .item-icon {
+    background: rgba(255, 255, 255, 0.2);
+}
+
+.item-content {
+    flex: 1;
+}
+
+.item-label {
+    font-size: 12px;
+    font-weight: 600;
+    color: #4a5568;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 4px;
+    text-align: center;
+}
+
+.item-value {
+    font-size: 26px;
+    font-weight: 700;
+    color: #2d3748;
+    text-align: center;
+}
+
+/* 반응형 디자인 */
+@media (max-width: 768px) {
+    .financial-dashboard {
+        padding: 10px;
+    }
+    
+    .dashboard-header {
+        padding: 15px;
+    }
+    
+    .header-content {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    
+    .filter-form {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    
+    .date-inputs {
+        flex-direction: column;
+        gap: 8px;
+    }
+    
+    .date-separator {
+        display: none;
+    }
+    
+    .summary-cards {
+        grid-template-columns: 1fr;
+        gap: 15px;
+    }
+    
+    .profit-loss-content {
+        grid-template-columns: 1fr;
+        gap: 15px;
+    }
+    
+    .card {
+        padding: 15px;
+    }
+    
+    .card-value {
+        font-size: 28px;
+    }
+    
+    .profit-item {
+        padding: 15px;
+    }
+    
+    .item-value {
+        font-size: 22px;
+    }
+}
+</style>
+{% endblock %} 

@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>거래처 재무정보 - MES 시스템</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/product_code.css') }}">
+    <style>
+/* (원본 스타일 동일) */
+    </style>
+</head>
+<body>
+    <nav class="main-nav">
+        {% include 'nav.html' %}
+    </nav>
+
+    <main class="content-area">
+        <div class="header-section">
+            <h2>{{ get_text('financial_info') }} {{ get_text('customer_code_management') }}</h2>
+            <div class="button-group">
+                <button type="button" class="btn btn-secondary" onclick="goBack()">{{ get_text('list_back') }}</button>
+            </div>
+        </div>
+
+        <div class="vendor-info">
+            <strong>{{ get_text('customer_code') }}:</strong> <span id="vendorCode">{{ vendor_code }}</span>
+        </div>
+
+        <div class="financial-table-container">
+            <button type="button" class="btn add-row" onclick="addRow()">
+                <i class="fas fa-plus"></i> {{ get_text('add_row') }}
+            </button>
+
+            <table id="financialTable">
+                <thead>
+                    <tr>
+                        <th>{{ get_text('fiscal_year') }}</th>
+                        <th>{{ get_text('capital') }}</th>
+                        <th>{{ get_text('sales_revenue') }}</th>
+                        <th>{{ get_text('operating_profit') }}</th>
+                        <th>{{ get_text('remarks') }}</th>
+                        <th>{{ get_text('actions') }}</th>
+                    </tr>
+                </thead>
+                <tbody id="financialTableBody"></tbody>
+            </table>
+
+            <div class="button-group">
+                <button type="button" class="btn btn-primary" onclick="saveAll()">{{ get_text('save') }}</button>
+                <button type="button" class="btn btn-secondary" onclick="loadData()">{{ get_text('refresh') }}</button>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        const vendorCode = '{{ vendor_code }}';
+        let editingRows = new Set();
+        const translations = {
+            'delete_confirm': '{{ get_text("delete_confirm") }}',
+            'delete_success': '{{ get_text("delete_success") }}',
+            'delete_failed': '{{ get_text("delete_failed") }}',
+            'save_success': '{{ get_text("save_success") }}',
+            'save_failed': '{{ get_text("save_failed") }}',
+            'load_error': '{{ get_text("load_error") }}',
+            'fiscal_year_required': '{{ get_text("fiscal_year_required") }}',
+            'modify': '{{ get_text("modify") }}',
+            'delete': '{{ get_text("delete") }}'
+        };
+
+        document.addEventListener('DOMContentLoaded', function() {
+            loadData();
+        });
+
+        function loadData() {
+            fetch(`/api/customer_code_expense/financial/${vendorCode}`)
+                .then(response => response.json())
+                .then(data => {
+                    const tbody = document.getElementById('financialTableBody');
+                    tbody.innerHTML = '';
+                    data.forEach(item => {
+                        addRowToTable(item, false);
+                    });
+                })
+                .catch(error => {
+                    console.error('Error loading data:', error);
+                    alert(translations.load_error);
+                });
+        }
+
+        function addRow() {
+            const newRow = { id: null, fiscal_year: new Date().getFullYear(), capital: 0, sales_revenue: 0, operating_profit: 0, remarks: '' };
+            addRowToTable(newRow, true);
+        }
+
+        function addRowToTable(data, isEditable) {
+            const tbody = document.getElementById('financialTableBody');
+            const tr = document.createElement('tr');
+            if (data.id) tr.setAttribute('data-id', data.id);
+            tr.innerHTML = `
+                <td><input type="number" class="fiscal-year" value="${data.fiscal_year || ''}" ${!isEditable ? 'readonly' : ''} min="2000" max="2099"></td>
+                <td><input type="number" class="capital" value="${data.capital || 0}" step="0.01" ${!isEditable ? 'readonly' : ''}></td>
+                <td><input type="number" class="sales-revenue" value="${data.sales_revenue || 0}" step="0.01" ${!isEditable ? 'readonly' : ''}></td>
+                <td><input type="number" class="operating-profit" value="${data.operating_profit || 0}" step="0.01" ${!isEditable ? 'readonly' : ''}></td>
+                <td><textarea class="remarks" ${!isEditable ? 'readonly' : ''}>${data.remarks || ''}</textarea></td>
+                <td>
+                    <div class="action-buttons">
+                        ${isEditable || !data.id ? `
+                            <button type="button" class="btn btn-danger action-btn" onclick="deleteRow(this)">
+                                <i class="fas fa-trash"></i> ${translations.delete}
+                            </button>
+                        ` : `
+                            <button type="button" class="btn btn-primary action-btn" onclick="editRow(this)">
+                                <i class="fas fa-edit"></i> ${translations.modify}
+                            </button>
+                        `}
+                    </div>
+                </td>
+            `;
+            tbody.appendChild(tr);
+            if (data.id && !isEditable) editingRows.add(data.id);
+        }
+
+        function editRow(button) {
+            const tr = button.closest('tr');
+            const inputs = tr.querySelectorAll('input, textarea');
+            inputs.forEach(input => input.removeAttribute('readonly'));
+            button.outerHTML = `<button type="button" class="btn btn-danger action-btn" onclick="deleteRow(this)"><i class="fas fa-trash"></i> ${translations.delete}</button>`;
+        }
+
+        function deleteRow(button) {
+            if (confirm(translations.delete_confirm)) {
+                const tr = button.closest('tr');
+                const rowId = tr.getAttribute('data-id');
+                if (rowId) {
+                    fetch(`/api/customer_code_expense/financial/delete/${rowId}`, { method: 'POST' })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) { tr.remove(); alert(translations.delete_success); }
+                        else alert(translations.delete_failed);
+                    })
+                    .catch(error => { console.error('Error deleting:', error); alert(translations.delete_failed); });
+                } else {
+                    tr.remove();
+                }
+            }
+        }
+
+        function saveAll() {
+            const tbody = document.getElementById('financialTableBody');
+            const rows = tbody.querySelectorAll('tr');
+            let hasError = false;
+            const savePromises = [];
+            rows.forEach(row => {
+                const fiscalYear = row.querySelector('.fiscal-year').value;
+                if (!fiscalYear) { hasError = true; return; }
+                const data = {
+                    vendor_code: vendorCode,
+                    fiscal_year: parseInt(fiscalYear),
+                    capital: parseFloat(row.querySelector('.capital').value) || 0,
+                    sales_revenue: parseFloat(row.querySelector('.sales-revenue').value) || 0,
+                    operating_profit: parseFloat(row.querySelector('.operating-profit').value) || 0,
+                    remarks: row.querySelector('.remarks').value
+                };
+                const promise = fetch('/api/customer_code_expense/financial/save', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data)
+                }).then(response => response.json());
+                savePromises.push(promise);
+            });
+            if (hasError) { alert(translations.fiscal_year_required); return; }
+            Promise.all(savePromises)
+                .then(results => {
+                    const allSuccess = results.every(r => r.success);
+                    if (allSuccess) { alert(translations.save_success); loadData(); }
+                    else alert(translations.save_failed);
+                })
+                .catch(error => { console.error('Error saving:', error); alert(translations.save_failed); });
+        }
+
+        function goBack() { window.location.href = '/customer_code_expense'; }
+    </script>
+</body>
+</html>

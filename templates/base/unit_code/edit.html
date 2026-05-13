@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ get_text('unit_code_edit') }} - MES 시스템</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/product_code.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+    <style>
+        .content-area {
+            max-width: 1200px;
+            margin: 20px auto;
+            padding: 20px;
+            background-color: white;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            border-radius: 4px;
+        }
+
+        .form-container {
+            background-color: #fff;
+            border-radius: 8px;
+            padding: 30px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        h2 {
+            font-size: 22px;
+            margin-bottom: 25px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #007bff;
+            color: #2c3e50;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 500;
+            color: #495057;
+            font-size: 14px;
+        }
+
+        .form-group input,
+        .form-group select,
+        .form-group textarea {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid #ced4da;
+            border-radius: 4px;
+            font-size: 14px;
+            line-height: 1.5;
+            transition: border-color 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+        }
+
+        .form-group textarea {
+            height: 100px;
+            resize: vertical;
+        }
+
+        .button-section {
+            margin-top: 30px;
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+        }
+
+        .btn {
+            padding: 8px 20px;
+            border: none;
+            border-radius: 4px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease-in-out;
+            min-width: 100px;
+        }
+
+        .btn-save {
+            background-color: #007bff;
+            color: white;
+        }
+
+        .btn-cancel {
+            background-color: #6c757d;
+            color: white;
+        }
+
+        .btn:hover {
+            transform: translateY(-1px);
+        }
+
+        .btn-save:hover {
+            background-color: #0056b3;
+        }
+
+        .btn-cancel:hover {
+            background-color: #5a6268;
+        }
+
+        .required::after {
+            content: " *";
+            color: #dc3545;
+        }
+
+        .error-message {
+            color: #dc3545;
+            font-size: 14px;
+            margin-top: 5px;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <nav class="main-nav">
+        {% include 'nav.html' %}
+    </nav>
+    <main class="content-area">
+        <div class="form-container">
+            <h2>{{ get_text('unit_code_edit') }}</h2>
+            <form id="unitForm">
+                <div class="form-group">
+                    <label for="unitCode" class="required">{{ get_text('unit_code') }}</label>
+                    <input type="text" id="unitCode" name="unitCode" required maxlength="20" readonly>
+                </div>
+                <div class="form-group">
+                    <label for="unitName" class="required">{{ get_text('unit_name') }}</label>
+                    <input type="text" id="unitName" name="unitName" required maxlength="50">
+                </div>
+                <div class="form-group">
+                    <label for="usage">{{ get_text('usage') }}</label>
+                    <select id="usage" name="usage">
+                        <option value="Y">{{ get_text('use') }}</option>
+                        <option value="N">{{ get_text('unuse') }}</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="remark">{{ get_text('remarks') }}</label>
+                    <textarea id="remark" name="remark" maxlength="200"></textarea>
+                </div>
+                <div class="button-section">
+                    <button type="submit" class="btn btn-save">{{ get_text('save') }}</button>
+                    <button type="button" class="btn btn-cancel" onclick="history.back()">{{ get_text('cancel') }}</button>
+                </div>
+            </form>
+        </div>
+    </main>
+
+    <footer>
+        <p>&copy; 2024 MES 시스템. All rights reserved.</p>
+    </footer>
+
+    <script>
+        // 페이지 로드 시 데이터 가져오기
+        document.addEventListener('DOMContentLoaded', function() {
+            const code = '{{ code }}';
+            loadUnitData(code);
+        });
+
+        // 단위코드 데이터 로드 함수
+        function loadUnitData(code) {
+            fetch(`/unit_code/detail/${code}`)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Failed to load unit data');
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    document.getElementById('unitCode').value = data.code || '';
+                    document.getElementById('unitName').value = data.name || '';
+                    document.getElementById('usage').value = data.usage || 'Y';
+                    document.getElementById('remark').value = data.remark || '';
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert("{{ get_text('load_failed') }}");
+                });
+        }
+
+        // 폼 제출 처리
+        document.getElementById('unitForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const formData = {
+                code: document.getElementById('unitCode').value.trim(),
+                name: document.getElementById('unitName').value.trim(),
+                usage: document.getElementById('usage').value,
+                remark: document.getElementById('remark').value.trim()
+            };
+
+            // 필수 필드 검증
+            if (!formData.code || !formData.name) {
+                alert("{{ get_text('required_fields') }}");
+                return;
+            }
+
+            fetch('/unit_code/update', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(formData)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert("{{ get_text('save_success') }}");
+                    window.location.href = '/unit_code';
+                } else {
+                    alert(data.error || "{{ get_text('save_failed') }}");
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert("{{ get_text('save_failed') }}");
+            });
+        });
+
+        // 네비게이션 메뉴 이벤트 처리
+        document.querySelectorAll('.nav-item').forEach(item => {
+            item.addEventListener('mouseover', function() {
+                this.querySelector('.submenu').style.display = 'block';
+            });
+            
+            item.addEventListener('mouseout', function() {
+                this.querySelector('.submenu').style.display = 'none';
+            });
+        });
+    </script>
+</body>
+</html> 

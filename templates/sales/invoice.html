@@ -1,0 +1,329 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="card">
+        <div class="card-body">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <button type="button" class="btn btn-primary" onclick="window.print()">
+                        <i class="fas fa-print"></i> {{ get_text('print') }}
+                    </button>
+                    <button type="button" class="btn btn-info" onclick="printInvoice()">
+                        <i class="fas fa-file-invoice"></i> INVOICE 출력
+                    </button>
+                    <button type="button" class="btn btn-success" id="excelDownloadBtn">
+                        <i class="fas fa-file-excel"></i> {{ get_text('download_excel') }}
+                    </button>
+                </div>
+            </div>
+
+            <!-- 인쇄 영역 시작 -->
+            <div class="printable-area">
+                <div style="border: 2px solid #000; padding: 20px; margin-bottom: 20px;">
+                    <!-- 문서 제목 -->
+                    <div class="row mb-4">
+                        <div class="col-6">
+                            <table class="table table-bordered mb-0">
+                                <tr>
+                                    <th class="bg-light text-center" style="width: 30%;">{{ get_text('write_date') }}</th>
+                                    <td class="text-center" id="salesDate"></td>
+                                </tr>
+                                <tr>
+                                    <th class="bg-light text-center">{{ get_text('invoice_no') }}</th>
+                                    <td class="text-center" id="salesNo"></td>
+                                </tr>
+                            </table>
+                        </div>
+                        <div class="col-6 text-center">
+                            <h2 class="mb-0">{{ get_text('delivery_note') }}</h2>
+                            <h4 class="mb-0">DELIVERY NOTE</h4>
+                        </div>
+                    </div>
+
+                    <!-- 공급자/공급받는자 정보 -->
+                    <div class="row mb-4">
+                        <div class="col-6">
+                            <table class="table table-bordered">
+                                <tr>
+                                    <th colspan="4" class="text-center bg-light">{{ get_text('supplier') }}</th>
+                                </tr>
+                                <tr>
+                                    <th class="bg-light" style="width: 100px;">{{ get_text('tax_id') }}</th>
+                                    <td colspan="3">0205563017387</td>
+                                </tr>
+                                <tr>
+                                    <th class="bg-light">{{ get_text('company_name') }}</th>
+                                    <td>BIG BOY RECYCLE CO.,LTD.</td>
+                                    <th class="bg-light" style="width: 100px;">{{ get_text('ceo_name') }}</th>
+                                    <td></td>
+                                </tr>
+                                <tr>
+                                    <th class="bg-light">{{ get_text('address') }}</th>
+                                    <td colspan="3">98/13 Moo 9, khaokhangsong, Siracha, ChonBuri 20230 Thailand.</td>
+                                </tr>
+                                <tr>
+                                    <th class="bg-light">{{ get_text('tel') }}</th>
+                                    <td>092-2590872</td>
+                                    <th class="bg-light">{{ get_text('email') }}</th>
+                                    <td></td>
+                                </tr>
+                            </table>
+                        </div>
+                        <div class="col-6">
+                            <table class="table table-bordered">
+                                <tr>
+                                    <th colspan="4" class="text-center bg-light">{{ get_text('buyer') }}</th>
+                                </tr>
+                                <tr>
+                                    <th class="bg-light" style="width: 100px;">{{ get_text('tax_id') }}</th>
+                                    <td colspan="3" id="customerTaxId"></td>
+                                </tr>
+                                <tr>
+                                    <th class="bg-light">{{ get_text('company_name') }}</th>
+                                    <td id="customerName"></td>
+                                    <th class="bg-light" style="width: 100px;">{{ get_text('ceo_name') }}</th>
+                                    <td></td>
+                                </tr>
+                                <tr>
+                                    <th class="bg-light">{{ get_text('address') }}</th>
+                                    <td colspan="3" id="customerAddress"></td>
+                                </tr>
+                                <tr>
+                                    <th class="bg-light">{{ get_text('tel') }}</th>
+                                    <td id="customerTel"></td>
+                                    <th class="bg-light">{{ get_text('email') }}</th>
+                                    <td></td>
+                                </tr>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- 품목 정보 -->
+                    <div class="row mb-4">
+                        <div class="col-12">
+                            <table class="table table-bordered">
+                                <thead>
+                                    <tr class="bg-light text-center">
+                                        <th style="width: 60px;">{{ get_text('item_no') }}</th>
+                                        <th style="width: 200px;">{{ get_text('item_name') }}</th>
+                                        <th style="width: 100px;">{{ get_text('specification') }}</th>
+                                        <th style="width: 80px;">{{ get_text('unit') }}</th>
+                                        <th style="width: 100px;">{{ get_text('quantity') }}</th>
+                                        <th style="width: 120px;">{{ get_text('unit_price') }}</th>
+                                        <th style="width: 150px;">{{ get_text('supply_amount') }}</th>
+                                        <th style="width: 150px;">{{ get_text('vat') }}</th>
+                                        <th style="width: 150px;">{{ get_text('total') }}</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="itemList">
+                                </tbody>
+                                <tfoot>
+                                    <tr>
+                                        <td colspan="6" class="text-end bg-light fw-bold">{{ get_text('total') }}</td>
+                                        <td class="text-end fw-bold" id="subTotal">0.00</td>
+                                        <td class="text-end fw-bold" id="tax">0.00</td>
+                                        <td class="text-end fw-bold" id="netTotal">0.00</td>
+                                    </tr>
+                                </tfoot>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- 비고 및 서명 -->
+                    <div class="row">
+                        <div class="col-8">
+                            <table class="table table-bordered">
+                                <tr>
+                                    <th class="bg-light" style="width: 100px;">{{ get_text('remark') }}</th>
+                                    <td id="remarks"></td>
+                                </tr>
+                            </table>
+                        </div>
+                        <div class="col-4">
+                            <table class="table table-bordered text-center">
+                                <tr>
+                                    <th class="bg-light">{{ get_text('supplier') }}</th>
+                                    <th class="bg-light">{{ get_text('buyer') }}</th>
+                                </tr>
+                                <tr>
+                                    <td style="height: 100px;"></td>
+                                    <td></td>
+                                </tr>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+@media print {
+    body * {
+        visibility: hidden;
+    }
+    .printable-area, .printable-area * {
+        visibility: visible;
+    }
+    .printable-area {
+        position: fixed !important;
+        left: 0;
+        top: 0;
+        width: 100%;
+        margin: 0;
+        padding: 0;
+        transform: scale(0.97);
+        transform-origin: top center;
+    }
+    .btn {
+        display: none;
+    }
+    @page {
+        margin: 5mm 10mm;
+        size: A4;
+    }
+    body {
+        margin: 0;
+        padding: 0;
+    }
+    .container-fluid {
+        padding: 0 !important;
+        margin: 0 !important;
+    }
+    .card {
+        margin: 0 !important;
+        padding: 0 !important;
+        border: none !important;
+    }
+    .card-body {
+        padding: 0 !important;
+    }
+    table {
+        font-size: 12px;
+        page-break-inside: avoid;
+    }
+    th, td {
+        padding: 4px !important;
+    }
+    h2 {
+        font-size: 24px !important;
+        margin: 0 !important;
+    }
+    h4 {
+        font-size: 18px !important;
+        margin: 0 !important;
+    }
+}
+
+/* 일반 화면에서의 스타일 */
+.table th, .table td {
+    padding: 6px;
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const salesNo = urlParams.get('sales_no');
+    
+    if (salesNo) {
+        loadInvoiceData(salesNo);
+        document.getElementById('excelDownloadBtn').onclick = function() {
+            downloadInvoiceExcel(salesNo);
+        };
+    }
+});
+
+function loadInvoiceData(salesNo) {
+    fetch(`/sales/api/sales/invoice/${salesNo}`)
+        .then(response => response.json())
+        .then(data => {
+            // 마스터 정보
+            document.getElementById('salesNo').textContent = data.master.sales_no || '';
+            document.getElementById('salesDate').textContent = formatDate(data.master.sales_date);
+            document.getElementById('customerName').textContent = data.master.vd_name || '';
+            document.getElementById('customerAddress').textContent = data.master.vd_address || '';
+            document.getElementById('customerTel').textContent = data.master.vd_phone || '';
+            document.getElementById('customerTaxId').textContent = data.master.vd_biz_number || '';
+            document.getElementById('remarks').textContent = data.master.remarks || '';
+
+            // 품목 정보
+            const itemList = document.getElementById('itemList');
+            itemList.innerHTML = '';
+            let subTotal = 0, tax = 0, netTotal = 0;
+            data.details.forEach((item, index) => {
+                const rowTotal = item.quantity * item.unit_price;
+                const vat = rowTotal * 0.07;
+                subTotal += rowTotal;
+                tax += vat;
+                netTotal += rowTotal + vat;
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td class="text-center">${index + 1}</td>
+                    <td>${item.item_name}</td>
+                    <td class="text-center">${item.item_spec || ''}</td>
+                    <td class="text-center">${item.item_unit || ''}</td>
+                    <td class="text-end">${formatNumber(item.quantity)}</td>
+                    <td class="text-end">${formatNumber(item.unit_price)}</td>
+                    <td class="text-end">${formatNumber(rowTotal)}</td>
+                    <td class="text-end">${formatNumber(vat)}</td>
+                    <td class="text-end">${formatNumber(rowTotal + vat)}</td>
+                `;
+                itemList.appendChild(tr);
+            });
+            document.getElementById('subTotal').textContent = formatNumber(subTotal);
+            document.getElementById('tax').textContent = formatNumber(tax);
+            document.getElementById('netTotal').textContent = formatNumber(netTotal);
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert("{{ get_text('load_failed') }}");
+        });
+}
+
+function formatDate(dateString) {
+    if (!dateString) return '';
+    const date = new Date(dateString);
+    return date.toLocaleDateString('ko-KR');
+}
+
+function formatNumber(number) {
+    if (number === null || number === undefined) return '';
+    return new Intl.NumberFormat('ko-KR', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+    }).format(number);
+}
+
+function downloadInvoiceExcel(salesNo) {
+    fetch(`/sales/api/sales/invoice/excel/${salesNo}`)
+        .then(response => {
+            if (!response.ok) throw new Error('Network response was not ok');
+            return response.blob();
+        })
+        .then(blob => {
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `invoice_${salesNo}.xlsx`;
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+            a.remove();
+        })
+        .catch(error => {
+            alert('엑셀 다운로드에 실패했습니다.');
+        });
+}
+
+function printInvoice() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const salesNo = urlParams.get('sales_no');
+    if (salesNo) {
+        window.open(`/sales/invoice_print?sales_no=${salesNo}`, '_blank');
+    }
+}
+</script>
+{% endblock %} 

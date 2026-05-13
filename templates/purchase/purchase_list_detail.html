@@ -1,0 +1,594 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="purchase-list-detail-container">
+    <div class="purchase-list-detail-card">
+        <div class="purchase-list-detail-header">
+            <h2>{{ get_text('purchase_list_detail') }}</h2>
+        </div>
+        <div class="purchase-list-detail-filters">
+            <form id="searchForm" class="purchase-search-form">
+                <div class="purchase-form-group">
+                    <label for="startDate">{{ get_text('start_date') }}</label>
+                    <input type="date" id="startDate" name="startDate" class="purchase-form-control">
+                </div>
+                <div class="purchase-form-group">
+                    <label for="endDate">{{ get_text('end_date') }}</label>
+                    <input type="date" id="endDate" name="endDate" class="purchase-form-control">
+                </div>
+                <div class="purchase-form-group">
+                    <label for="vendorCode">{{ get_text('vendor') }}</label>
+                    <select id="vendorCode" name="vendorCode" class="purchase-form-control">
+                        <option value="">{{ get_text('all') }}</option>
+                    </select>
+                </div>
+                <div class="purchase-form-group">
+                    <label for="warehouseCode">{{ get_text('warehouse') }}</label>
+                     <select id="warehouseCode" name="warehouseCode" class="purchase-form-control">
+                        <option value="">{{ get_text('all') }}</option>
+                    </select>
+                </div>
+                <div class="purchase-form-group">
+                    <label for="status">{{ get_text('status') }}</label>
+                    <select id="status" name="status" class="purchase-form-control">
+                        <option value="">{{ get_text('all') }}</option>
+                        <option value="PROCESS">{{ get_text('in_process') }}</option>
+                        <option value="COMPLETED">{{ get_text('confirmed') }}</option>
+                    </select>
+                </div>
+                <div class="purchase-button-group">
+                    <button type="button" class="purchase-btn search" onclick="searchPurchaseDetails()">
+                        <i class="fas fa-search"></i> {{ get_text('search') }}
+                    </button>
+                    <button type="button" class="purchase-btn reset" onclick="resetSearch()">
+                        <i class="fas fa-undo"></i> {{ get_text('reset') }}
+                    </button>
+                     <button type="button" class="purchase-btn excel" onclick="downloadExcel()">
+                        <i class="fas fa-file-excel"></i> {{ get_text('download_excel') }}
+                    </button>
+                </div>
+            </form>
+        </div>
+        <div class="purchase-list-detail-table-wrap">
+            <table class="purchase-list-detail-table">
+                <thead>
+                    <tr>
+                        <th>No</th>
+                        <th>{{ get_text('purchase_date') }}</th>
+                        <th>{{ get_text('purchase_no') }}</th>
+                        <th>{{ get_text('vendor') }}</th>
+                        <th>{{ get_text('warehouse') }}</th>
+                        <th>{{ get_text('item_code') }}</th>
+                        <th>{{ get_text('item_name') }}</th>
+                        <th>{{ get_text('specification') }}</th>
+                        <th>{{ get_text('unit') }}</th>
+                        <th>{{ get_text('quantity') }}</th>
+                        <th>{{ get_text('unit_price') }}</th>
+                        <th>{{ get_text('amount') }}</th>
+                        <th>{{ get_text('currency') }}</th>
+                        <th>{{ get_text('exchange_rate') }}</th>
+                        <th>{{ get_text('payment_method') }}</th>
+                        <th>{{ get_text('purchase_payment_due_date') }}</th>
+                        <th>{{ get_text('purchase_status') }}</th>
+                    </tr>
+                </thead>
+                <tbody id="purchaseDetailList"></tbody>
+                <tfoot>
+                    <tr class="summary-row">
+                        <td colspan="8" class="text-right"><strong>{{ get_text('total_quantity') }} / {{ get_text('total_amount') }}:</strong></td>
+                        <td id="totalQuantitySum" class="right"></td>
+                        <td></td>
+                        <td id="totalAmountSum" class="right"></td>
+                        <td colspan="5"></td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+        <div class="purchase-list-detail-pagination" id="pagination"></div>
+    </div>
+</div>
+
+<style>
+/* 여기에 purchase/list.html 파일의 CSS 스타일을 복사하여 붙여넣거나 필요에 맞게 수정하세요 */
+/* .purchase-list-container 등을 .purchase-list-detail-container 등으로 변경 */
+.purchase-list-detail-container {
+    width: 100vw;
+    min-width: 0;
+    padding: 0;
+    margin: 0;
+    background: #f8fafc;
+}
+.purchase-list-detail-card {
+    background: #fff;
+    border-radius: 14px;
+    box-shadow: 0 4px 24px rgba(26,35,126,0.08), 0 1.5px 6px rgba(0,0,0,0.03);
+    padding: 28px 24px 24px 24px;
+    width: 100%;
+    box-sizing: border-box;
+    margin: 0 auto;
+}
+.purchase-list-detail-header h2 {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: #1a237e;
+    margin-bottom: 18px;
+    letter-spacing: -0.5px;
+}
+.purchase-list-detail-filters {
+    margin-bottom: 18px;
+}
+.purchase-search-form {
+    display: flex;
+    gap: 18px;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    font-size: 0.9rem;
+}
+.purchase-form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+.purchase-form-group label {
+    font-size: 0.9rem;
+    color: #374151;
+    font-weight: 500;
+}
+.purchase-form-control {
+    font-size: 0.9rem;
+    padding: 3px 8px;
+    border-radius: 5px;
+    border: 1px solid #d1d5db;
+}
+.purchase-button-group {
+    display: flex;
+    gap: 8px;
+}
+.purchase-btn {
+    font-size: 0.9rem;
+    padding: 4px 14px;
+    border-radius: 6px;
+    border: none;
+    color: #fff;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+.purchase-btn.search {
+    background: #4f8cff;
+}
+.purchase-btn.reset {
+    background: #6c757d;
+}
+.purchase-btn.excel { /* Excel button style */
+    background: #28a745; /* Green color */
+}
+.purchase-btn:hover {
+    opacity: 0.9;
+}
+.purchase-list-detail-table-wrap {
+    overflow-x: auto;
+    width: 100%;
+}
+.purchase-list-detail-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.9rem;
+    background: #f8fafc;
+    border-radius: 10px;
+    overflow: hidden;
+}
+.purchase-list-detail-table th, .purchase-list-detail-table td {
+    border: 1px solid #e5e7eb;
+    padding: 7px 8px;
+    text-align: center;
+}
+.purchase-list-detail-table th {
+    background: #e3e8f0;
+    color: #1a237e;
+    font-size: 0.9rem;
+    font-weight: 600;
+}
+.purchase-list-detail-table td {
+    background: #fff;
+    color: #374151;
+    font-size: 0.9rem;
+}
+.purchase-list-detail-table .right {
+    text-align: right;
+}
+.purchase-list-detail-pagination {
+    display: flex;
+    justify-content: center;
+    gap: 6px;
+    margin: 18px 0 0 0;
+}
+.purchase-list-detail-pagination button {
+    background: #f0f4ff;
+    border: 1px solid #b3c6ff;
+    color: #1a237e;
+    border-radius: 5px;
+    padding: 3px 10px;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+.purchase-list-detail-pagination button.active,
+.purchase-list-detail-pagination button:hover {
+    background: #4f8cff;
+    color: #fff;
+    border-color: #4f8cff;
+}
+@media (max-width: 900px) {
+    .purchase-search-form {
+        flex-direction: column;
+        gap: 8px;
+    }
+    .purchase-list-detail-card {
+        padding: 16px 6px 12px 6px;
+    }
+    .purchase-list-detail-header h2 {
+        font-size: 1rem;
+    }
+    .purchase-list-detail-table th, .purchase-list-detail-table td {
+        font-size: 0.85rem;
+        padding: 5px 4px;
+    }
+}
+
+.item-details .text-right {
+    text-align: right;
+}
+
+/* Add specific styles for the purchase list detail summary row */
+.purchase-list-detail-table tfoot .summary-row td {
+    font-weight: bold;
+    background-color: #e3e8f0; /* Same background as table header */
+    border-top: 2px solid #a1a7b3; /* Darker top border */
+    border-bottom: 2px solid #a1a7b3; /* Add bottom border */
+    padding: 10px 8px; /* Increase padding */
+    font-size: 1rem; /* Slightly larger font */
+    color: #1a237e; /* Dark blue color */
+}
+
+/* Ensure text alignment for specific cells in the summary row */
+.purchase-list-detail-table tfoot .summary-row td:first-child {
+     text-align: right; /* Label cell (e.g., 총 수량 / 총 금액:) */
+     /* Adjust colspan if necessary, but style is for individual cells */
+}
+
+.purchase-list-detail-table tfoot .summary-row td.right {
+    text-align: right; /* Numeric value cells */
+}
+
+</style>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // 초기 데이터 로드
+        loadVendors();
+        loadWarehouses();
+        initializeDateRange();
+        searchPurchaseDetails(); // 페이지 로드 시 자동 검색
+    });
+
+    // 공급업체 목록 로드
+    function loadVendors() {
+        fetch('/purchase/api/vendor/options')   // <- 변경: '/purchase' 접두사 추가
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('공급업체 목록 로드 실패');
+                }
+                return response.json();
+            })
+            .then(data => {
+                const vendorSelect = document.getElementById('vendorCode');
+                data.forEach(vendor => {
+                    const option = document.createElement('option');
+                    option.value = vendor.code;
+                    option.textContent = `${vendor.code} - ${vendor.name}`;
+                    vendorSelect.appendChild(option);
+                });
+            })
+            .catch(error => console.error('Error loading vendors:', error));
+    }
+
+    // 창고 목록 로드
+    function loadWarehouses() {
+        fetch('/purchase/api/warehouse/options')  // <- 변경: '/purchase' 접두사 추가
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('창고 목록 로드 실패');
+                }
+                return response.json();
+            })
+            .then(data => {
+                const warehouseSelect = document.getElementById('warehouseCode');
+                data.forEach(warehouse => {
+                    const option = document.createElement('option');
+                    option.value = warehouse.warehouseCode || warehouse.code;
+                    option.textContent = `${warehouse.warehouseCode || warehouse.code} - ${warehouse.warehouseName || warehouse.name}`;
+                    warehouseSelect.appendChild(option);
+                });
+            })
+            .catch(error => console.error('Error loading warehouses:', error));
+    }
+
+    // 날짜 범위 초기화
+    function toKoreaDateString(date) {
+        // UTC+9로 보정
+        const korea = new Date(date.getTime() + 9 * 60 * 60 * 1000);
+        return korea.toISOString().slice(0, 10);
+    }
+
+    function initializeDateRange() {
+        const today = new Date();
+        const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+        const lastDayOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+        document.getElementById('startDate').value = toKoreaDateString(firstDayOfMonth);
+        document.getElementById('endDate').value = toKoreaDateString(lastDayOfMonth);
+    }
+
+    // 상태 다국어 맵
+    const statusMap = {
+        "CONFIRMED": "{{ get_text('confirmed') }}",
+        "COMPLETED": "{{ get_text('completed') }}",
+        "PROCESS": "{{ get_text('in_process') }}"
+    };
+
+    // 매입 상세 목록 검색
+    function searchPurchaseDetails(page = 1) {
+        const startDate = document.getElementById('startDate').value;
+        const endDate = document.getElementById('endDate').value;
+        const vendorCode = document.getElementById('vendorCode').value;
+        const warehouseCode = document.getElementById('warehouseCode').value;
+        const status = document.getElementById('status').value;
+
+        const perPage = 20;
+        const params = new URLSearchParams({
+            startDate: startDate,
+            endDate: endDate,
+            vendorCode: vendorCode,
+            warehouseCode: warehouseCode,
+            status: status,
+            page: page,
+            per_page: perPage
+        });
+
+        console.log("Fetching purchase details with data:", params); // 요청 데이터 로깅
+
+        fetch('/purchase/api/list-detail', {
+            method: 'POST',
+            credentials: 'same-origin', // 로그인 세션(쿠키) 포함
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(Object.fromEntries(params))
+        })
+        .then(async response => {
+            console.log("Received response status:", response.status, "Content-Type:", response.headers.get('content-type'));
+            const text = await response.text();
+            // 만약 JSON이 아니면(리다이렉트된 로그인 HTML 등) 예외 던짐
+            const ct = response.headers.get('content-type') || '';
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${text.slice(0, 500)}`);
+            }
+            if (!ct.includes('application/json')) {
+                throw new Error('Expected JSON but got: ' + text.slice(0, 500));
+            }
+            return JSON.parse(text);
+        })
+        .then(data => {
+            console.log("Received data:", data);
+            if (data.status === 'error') {
+                alert('데이터 로드 중 오류: ' + data.message);
+                displayPurchaseDetails([]);
+                displayPagination({ currentPage: 1, totalPages: 0, totalCount: 0, perPage: 20 });
+                displaySummary({ totalQuantity: 0, totalAmount: 0 });
+                return;
+            }
+            displayPurchaseDetails(data.items, page, perPage);
+            displayPagination(data.pagination);
+            displaySummary(data.summary);
+        })
+        .catch(err => {
+            console.error('Fetch error:', err);
+            alert('데이터 조회 중 오류가 발생했습니다: ' + err.message);
+            displayPurchaseDetails([]);
+            displayPagination({ currentPage: 1, totalPages: 0, totalCount: 0, perPage: 20 });
+            displaySummary({ totalQuantity: 0, totalAmount: 0 });
+        });
+    }
+
+    // 매입 상세 목록 표시
+    function displayPurchaseDetails(items, page, perPage) {
+        const tbody = document.getElementById('purchaseDetailList');
+        tbody.innerHTML = '';
+
+        if (!items || items.length === 0) {
+             const row = document.createElement('tr');
+             row.innerHTML = '<td colspan="17" style="text-align: center;">조회된 데이터가 없습니다.</td>';
+             tbody.appendChild(row);
+             // 데이터가 없을 경우 합계도 0으로 표시
+             document.getElementById('totalQuantitySum').textContent = formatNumber(0);
+             document.getElementById('totalAmountSum').textContent = formatNumber(0, 2);
+             return;
+        }
+
+        items.forEach((item, idx) => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td>${(page - 1) * perPage + idx + 1}</td>
+                <td>${item.purchaseDate || '-'}</td>
+                <td>${item.purchaseNo || '-'}</td>
+                <td>${item.vendorName || '-'}</td>
+                <td>${item.warehouseName || '-'}</td>
+                <td>${item.itemCode || '-'}</td>
+                <td>${item.itemName || '-'}</td>
+                <td>${item.itemSpec || '-'}</td>
+                <td>${item.unitName || '-'}</td>
+                <td class="right">${formatNumber(item.quantity)}</td>
+                <td class="right">${formatNumber(item.unitPrice, 2)}</td>
+                <td class="right">${formatNumber(item.amount, 2)}</td>
+                <td>${item.currencyCode || '-'}</td>
+                <td class="right">${formatNumber(item.exchangeRate, 2)}</td>
+                <td>${item.paymentMethod || '-'}</td>
+                <td>${item.paymentDueDate || '-'}</td>
+                <td>${getStatusText(item.status) || '-'}</td>
+            `;
+            tbody.appendChild(tr);
+        });
+    }
+
+     // 합계 정보 표시
+     function displaySummary(summary) {
+         document.getElementById('totalQuantitySum').textContent = formatNumber(summary.totalQuantity);
+         document.getElementById('totalAmountSum').textContent = formatNumber(summary.totalAmount, 2);
+     }
+
+    // 페이지네이션 표시
+    function displayPagination(pagination) {
+        const container = document.getElementById('pagination');
+        container.innerHTML = '';
+
+        const totalPages = pagination.totalPages || 0;
+        const currentPage = pagination.currentPage || 1;
+
+         if (totalPages <= 1) return; // 페이지가 1개 이하면 페이지네이션 표시 안함
+
+        // 이전 페이지 버튼
+        if (currentPage > 1) {
+            const prevButton = document.createElement('button');
+            prevButton.innerHTML = '&laquo;';
+            prevButton.onclick = () => searchPurchaseDetails(currentPage - 1);
+            container.appendChild(prevButton);
+        }
+
+        // 페이지 버튼들 (최대 10개 표시)
+        let startPage = Math.max(1, currentPage - 5);
+        let endPage = Math.min(totalPages, startPage + 9);
+
+         if (endPage - startPage < 9) {
+            startPage = Math.max(1, endPage - 9);
+        }
+
+
+        for (let i = startPage; i <= endPage; i++) {
+            const button = document.createElement('button');
+            button.textContent = i;
+            button.onclick = () => searchPurchaseDetails(i);
+            if (i === currentPage) {
+                button.classList.add('active');
+            }
+            container.appendChild(button);
+        }
+
+        // 다음 페이지 버튼
+        if (currentPage < totalPages) {
+            const nextButton = document.createElement('button');
+            nextButton.innerHTML = '&raquo;';
+            nextButton.onclick = () => searchPurchaseDetails(currentPage + 1);
+            container.appendChild(nextButton);
+        }
+    }
+
+    // 검색 조건 초기화
+    function resetSearch() {
+        document.getElementById('searchForm').reset();
+        initializeDateRange(); // 날짜 범위 재설정
+        // 드롭다운은 reset()으로 '전체'가 선택됨
+        searchPurchaseDetails(); // 초기화 후 검색 실행
+    }
+
+     // 숫자 포맷팅 함수
+    function formatNumber(value, decimalPlaces = 0) {
+        if (value == null || isNaN(value)) {
+            return '-';
+        }
+         // 숫자를 문자열로 변환하고 소수점 이하 자릿수 지정
+         return new Intl.NumberFormat('en-US', {
+             minimumFractionDigits: decimalPlaces,
+             maximumFractionDigits: decimalPlaces
+         }).format(value);
+    }
+
+    // 상태 텍스트 변환 함수
+    function getStatusText(status) {
+        return statusMap[status] || status;
+    }
+
+    // Excel 다운로드 함수 (서버에 새로운 라우트 필요)
+    function downloadExcel() {
+        const startDate = document.getElementById('startDate').value;
+        const endDate = document.getElementById('endDate').value;
+        const vendorCode = document.getElementById('vendorCode').value;
+        const warehouseCode = document.getElementById('warehouseCode').value;
+        const status = document.getElementById('status').value;
+
+         const postData = {
+            startDate: startDate,
+            endDate: endDate,
+            vendorCode: vendorCode,
+            warehouseCode: warehouseCode,
+            status: status
+        };
+
+        // POST 요청으로 파일 다운로드를 시작 (fetch는 파일 다운로드에 부적합, form submit 사용)
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = '/purchase/api/list-detail/excel'; // Excel 다운로드 전용 라우트 (새로 추가 필요)
+
+        // 데이터를 hidden input으로 추가
+        for (const key in postData) {
+            if (postData.hasOwnProperty(key)) {
+                const input = document.createElement('input');
+                input.type = 'hidden';
+                input.name = key;
+                input.value = postData[key];
+                form.appendChild(input);
+            }
+        }
+
+        document.body.appendChild(form);
+        form.submit();
+        document.body.removeChild(form);
+
+        // fetch를 사용한다면 Blob 처리 필요:
+        /*
+        fetch('/purchase/api/list-detail/excel', {
+             method: 'POST',
+             headers: {
+                 'Content-Type': 'application/json',
+             },
+             body: JSON.stringify(postData)
+         })
+         .then(response => {
+             if (!response.ok) {
+                  return response.json().then(err => { throw new Error(err.message || `HTTP error! status: ${response.status}`); });
+             }
+              // 파일 다운로드를 위해 Blob으로 응답 처리
+              const filename = response.headers.get('Content-Disposition').split('filename=')[1].replace(/"/g, '');
+             return response.blob().then(blob => ({ blob, filename }));
+         })
+         .then(({ blob, filename }) => {
+              // Blob을 사용하여 파일 다운로드 링크 생성
+              const url = window.URL.createObjectURL(blob);
+              const a = document.createElement('a');
+              a.style.display = 'none';
+              a.href = url;
+              a.download = filename; // 서버에서 받은 파일 이름 사용
+              document.body.appendChild(a);
+              a.click();
+              window.URL.revokeObjectURL(url); // 임시 URL 해제
+              document.body.removeChild(a);
+         })
+         .catch(error => {
+             console.error('Error downloading Excel:', error);
+             alert('Excel 다운로드 중 오류가 발생했습니다: ' + error.message);
+         });
+        */
+    }
+
+</script>
+{% endblock %}

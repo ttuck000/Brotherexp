@@ -1,0 +1,1121 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="purchase-payment-container">
+    <div class="purchase-payment-card">
+        <div class="purchase-payment-header">
+            <h2>{{ get_text('purchase_payment_manage') }}</h2>
+        </div>
+        <div class="purchase-payment-filters">
+            <div class="purchase-payment-search-form">
+                <div class="purchase-payment-form-group">
+                    <label for="startDate">{{ get_text('start_date') }}</label>
+                    <input type="date" id="startDate" name="startDate" class="purchase-payment-form-control">
+                </div>
+                <div class="purchase-payment-form-group">
+                    <label for="endDate">{{ get_text('end_date') }}</label>
+                    <input type="date" id="endDate" name="endDate" class="purchase-payment-form-control">
+                </div>
+                <div class="purchase-payment-form-group">
+                    <label for="vendorCode">{{ get_text('vendor') }}</label>
+                    <select id="vendorCode" name="vendorCode" class="purchase-payment-form-control">
+                        <option value="">{{ get_text('all') }}</option>
+                    </select>
+                </div>
+                <div class="purchase-payment-form-group">
+                    <label for="purchaseStatus">{{ get_text('purchase_status') }}</label>
+                    <select id="purchaseStatus" name="purchaseStatus" class="purchase-payment-form-control">
+                        <option value="">{{ get_text('all') }}</option>
+                        <option value="PENDING">{{ get_text('pending') }}</option>
+                        <option value="PROCESS">{{ get_text('in_process') }}</option>
+                        <option value="RECEIVED">{{ get_text('received') }}</option>
+                        <option value="CANCELLED">{{ get_text('cancelled') }}</option>
+                        <option value="COMPLETED">{{ get_text('confirmed') }}</option>
+                    </select>
+                </div>
+                <div class="purchase-payment-form-group">
+                    <label for="paymentStatus">{{ get_text('payment_status') }}</label>
+                    <select id="paymentStatus" name="paymentStatus" class="purchase-payment-form-control">
+                        <option value="">{{ get_text('all') }}</option>
+                        <option value="UNPAID">{{ get_text('unpaid') }}</option>
+                        <option value="PARTIAL">{{ get_text('partial_paid') }}</option>
+                        <option value="COMPLETED">{{ get_text('completed') }}</option>
+                    </select>
+                </div>
+                
+                <!-- 버튼들을 같은 줄에 추가 -->
+                <div class="purchase-payment-form-group">
+                    <label style="visibility: hidden;">Actions</label> <!-- 라벨 공간 확보 -->
+                    <div style="display: flex; gap: 8px;">
+                        <button type="button" id="searchBtn" class="purchase-payment-btn search">
+                            <i class="fas fa-search"></i> {{ get_text('search') }}
+                        </button>
+                        <button type="button" id="resetBtn" class="purchase-payment-btn reset">
+                            <i class="fas fa-undo"></i> {{ get_text('reset') }}
+                        </button>
+                    </div>
+                </div>
+                <div class="purchase-payment-form-group">
+                    <label style="visibility: hidden;">Process</label>
+                    <div style="display: flex; gap: 8px;">
+                        <button type="button" id="processPaymentBtn" class="purchase-payment-btn process">
+                            <i class="fas fa-money-bill-wave"></i> {{ get_text('purchase_process_payment') }}
+                        </button>
+                        <button type="button" id="processBulkPaymentBtn" class="purchase-payment-btn process">
+                            <i class="fas fa-money-bill-wave"></i> {{ get_text('purchase_process_bulk_payment') }}
+                        </button>
+                    </div>
+                </div>
+                <div class="purchase-payment-form-group">
+                    <label style="visibility: hidden;">Cancel/Excel</label>
+                    <div style="display: flex; gap: 8px;">
+                        <button type="button" id="cancelPaymentBtn" class="purchase-payment-btn cancel">
+                            <i class="fas fa-undo"></i> {{ get_text('purchase_cancel_payment') }}
+                        </button>
+                        <button type="button" id="excelDownloadBtn" class="purchase-payment-btn excel">
+                            <i class="fas fa-file-excel"></i> {{ get_text('excel') }}
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="purchase-payment-table-wrap">
+            <table class="purchase-payment-table">
+                <thead>
+                    <tr>
+                        <th><input type="checkbox" id="selectAll"></th>
+                        <th>{{ get_text('purchase_date') }}</th>
+                        <th>{{ get_text('purchase_no') }}</th>
+                        <th>{{ get_text('vendor') }}</th>
+                        <th>{{ get_text('currency') }}</th>
+                        <th>{{ get_text('exchange_rate') }}</th>
+                        <th>{{ get_text('total_amount') }}</th> {# 공급가액 #}
+                        <th>{{ get_text('vat') }} (7%)</th> {# 부가세 #}
+                        <th>{{ get_text('sum_amount') }}</th> {# 합계금액 #}
+                        <th>{{ get_text('paid_amount') }}</th> {# 지급금액 #}
+                        <th>{{ get_text('unpaid_amount') }}</th> {# 미지급액 #}
+                        <th>{{ get_text('purchase_payment_due_date') }}</th>
+                        <th>{{ get_text('purchase_status') }}</th>
+                        <th>{{ get_text('payment_status') }}</th>
+                    </tr>
+                </thead>
+                <tbody id="paymentTableBody"></tbody>
+                 <tfoot>
+                    <tr class="summary-row">
+                        <td colspan="6" class="text-right"><strong>총 합계:</strong></td>
+                        <td id="totalAmountSum" class="text-right"></td>
+                        <td id="totalVatAmountSum" class="text-right"></td>
+                        <td id="totalSumAmountSum" class="text-right"></td>
+                        <td id="totalPaidAmountSum" class="text-right"></td>
+                        <td id="totalUnpaidAmountSum" class="text-right"></td>
+                        <td colspan="3"></td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+        <div class="purchase-payment-pagination" id="pagination"></div>
+    </div>
+</div>
+
+<!-- 대금지급 처리 모달 -->
+<div id="paymentModal" class="modal">
+    <div class="modal-content">
+        <span class="close">&times;</span>
+        <h3 class="modal-title">{{ get_text('purchase_process_payment') }}</h3>
+        <form id="paymentForm">
+             <input type="hidden" id="modalPurchaseNo" name="purchaseNo">
+            <div class="modal-form-group">
+                <label for="paymentDate">{{ get_text('payment_date') }}</label>
+                <input type="date" id="modalPaymentDate" name="paymentDate" class="modal-form-control" required>
+            </div>
+            <div class="modal-form-group">
+                <label for="paymentMethod">{{ get_text('payment_method') }}</label>
+                <select id="modalPaymentMethod" name="paymentMethod" class="modal-form-control" required>
+                    <option value="CASH">{{ get_text('cash') }}</option>
+                    <option value="BANK_TRANSFER">{{ get_text('bank_transfer') }}</option>
+
+                </select>
+            </div>
+             <div class="modal-form-group">
+                <label for="modalTotalAmount">{{ get_text('total_amount') }} (공급가액)</label>
+                <input type="text" id="modalTotalAmount" name="totalAmount" class="modal-form-control" required readonly>
+            </div>
+             <div class="modal-form-group">
+                <label for="modalVatAmount">{{ get_text('vat') }} (부가세 7%)</label>
+                <input type="text" id="modalVatAmount" name="vatAmount" class="modal-form-control" required readonly>
+            </div>
+            <div class="modal-form-group">
+                <label for="modalPaymentAmount">{{ get_text('paid_amount') }} (지급 금액)</label>
+                <input type="number" id="modalPaymentAmount" name="amount" class="modal-form-control" step="0.01" required>
+            </div>
+             <div class="modal-form-group">
+                <label for="modalTransferFee">{{ get_text('transfer_fee') }} (이체수수료)</label>
+                <input type="number" id="modalTransferFee" name="transferFee" class="modal-form-control" step="0.01" value="0">
+            </div>
+            <div class="modal-form-group">
+                <label for="modalRemarks">{{ get_text('remarks') }}</label>
+                <textarea id="modalRemarks" name="remarks" class="modal-form-control" rows="3"></textarea>
+            </div>
+            <div class="button-group">
+                <button type="submit" class="btn btn-primary">{{ get_text('save') }}</button>
+                <button type="button" class="btn btn-secondary" onclick="closePaymentModal()">{{ get_text('cancel') }}</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<style>
+/* General container and card styles (reused/adapted from purchase list) */
+.purchase-payment-container {
+    width: 100vw;
+    min-width: 0;
+    padding: 0;
+    margin: 0;
+    background: #f8fafc;
+}
+.purchase-payment-card {
+    background: #fff;
+    border-radius: 14px;
+    box-shadow: 0 4px 24px rgba(26,35,126,0.08), 0 1.5px 6px rgba(0,0,0,0.03);
+    padding: 28px 24px 24px 24px;
+    width: 100%;
+    box-sizing: border-box;
+    margin: 0 auto;
+}
+.purchase-payment-header h2 {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: #1a237e;
+    margin-bottom: 18px;
+    letter-spacing: -0.5px;
+}
+
+/* Filter form styles */
+.purchase-payment-filters {
+    margin-bottom: 18px;
+}
+.purchase-payment-search-form {
+    display: flex;
+    gap: 18px;
+    flex-wrap: wrap; /* 줄바꿈 허용 */
+    align-items: flex-end; /* 하단 정렬 */
+    font-size: 0.9rem;
+}
+.purchase-payment-form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+.purchase-payment-form-group label {
+    font-size: 0.9rem;
+    color: #374151;
+    font-weight: 500;
+}
+.purchase-payment-form-control {
+    font-size: 0.9rem;
+    padding: 6px 8px; /* 상하 padding 증가 */
+    border-radius: 5px;
+    border: 1px solid #d1d5db;
+    height: 34px; /* 조금 더 여유있게 */
+    line-height: 20px; /* 명시적 line-height */
+    box-sizing: border-box;
+    vertical-align: middle;
+    -webkit-appearance: none; /* Safari 기본 스타일 제거 */
+    -moz-appearance: none; /* Firefox 기본 스타일 제거 */
+    appearance: none; /* 기본 스타일 제거 */
+}
+
+/* date input은 appearance 유지 필요 */
+.purchase-payment-form-control[type="date"] {
+    -webkit-appearance: auto;
+    -moz-appearance: auto;
+    appearance: auto;
+    padding-top: 4px;
+    padding-bottom: 4px;
+}
+
+/* Button styles */
+/* .purchase-payment-button-group {
+    display: none;
+} */
+.purchase-payment-btn {
+    font-size: 0.9rem;
+    padding: 6px 14px; /* 세로 패딩 약간 증가 */
+    border-radius: 6px;
+    border: none;
+    color: #fff;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    white-space: nowrap; /* 버튼 텍스트 줄바꿈 방지 */
+    height: 32px; /* input과 높이 맞추기 */
+}
+.purchase-payment-btn.search {
+    background: #4f8cff;
+}
+.purchase-payment-btn.reset {
+    background: #6c757d;
+}
+.purchase-payment-btn.process {
+    background: #28a745;
+}
+.purchase-payment-btn.cancel {
+    background: #dc3545;
+}
+.purchase-payment-btn.excel {
+    background: #17a2b8; /* Info color for Excel */
+}
+.purchase-payment-btn:hover {
+    opacity: 0.9;
+}
+.purchase-payment-btn.loading {
+    position: relative;
+    opacity: 0.7;
+    pointer-events: none;
+}
+.purchase-payment-btn.loading::after {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 16px;
+    height: 16px;
+    margin: -8px 0 0 -8px;
+    border: 2px solid #f3f3f3;
+    border-top: 2px solid #fff;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* Table styles */
+.purchase-payment-table-wrap {
+    overflow-x: auto;
+    width: 100%;
+}
+.purchase-payment-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.9rem;
+    background: #f8fafc;
+    border-radius: 10px;
+    overflow: hidden;
+}
+.purchase-payment-table th, .purchase-payment-table td {
+    border: 1px solid #e5e7eb;
+    padding: 12px 8px;
+    text-align: center;
+    line-height: 1.7;
+}
+.purchase-payment-table th {
+    background: #e3e8f0;
+    color: #1a237e;
+    font-size: 0.9rem;
+    font-weight: 600;
+}
+.purchase-payment-table td {
+    background: #fff;
+    color: #374151;
+    font-size: 0.9rem;
+}
+.purchase-payment-table .text-right {
+    text-align: right;
+}
+
+/* Status Badge styles */
+.status-badge {
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: 500;
+    color: white; /* Default text color for badges */
+}
+.status-unpaid {
+    background-color: #dc3545; /* Red */
+}
+.status-partial {
+    background-color: #ffc107; /* Yellow */
+    color: #333; /* Dark text for yellow */
+}
+.status-completed {
+    background-color: #28a745; /* Green */
+}
+/* Purchase Status Badge styles */
+.status-pending {
+    background-color: #6c757d; /* Gray */
+}
+.status-process {
+    background-color: #ffc107; /* Yellow */
+    color: #333; /* Dark text for yellow */
+}
+.status-completed {
+    background-color: #28a745; /* Green */
+}
+.status-confirmed {
+    background-color: #17a2b8; /* Blue */
+}
+.status-received {
+    background-color: #28a745; /* Green */
+}
+.status-cancelled {
+    background-color: #dc3545; /* Red */
+}
+
+/* Summary Row styles */
+.purchase-payment-table tfoot .summary-row td {
+    font-weight: bold;
+    background-color: #e9ecef; /* Light grey background */
+    border-top: 2px solid #ced4da;
+    border-bottom: 2px solid #ced4da;
+    padding: 8px; /* Adjust padding */
+    font-size: 0.9rem; /* Match table body font size */
+    color: #343a40; /* Dark text color */
+}
+/* Align the total labels to the right */
+.purchase-payment-table tfoot .summary-row td:nth-child(1) {
+    text-align: right;
+}
+
+
+/* Pagination styles */
+.purchase-payment-pagination {
+    display: flex;
+    justify-content: center;
+    gap: 6px;
+    margin: 18px 0 0 0;
+}
+.purchase-payment-pagination button {
+    background: #f0f4ff;
+    border: 1px solid #b3c6ff;
+    color: #1a237e;
+    border-radius: 5px;
+    padding: 3px 10px;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+.purchase-payment-pagination button.active,
+.purchase-payment-pagination button:hover {
+    background: #4f8cff;
+    color: #fff;
+    border-color: #4f8cff;
+}
+
+/* Modal styles */
+.modal {
+    display: none; /* Hidden by default */
+    position: fixed;
+    z-index: 1000; /* Sit on top */
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    overflow: auto; /* Enable scroll if needed */
+    background-color: rgba(0,0,0,0.4); /* Black w/ opacity */
+    padding-top: 60px;
+}
+
+.modal-content {
+    background-color: #fefefe;
+    margin: 5% auto;
+    padding: 20px;
+    border: 1px solid #888;
+    width: 90%;
+    max-width: 500px; /* Adjust max-width as needed */
+    border-radius: 8px;
+    position: relative;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+}
+
+.modal-title {
+    margin-top: 0;
+    margin-bottom: 20px;
+    padding-bottom: 10px;
+    border-bottom: 2px solid #007bff;
+    color: #333;
+}
+
+.modal-form-group {
+    margin-bottom: 15px;
+}
+
+.modal-form-group label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: bold;
+    color: #555;
+}
+
+.modal-form-control {
+    width: calc(100% - 24px); /* Adjust for padding and border */
+    padding: 8px 12px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    font-size: 1rem;
+}
+
+.modal .button-group {
+    margin-top: 20px;
+    text-align: right; /* Align buttons to the right */
+}
+
+.modal .button-group .btn {
+    margin-left: 10px; /* Add space between buttons */
+}
+
+.close {
+    position: absolute;
+    top: 10px;
+    right: 20px;
+    color: #aaa;
+    font-size: 28px;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+.close:hover,
+.close:focus {
+    color: #000;
+    text-decoration: none;
+    cursor: pointer;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .purchase-payment-search-form {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    .purchase-payment-form-group {
+        min-width: unset; /* Remove min-width constraint */
+        width: 100%; /* Make form groups take full width */
+    }
+     .purchase-payment-button-group {
+        flex-direction: column;
+        gap: 10px; /* Increase gap for column layout */
+    }
+    .purchase-payment-btn {
+        width: 100%; /* Make buttons full width */
+        justify-content: center; /* Center content in buttons */
+    }
+    .modal-content {
+        width: 95%;
+    }
+}
+
+</style>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // 초기 데이터 로드
+        initializeDates();
+        loadVendors();
+        searchPayments();
+
+        // 이벤트 리스너 등록
+        document.getElementById('searchBtn').addEventListener('click', searchPayments);
+        document.getElementById('resetBtn').addEventListener('click', resetSearch);
+        document.getElementById('processPaymentBtn').addEventListener('click', showPaymentModal);
+        document.getElementById('excelDownloadBtn').addEventListener('click', downloadExcel);
+        document.getElementById('selectAll').addEventListener('change', toggleSelectAll);
+        document.getElementById('paymentForm').addEventListener('submit', processPayment);
+        document.querySelector('#paymentModal .close').addEventListener('click', closePaymentModal);
+        document.getElementById('processBulkPaymentBtn').addEventListener('click', processBulkPayment);
+        document.getElementById('cancelPaymentBtn').addEventListener('click', cancelPayment);
+
+         // 모달 외부 클릭 시 닫기
+         window.onclick = function(event) {
+             const modal = document.getElementById('paymentModal');
+             if (event.target === modal) {
+                 closePaymentModal();
+             }
+         };
+    });
+
+    // 날짜 초기화
+    function toKoreaDateString(date) {
+        // UTC+9로 보정
+        const korea = new Date(date.getTime() + 9 * 60 * 60 * 1000);
+        return korea.toISOString().slice(0, 10);
+    }
+
+    function initializeDates() {
+        const today = new Date();
+        const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+        const lastDayOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+        document.getElementById('startDate').value = toKoreaDateString(firstDayOfMonth);
+        document.getElementById('endDate').value = toKoreaDateString(lastDayOfMonth);
+    }
+
+    // 공급업체 목록 로드
+    function loadVendors() {
+        fetch('/purchase/api/vendor/options')
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('공급업체 목록 로드 실패');
+                }
+                return response.json();
+            })
+            .then(data => {
+                const vendorSelect = document.getElementById('vendorCode');
+                data.forEach(vendor => {
+                    const option = document.createElement('option');
+                    option.value = vendor.code;
+                    option.textContent = `${vendor.code} - ${vendor.name}`;
+                    vendorSelect.appendChild(option);
+                });
+            })
+            .catch(error => console.error('Error loading vendors:', error));
+    }
+
+    // 대금지급 목록 검색
+    function searchPayments(page = 1) {
+        const searchBtn = document.getElementById('searchBtn');
+        // 검색 버튼 로딩 상태 추가 (필요시)
+        // searchBtn.classList.add('loading');
+
+        const searchData = {
+            startDate: document.getElementById('startDate').value,
+            endDate: document.getElementById('endDate').value,
+            vendorCode: document.getElementById('vendorCode').value,
+            purchaseStatus: document.getElementById('purchaseStatus').value,
+            paymentStatus: document.getElementById('paymentStatus').value,
+            page: page,
+            per_page: 10
+        };
+
+        console.log('Search data:', searchData); // 디버깅용 로그
+
+        // Construct query parameters for GET request
+        const params = new URLSearchParams();
+        for (const key in searchData) {
+            if (searchData[key]) { // Only append if value exists
+                params.append(key, searchData[key]);
+            }
+        }
+
+        // Use the correct backend API endpoint and GET method
+        fetch(`/purchase/api/purchase_payments?${params.toString()}`)
+        .then(response => {
+            console.log('Response status:', response.status); // 디버깅용 로그
+             // searchBtn.classList.remove('loading'); // 로딩 상태 제거 (필요시)
+            if (!response.ok) {
+                 // Attempt to read error message from response body
+                 return response.json().then(err => { throw new Error(err.message || `HTTP error! status: ${response.status}`); });
+            }
+            return response.json();
+        })
+        .then(data => {
+            console.log('Response data:', data); // 디버깅용 로그
+
+            if (data.payments) { // Check for 'payments' key
+                renderPayments(data.payments);
+                if (data.pagination) {
+                    renderPagination(
+                        data.pagination.totalCount || 0, // Use 'totalCount'
+                        data.pagination.currentPage || page, // Use 'currentPage'
+                        data.pagination.perPage || 10 // Use 'perPage'
+                    );
+                }
+                 // 합계 정보 렌더링 (백엔드 API가 합계 정보를 반환하는 경우)
+                 // Note: The current backend API /api/purchase_payments does NOT return summary data.
+                 // A backend modification would be needed to include total sums in the response.
+                 // For now, the summary row will remain empty or show 0s unless the backend is updated.
+                 if (data.summary) {
+                     renderSummary(data.summary);
+                 } else {
+                      // 합계 정보가 없으면 0으로 표시
+                     renderSummary({ totalAmount: 0, totalVat: 0, totalPaid: 0, remainingAmount: 0 });
+                 }
+
+            } else { // Handle cases where 'payments' key might be missing or empty
+                console.warn("Received data does not contain 'payments' array:", data);
+                renderPayments([]);
+                renderPagination(0, 1, 10);
+                 renderSummary({ totalAmount: 0, totalVat: 0, totalPaid: 0, remainingAmount: 0 });
+            }
+        })
+        .catch(error => {
+            console.error('Error fetching payments:', error);
+             // searchBtn.classList.remove('loading'); // 로딩 상태 제거 (필요시)
+            alert('{{ get_text('load_data_fail') }}: ' + error.message);
+            renderPayments([]); // 오류 발생 시 테이블 비우기
+            renderPagination(0, 1, 10);
+             renderSummary({ totalAmount: 0, totalVat: 0, totalPaid: 0, remainingAmount: 0 });
+        });
+    }
+
+    // 대금지급 목록 렌더링
+    function renderPayments(payments) {
+        const tbody = document.getElementById('paymentTableBody');
+        tbody.innerHTML = ''; // Clear existing rows
+
+        if (!payments || payments.length === 0) {
+            const tr = document.createElement('tr');
+            tr.innerHTML = '<td colspan="14" style="text-align: center;">{{ get_text('no_data_found') }}</td>';
+            tbody.appendChild(tr);
+            return;
+        }
+
+        payments.forEach(payment => {
+            // 디버깅을 위한 로그 추가
+            console.log(`Payment ${payment.purchaseNo}: purchaseStatus = '${payment.purchaseStatus}', displayText = '${getPurchaseStatusText(payment.purchaseStatus)}'`);
+            
+            const tr = document.createElement('tr');
+            // Ensure field names match backend API response
+            tr.innerHTML = `
+                <td><input type="checkbox" class="payment-select" value="${payment.purchaseNo || ''}"></td>
+                <td>${payment.purchaseDate || ''}</td>
+                <td>${payment.purchaseNo || ''}</td>
+                <td>${payment.vendorName || ''}</td>
+                <td>${payment.currencyCode || ''}</td>
+                <td class="text-right">${formatNumber(payment.exchangeRate)}</td>
+                <td class="text-right">${formatNumber(payment.totalAmount)}</td>
+                <td class="text-right">${formatNumber(payment.totalVat || 0)}</td>
+                <td class="text-right">${formatNumber(payment.sumAmount || 0)}</td>
+                <td class="text-right">${formatNumber(payment.paidAmount || 0)}</td>
+                <td class="text-right">${formatNumber((payment.sumAmount || 0) - ((payment.paidAmount || 0) + (payment.paidVat || 0)))}</td>
+                <td>${payment.paymentDueDate || ''}</td>
+                <td><span class="status-badge status-${(payment.purchaseStatus || 'process').toLowerCase()}">${getPurchaseStatusText(payment.purchaseStatus)}</span></td>
+                <td><span class="status-badge status-${(payment.paymentStatus || '').toLowerCase()}">${getStatusText(payment.paymentStatus)}</span></td>
+            `;
+            tbody.appendChild(tr);
+        });
+    }
+
+     // 합계 정보 렌더링 (API 응답의 summary 객체 사용)
+     function renderSummary(summary) {
+         document.getElementById('totalAmountSum').textContent = formatNumber(summary.totalAmount || 0);
+         document.getElementById('totalVatAmountSum').textContent = formatNumber(summary.totalVat || 0);
+         // Assuming backend calculates totalPaid and remainingAmount in summary
+         document.getElementById('totalSumAmountSum').textContent = formatNumber((summary.totalAmount || 0) + (summary.totalVat || 0));
+         document.getElementById('totalPaidAmountSum').textContent = formatNumber(summary.paidAmount || 0); // Corrected field name
+         document.getElementById('totalUnpaidAmountSum').textContent = formatNumber(summary.remainingAmount || 0);
+     }
+
+    // 페이지네이션 렌더링
+    function renderPagination(total, currentPage, perPage) {
+        const pagination = document.getElementById('pagination');
+        pagination.innerHTML = '';
+
+        const totalPages = Math.ceil(total / perPage);
+        const maxButtons = 5;
+        let startPage = Math.max(1, currentPage - Math.floor(maxButtons / 2));
+        let endPage = Math.min(totalPages, startPage + maxButtons - 1);
+
+        if (endPage - startPage + 1 < maxButtons) {
+            startPage = Math.max(1, endPage - maxButtons + 1);
+        }
+
+        // 이전 페이지 버튼
+        if (currentPage > 1) {
+            addPageButton(pagination, currentPage - 1, '&laquo;');
+        }
+
+        // 페이지 번호 버튼
+        for (let i = startPage; i <= endPage; i++) {
+            addPageButton(pagination, i, i.toString(), i === currentPage);
+        }
+
+        // 다음 페이지 버튼
+        if (currentPage < totalPages) {
+            addPageButton(pagination, currentPage + 1, '&raquo;');
+        }
+    }
+
+    // 페이지 버튼 추가
+    function addPageButton(container, page, text, isActive = false) {
+        const button = document.createElement('button');
+        button.innerHTML = text; // Use innerHTML for << and >>
+        button.onclick = () => searchPayments(page);
+        if (isActive) button.classList.add('active');
+        container.appendChild(button);
+    }
+
+    // 검색 조건 초기화
+    function resetSearch() {
+        document.getElementById('searchForm').reset();
+        initializeDates();
+        searchPayments();
+    }
+
+    // 대금지급 모달 표시
+    function showPaymentModal() {
+        const selectedCheckboxes = document.querySelectorAll('.payment-select:checked');
+        if (selectedCheckboxes.length === 0) {
+            alert("{{ get_text('select_payment_to_process') }}");
+            return;
+        }
+
+        if (selectedCheckboxes.length > 1) {
+            alert("{{ get_text('only_one_payment_process') }}");
+            return;
+        }
+
+        const selectedRow = selectedCheckboxes[0].closest('tr');
+        const purchaseNo = selectedCheckboxes[0].value;
+        const statusCell = selectedRow.cells[13]; // Adjust index if table structure changes
+        const status = statusCell.textContent.trim();
+
+        // Check status text using getStatusText map
+        const completedStatusText = getStatusText('COMPLETED');
+
+        if (status === completedStatusText) {
+             alert("{{ get_text('already_completed') }}");
+             return;
+         }
+
+        // Get total amount and unpaid amount from the table row
+        const totalAmountText = selectedRow.cells[6].textContent.replace(/,/g, ''); // Assuming this is total purchase amount before VAT
+        const vatAmountText = selectedRow.cells[7].textContent.replace(/,/g, ''); // Assuming this is calculated VAT from list
+        const unpaidAmountText = selectedRow.cells[10].textContent.replace(/,/g, ''); // Remaining amount to pay
+
+        const totalAmount = parseFloat(totalAmountText) || 0;
+        const vatAmount = parseFloat(vatAmountText) || 0; // Use VAT from list if available
+        const unpaidAmount = parseFloat(unpaidAmountText) || 0;
+
+        console.log('Debug: totalAmountText =', totalAmountText);
+        console.log('Debug: vatAmountText =', vatAmountText);
+        console.log('Debug: totalAmount (parsed) =', totalAmount);
+        console.log('Debug: vatAmount (parsed) =', vatAmount);
+
+        // Calculate the total amount due (Supply Amount + VAT Amount)
+        const totalAmountDue = totalAmount + vatAmount;
+
+        console.log('Debug: totalAmountDue =', totalAmountDue);
+
+        // Set modal fields
+        document.getElementById('modalPurchaseNo').value = purchaseNo;
+        document.getElementById('modalPaymentDate').value = new Date().toISOString().split('T')[0];
+        document.getElementById('modalTotalAmount').value = formatNumber(totalAmount);
+        document.getElementById('modalVatAmount').value = formatNumber(vatAmount); // Set VAT from list data
+        document.getElementById('modalPaymentAmount').value = formatNumber(totalAmountDue); // Set to total amount due (Supply Amount + VAT);
+        document.getElementById('modalTransferFee').value = formatNumber(0);
+        document.getElementById('modalRemarks').value = ''; // Clear previous remarks;
+
+        document.getElementById('paymentModal').style.display = 'block';
+    }
+
+    // 대금지급 모달 닫기
+    function closePaymentModal() {
+        document.getElementById('paymentModal').style.display = 'none';
+        document.getElementById('paymentForm').reset();
+    }
+
+    // 대금지급 처리 (모달 저장 버튼 클릭 시)
+    function processPayment(e) {
+        e.preventDefault();
+
+        const purchaseNo = document.getElementById('modalPurchaseNo').value;
+        const paymentDate = document.getElementById('modalPaymentDate').value;
+        const paymentMethod = document.getElementById('modalPaymentMethod').value;
+        // totalAmount from modal is the base purchase amount, vatAmount from modal is the calculated VAT
+        // The amount field in the modal is the actual amount being paid by the user
+        const amount = parseFloat(document.getElementById('modalPaymentAmount').value) || 0; // Use raw number from input type=number
+        const transferFee = parseFloat(document.getElementById('modalTransferFee').value) || 0; // Use raw number
+        const remarks = document.getElementById('modalRemarks').value;
+
+        // We need the total VAT of the purchase to send to the backend save endpoint
+        // The backend /purchase_payment/save endpoint expects 'vat' corresponding to the payment, not total VAT of the purchase.
+        // It seems the backend logic recalculates remaining amount and status based on total paid amount in purchase_payment table.
+        // Let's send the VAT amount that corresponds to the *paid amount* if partial, or the total VAT if full payment.
+        // This is tricky without clearer backend logic for partial payments.
+        // For simplicity, let's send the calculated VAT for the *total* purchase from the list row for now, as the backend might ignore it or use it differently.
+        const vatAmountToSend = parseFloat(document.getElementById('modalVatAmount').value.replace(/,/g, '')) || 0;
+
+
+        const paymentData = {
+            purchaseNo: purchaseNo,
+            paymentDate: paymentDate,
+            paymentMethod: paymentMethod,
+            amount: amount, // Amount actually paid
+            vat: vatAmountToSend, // Sending total purchase VAT for now - BE needs to handle partial VAT correctly
+            transferFee: transferFee,
+            remarks: remarks
+        };
+
+        // Simple validation (can add more)
+        if (!paymentData.purchaseNo || !paymentData.paymentDate || !paymentData.paymentMethod || paymentData.amount <= 0) {
+             alert('필수 정보를 입력해주세요.');
+             return;
+         }
+
+        // Show loading indicator (optional)
+        // document.getElementById('paymentForm').classList.add('loading');
+
+
+        fetch('/purchase/purchase_payment/save', { // Use the correct save API endpoint
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(paymentData)
+        })
+        .then(response => {
+             // document.getElementById('paymentForm').classList.remove('loading'); // Remove loading indicator
+             if (!response.ok) {
+                 return response.json().then(err => { throw new Error(err.message || `HTTP error! status: ${response.status}`); });
+             }
+             return response.json();
+        })
+        .then(data => {
+            if (data.success) {
+                alert('대금지급이 처리되었습니다.');
+                closePaymentModal();
+                searchPayments(); // 목록 새로고침
+            } else {
+                 throw new Error(data.message || '처리에 실패했습니다.');
+            }
+        })
+        .catch(error => {
+            console.error('Error processing payment:', error);
+             // document.getElementById('paymentForm').classList.remove('loading'); // Remove loading indicator
+            alert('대금지급 처리에 실패했습니다: ' + error.message);
+        });
+    }
+
+    // 대금지급 일괄처리
+    function processBulkPayment() {
+         const selectedCheckboxes = document.querySelectorAll('.payment-select:checked');
+         if (selectedCheckboxes.length === 0) {
+             alert("{{ get_text('select_payment_to_process') }}");
+             return;
+         }
+
+         const purchaseNos = Array.from(selectedCheckboxes).map(checkbox => checkbox.value);
+
+         // Check if any selected payment is already completed or partially paid with 0 unpaid amount
+         let completedCount = 0;
+         let selectedPurchaseNosToProcess = [];
+
+         selectedCheckboxes.forEach(checkbox => {
+             const row = checkbox.closest('tr');
+             const statusCell = row.cells[13]; // Adjust index if table structure changes
+             const status = statusCell.textContent.trim();
+             const unpaidAmount = parseFloat(row.cells[10].textContent.replace(/,/g, '')) || 0;
+
+              const completedStatusText = getStatusText('COMPLETED');
+
+             if (status === completedStatusText || unpaidAmount <= 0) {
+                 completedCount++;
+             } else {
+                  // Add purchaseNo to the list to process if not completed and has unpaid amount
+                 selectedPurchaseNosToProcess.push(checkbox.value);
+             }
+         });
+
+         if (completedCount > 0) {
+             alert(`선택된 ${completedCount}건은 이미 지급완료되었거나 미지급액이 0이므로 일괄처리 대상에서 제외됩니다. 실제 처리 대상: ${selectedPurchaseNosToProcess.length}건`);
+         }
+
+         if (selectedPurchaseNosToProcess.length === 0) {
+             if (completedCount === 0) {
+                  alert("{{ get_text('select_payment_to_process') }}"); // No processable items selected initially
+             }
+             return; // Exit if no items are left to process
+         }
+
+
+         if (!confirm(`선택된 ${selectedPurchaseNosToProcess.length}건의 대금을 일괄 지급처리하시겠습니까? (미지급/부분지급 건만 처리됩니다)`)) {
+             return;
+         }
+
+         const currentDate = new Date().toISOString().split('T')[0];
+
+         const bulkPaymentData = {
+             purchaseNos: selectedPurchaseNosToProcess, // Only send processable ones
+             paymentDate: currentDate,
+             // For bulk processing, assume full payment of remaining amount with default method/remarks
+             paymentMethod: 'BANK_TRANSFER', // Default method for bulk
+             remarks: '일괄처리' // Default remarks for bulk
+             // Note: Backend bulk save endpoint needs to handle paying the remaining amount for each purchaseNo
+             // It should not use a single 'amount' field but rather process each purchaseNo in the list.
+         };
+
+         // Note: Backend bulk save endpoint /purchase/api/purchase_payments/bulk-save is assumed based on the previous implementation attempt.
+         // Need to verify this endpoint exists and handles bulk processing correctly.
+         // The current backend code in app/purchase/routes.py only has a single save endpoint (/purchase_payment/save).
+         // A new backend endpoint /purchase/api/purchase_payments/bulk-save (or similar) is needed.
+
+         // Let's use a placeholder endpoint /purchase/api/purchase_payments/bulk-save
+         // *** IMPORTANT: This endpoint NEEDS TO BE IMPLEMENTED IN THE BACKEND to process the list of purchaseNos and pay remaining amounts. ***
+
+         // Show loading indicator (optional)
+         // document.getElementById('processBulkPaymentBtn').classList.add('loading');
+
+         fetch('/purchase/api/purchase_payments/bulk-save', { // Placeholder endpoint
+             method: 'POST',
+             headers: {
+                 'Content-Type': 'application/json',
+             },
+             body: JSON.stringify(bulkPaymentData)
+         })
+         .then(response => {
+              // document.getElementById('processBulkPaymentBtn').classList.remove('loading'); // Remove loading indicator
+              if (!response.ok) {
+                  return response.json().then(err => { throw new Error(err.message || `HTTP error! status: ${response.status}`); });
+              }
+              return response.json();
+         })
+         .then(data => {
+             if (data.success) {
+                 alert(`${data.processedCount || selectedPurchaseNosToProcess.length}건의 대금지급이 일괄 처리되었습니다.`); // Show actual count if backend returns it
+                 searchPayments(); // 목록 새로고침
+             } else {
+                  throw new Error(data.message || '일괄 처리에 실패했습니다.');
+             }
+         })
+         .catch(error => {
+             console.error('Error processing bulk payment:', error);
+              // document.getElementById('processBulkPaymentBtn').classList.remove('loading'); // Remove loading indicator
+             alert('대금지급 일괄 처리에 실패했습니다: ' + error.message);
+         });
+     }
+
+     // 지급처리 취소
+     function cancelPayment() {
+         const selectedCheckboxes = document.querySelectorAll('.payment-select:checked');
+         if (selectedCheckboxes.length === 0) {
+             alert("{{ get_text('select_payment_to_cancel') }}");
+             return;
+         }
+         if (selectedCheckboxes.length > 1) {
+             alert('지급처리 취소는 한 건만 선택 가능합니다.');
+             return;
+         }
+         const selectedRow = selectedCheckboxes[0].closest('tr');
+         const purchaseNo = selectedCheckboxes[0].value;
+         const statusCell = selectedRow.cells[13]; // Adjust index if table structure changes
+         const status = statusCell.textContent.trim();
+
+          const unpaidStatusText = getStatusText('UNPAID');
+
+         if (status === unpaidStatusText) {
+             alert('이미 미지급 상태입니다.');
+             return;
+         }
+
+         if (!confirm('정말로 이 매입의 지급처리를 취소하시겠습니까? (해당 매입건의 모든 지급 이력이 삭제됩니다)')) { // Added warning about deleting history
+             return;
+         }
+
+         // Note: Backend cancel payment endpoint /purchase/api/payment/cancel is assumed based on button presence.
+         // Need to verify this endpoint exists and handles cancel correctly.
+         // The current backend code in app/purchase/routes.py does NOT have a cancel endpoint.
+         // A new backend endpoint /purchase/api/purchase_payments/cancel (or similar) is needed.
+
+          // Show loading indicator (optional)
+          // document.getElementById('cancelPaymentBtn').classList.add('loading');
+
+         fetch('/purchase/api/purchase_payments/cancel', { // Placeholder endpoint
+             method: 'POST',
+             headers: {
+                 'Content-Type': 'application/json',
+             },
+             body: JSON.stringify({ purchaseNo: purchaseNo })
+         })
+         .then(response => {
+              // document.getElementById('cancelPaymentBtn').classList.remove('loading'); // Remove loading indicator
+              if (!response.ok) {
+                  return response.json().then(err => { throw new Error(err.message || `HTTP error! status: ${response.status}`); });
+              }
+              return response.json();
+         })
+         .then(data => {
+             if (data.success) {
+                 alert('지급처리가 취소되었습니다.');
+                 searchPayments(); // 목록 새로고침
+             } else {
+                  throw new Error(data.message || '취소에 실패했습니다.');
+             }
+         })
+         .catch(error => {
+             console.error('Error cancelling payment:', error);
+              // document.getElementById('cancelPaymentBtn').classList.remove('loading'); // Remove loading indicator
+             alert('지급처리 취소에 실패했습니다: ' + error.message);
+         });
+     }
+
+    // Excel 다운로드
+    function downloadExcel() {
+        const searchData = {
+            startDate: document.getElementById('startDate').value,
+            endDate: document.getElementById('endDate').value,
+            vendorCode: document.getElementById('vendorCode').value,
+            purchaseStatus: document.getElementById('purchaseStatus').value,
+            paymentStatus: document.getElementById('paymentStatus').value
+        };
+
+        // Use POST method for Excel download as implemented in backend /purchase/api/payment/summary/excel
+        // Note: The backend route is /api/payment/summary/excel.
+        // The frontend will call /purchase/api/payment/summary/excel
+        // *** IMPORTANT: Verify if /purchase/api/payment/summary/excel provides the detailed payment list data needed for this page's Excel download. ***
+        // If not, a new backend route might be required.
+
+        const form = document.createElement('form');
+        form.method = 'POST';
+        // Using the summary excel endpoint from backend, assuming it provides payment list data
+        form.action = '/purchase/api/payment/summary/excel';
+
+        // Add data as hidden inputs
+        for (const key in searchData) {
+            if (searchData.hasOwnProperty(key)) {
+                const input = document.createElement('input');
+                input.type = 'hidden';
+                input.name = key;
+                input.value = searchData[key];
+                form.appendChild(input);
+            }
+        }
+
+        document.body.appendChild(form);
+        form.submit();
+        document.body.removeChild(form);
+    }
+
+    // 전체 선택/해제
+    function toggleSelectAll() {
+        const isChecked = document.getElementById('selectAll').checked;
+        document.querySelectorAll('.payment-select').forEach(checkbox => {
+            checkbox.checked = isChecked;
+        });
+    }
+
+    // 숫자 포맷 (천단위 구분자, 소수점 2자리까지)
+    function formatNumber(num) {
+        if (num == null || isNaN(num)) return '0.00'; // Display 0.00 for null/NaN
+        return Number(num).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+
+    // 매입상태 텍스트 변환 (purchase_master.status 필드값 기준)
+    function getPurchaseStatusText(status) {
+        // 빈 값이나 null인 경우 기본값 처리
+        if (!status || status.trim() === '') {
+            return '진행중';  // 기본값
+        }
+        
+        const statusMap = {
+            'PROCESS': "진행중",
+            'COMPLETED': "완료"
+        };
+        return statusMap[status] || status; // Fallback to original status if not mapped
+    }
+
+    // 지급상태 텍스트 변환
+    function getStatusText(status) {
+        const statusMap = {
+            'UNPAID': "{{ get_text('unpaid') }}",
+            'PARTIAL': "{{ get_text('partial_paid') }}",
+            'COMPLETED': "{{ get_text('completed') }}"
+        };
+        return statusMap[status] || status; // Fallback to original status if not mapped
+    }
+
+</script>
+{% endblock %}

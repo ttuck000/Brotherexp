@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ get_text('customer_code_edit') }} - MES 시스템</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/product_code.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+    <style>
+/* Content Area Styles- SMALL */
+.content-area {
+    max-width: 1200px;
+    margin: 20px auto;
+    padding: 20px;
+    background-color: white;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    border-radius: 4px;
+}
+
+        .form-container {
+            background-color: #fff;
+            border-radius: 8px;
+            padding: 30px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        h2 {
+            font-size: 22px;
+            margin-bottom: 25px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #007bff;
+            color: #2c3e50;
+        }
+
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px 30px;
+            margin-bottom: 20px;
+        }
+
+        .form-group {
+            margin-bottom: 10px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 4px;
+            font-weight: 500;
+            color: #495057;
+            font-size: 13px;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 6px 10px;
+            border: 1px solid #ced4da;
+            border-radius: 4px;
+            font-size: 13px;
+            line-height: 1.5;
+            transition: border-color 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+        }
+
+        .form-group input:focus {
+            border-color: #80bdff;
+            outline: none;
+            box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
+        }
+
+        .form-group input[readonly] {
+            background-color: #f8f9fa;
+            cursor: not-allowed;
+            border-color: #e9ecef;
+        }
+
+        .button-section {
+            margin-top: 25px;
+            display: flex;
+            gap: 8px;
+            justify-content: center;
+        }
+
+        .btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 4px;
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease-in-out;
+        }
+
+        .btn-save {
+            background-color: #007bff;
+            color: white;
+            min-width: 80px;
+        }
+
+        .btn-save:hover {
+            background-color: #0056b3;
+            transform: translateY(-1px);
+        }
+
+        .btn-cancel {
+            background-color: #6c757d;
+            color: white;
+            min-width: 80px;
+        }
+
+        .btn-cancel:hover {
+            background-color: #545b62;
+            transform: translateY(-1px);
+        }
+
+        .required::after {
+            content: " *";
+            color: #dc3545;
+            font-size: 14px;
+        }
+
+        /* 입력 필드 크기 조정 */
+        #vendorCode { max-width: 150px; }
+        #vendorName { max-width: 250px; }
+        #businessNumber { max-width: 200px; }
+        #president { max-width: 150px; }
+        #kind { max-width: 150px; }
+        #item { max-width: 150px; }
+        #phone { max-width: 150px; }
+        #address { max-width: 300px; }
+        #charger { max-width: 150px; }
+        #chargerPhone { max-width: 150px; }
+        #usage { max-width: 80px; }
+    </style>
+</head>
+<body>
+    {% include 'nav.html' %}
+
+    <main class="content-area">
+        <div class="form-container">
+            <h2>{{ get_text('customer_code_edit') }}</h2>
+            
+            <form id="vendorForm" class="form-grid">
+                <div class="form-group">
+                    <label for="vendorCode" class="required">{{ get_text('customer_code') }}</label>
+                    <input type="text" id="vendorCode" name="vendorCode" required maxlength="10" readonly>
+                </div>
+                <div class="form-group">
+                    <label for="vendorName" class="required">{{ get_text('customer_name') }}</label>
+                    <input type="text" id="vendorName" name="vendorName" required maxlength="50">
+                </div>
+                <div class="form-group">
+                    <label for="businessNumber">{{ get_text('business_number') }}</label>
+                    <input type="text" id="businessNumber" name="businessNumber" maxlength="50">
+                </div>
+                <div class="form-group">
+                    <label for="taxId">{{ get_text('tax_id') }}</label>
+                    <input type="text" id="taxId" name="taxId" maxlength="50">
+                </div>
+                <div class="form-group">
+                    <label for="president">{{ get_text('president') }}</label>
+                    <input type="text" id="president" name="president" maxlength="50">
+                </div>
+                <div class="form-group">
+                    <label for="kind">{{ get_text('kind') }}</label>
+                    <input type="text" id="kind" name="kind" maxlength="50">
+                </div>
+                <div class="form-group">
+                    <label for="item">{{ get_text('item') }}</label>
+                    <input type="text" id="item" name="item" maxlength="50">
+                </div>
+                <div class="form-group">
+                    <label for="phone">{{ get_text('phone') }}</label>
+                    <input type="text" id="phone" name="phone" maxlength="50">
+                </div>
+                <div class="form-group">
+                    <label for="address">{{ get_text('address') }}</label>
+                    <input type="text" id="address" name="address" maxlength="50">
+                </div>
+                <div class="form-group">
+                    <label for="charger">{{ get_text('charger') }}</label>
+                    <input type="text" id="charger" name="charger" maxlength="50">
+                </div>
+                <div class="form-group">
+                    <label for="chargerPhone">{{ get_text('charger_phone') }}</label>
+                    <input type="text" id="chargerPhone" name="chargerPhone" maxlength="50">
+                </div>
+                <div class="form-group">
+                    <label for="usage">{{ get_text('usage') }}</label>
+                    <input type="text" id="usage" name="usage" value="Y" maxlength="10">
+                </div>
+                <div class="form-group">
+                    <label for="division">{{ get_text('division') }}</label>
+                    <select id="division" name="division" style="width: 100%; padding: 6px 10px; border: 1px solid #ced4da; border-radius: 4px; font-size: 13px;">
+                        <option value="">선택</option>
+                        <option value="CO">CO</option>
+                        <option value="SC">SC</option>
+                        <option value="NG">NG</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="website">{{ get_text('website') }}</label>
+                    <input type="url" id="website" name="website" maxlength="200">
+                </div>
+                <div class="form-group" style="grid-column: 1 / -1;">
+                    <label for="remarks">{{ get_text('remarks') }}</label>
+                    <textarea id="remarks" name="remarks" maxlength="500" style="width: 100%; padding: 6px 10px; border: 1px solid #ced4da; border-radius: 4px; font-size: 13px; min-height: 80px; resize: vertical;"></textarea>
+                </div>
+            </form>
+
+            <div class="button-section">
+                <button type="button" id="updateVendor" class="btn btn-save">{{ get_text('edit') }}</button>
+                <button type="button" id="cancel" class="btn btn-cancel">{{ get_text('cancel') }}</button>
+            </div>
+        </div>
+    </main>
+
+    <footer>
+        <p>&copy; 2024 MES 시스템. All rights reserved.</p>
+    </footer>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // URL에서 거래처 코드 추출
+            const pathParts = window.location.pathname.split('/');
+            const vendorCode = pathParts[pathParts.length - 1];
+
+            // 초기 데이터 로드
+            loadVendorData(vendorCode);
+
+            // 폼 유효성 검사
+            function validateForm() {
+                const requiredFields = ['vendorName'];
+                for (const field of requiredFields) {
+                    const input = document.getElementById(field);
+                    if (!input.value.trim()) {
+                        alert(`${input.previousElementSibling.textContent.replace(' *', '')} {{ get_text('is_required') }}`);
+                        input.focus();
+                        return false;
+                    }
+                }
+                return true;
+            }
+
+            // 거래처 데이터 로드
+            function loadVendorData(code) {
+                fetch(`/customer_code/detail/${code}`, {
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data) {
+                        document.getElementById('vendorCode').value = data.vd_code;
+                        document.getElementById('vendorName').value = data.vd_name;
+                        document.getElementById('businessNumber').value = data.vd_biz_number || '';
+                        document.getElementById('taxId').value = data.vd_tax_id || '';
+                        document.getElementById('president').value = data.vd_president || '';
+                        document.getElementById('kind').value = data.vd_kind || '';
+                        document.getElementById('item').value = data.vd_item || '';
+                        document.getElementById('phone').value = data.vd_phone || '';
+                        document.getElementById('address').value = data.vd_address || '';
+                        document.getElementById('charger').value = data.vd_charger || '';
+                        document.getElementById('chargerPhone').value = data.vd_charger_phone || '';
+                        document.getElementById('usage').value = data.usage || 'Y';
+                        document.getElementById('division').value = data.vd_division || '';
+                        document.getElementById('website').value = data.vd_website || '';
+                        document.getElementById('remarks').value = data.vd_remarks || '';
+                    } else {
+                        alert("{{ get_text('failed_to_load_customer') }}");
+                        window.location.href = '/customer_code';
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert("{{ get_text('failed_to_load_customer') }}");
+                    window.location.href = '/customer_code';
+                });
+            }
+
+            // 수정 버튼 클릭 이벤트
+            document.getElementById('updateVendor').addEventListener('click', function() {
+                if (!validateForm()) {
+                    return;
+                }
+
+                const formData = {
+                    vd_code: document.getElementById('vendorCode').value,
+                    vd_name: document.getElementById('vendorName').value,
+                    vd_biz_number: document.getElementById('businessNumber').value,
+                    vd_tax_id: document.getElementById('taxId').value,
+                    vd_president: document.getElementById('president').value,
+                    vd_kind: document.getElementById('kind').value,
+                    vd_item: document.getElementById('item').value,
+                    vd_phone: document.getElementById('phone').value,
+                    vd_address: document.getElementById('address').value,
+                    vd_charger: document.getElementById('charger').value,
+                    vd_charger_phone: document.getElementById('chargerPhone').value,
+                    usage: document.getElementById('usage').value,
+                    vd_division: document.getElementById('division').value,
+                    vd_website: document.getElementById('website').value,
+                    vd_remarks: document.getElementById('remarks').value
+                };
+
+                fetch('/customer_code/update', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(formData)
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        alert("{{ get_text('update_success') }}");
+                        window.location.href = '/customer_code';
+                    } else {
+                        alert(data.error || "{{ get_text('update_failed') }}");
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert("{{ get_text('update_failed') }}");
+                });
+            });
+
+            // 취소 버튼 클릭 이벤트
+            document.getElementById('cancel').addEventListener('click', function() {
+                if (confirm("{{ get_text('confirm_cancel') }}")) {
+                    window.location.href = '/customer_code';
+                }
+            });
+        });
+    </script>
+
+    <script>
+        document.querySelectorAll('.nav-item').forEach(item => {
+            item.addEventListener('mouseover', function() {
+                this.querySelector('.submenu').style.display = 'block'; 
+            });
+            
+            item.addEventListener('mouseout', function() {
+                this.querySelector('.submenu').style.display = 'none';
+            });
+        });
+    </script>
+</body>
+</html> 

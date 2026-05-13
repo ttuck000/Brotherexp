@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ get_text('business_cost_list') }} - BIGBOY</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+    <style>
+        /* Reuse Currency list styles for consistent UI */
+        .form-container {
+            background-color: #fff;
+            border-radius: 8px;
+            padding: 30px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            width: 100%; /* 추가 */
+            max-width: none; /* 추가 */
+        }
+
+        h2 {
+            font-size: 22px;
+            margin-bottom: 25px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #007bff;
+            color: #2c3e50;
+        }
+
+        .search-section {
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            border: 1px solid #e9ecef;
+        }
+
+        .search-form {
+            display: flex;
+            align-items: flex-end;
+            gap: 10px;
+        }
+
+        .form-group {
+            margin-bottom: 0;
+            flex: 0 0 auto;
+        }
+
+            .form-group label {
+                display: block;
+                margin-bottom: 5px;
+                font-weight: 500;
+                color: #333;
+                font-size: 13px;
+            }
+
+            .form-group input, .form-group select {
+                padding: 6px 12px;
+                border: 1px solid #ced4da;
+                border-radius: 4px;
+                font-size: 13px;
+                width: 200px;
+            }
+
+        .button-section {
+            margin: 20px 0;
+            display: flex;
+            justify-content: space-between; /* 왼쪽 버튼 / 오른쪽 Excel 정렬 */
+            align-items: center;
+        }
+
+        .button-left {
+            display: flex;
+            gap: 8px;
+        }
+
+        .button-right {
+            display: flex;
+            gap: 8px;
+        }
+
+        .btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 4px;
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease-in-out;
+            min-width: 80px;
+        }
+
+        .btn-add {
+            background-color: #28a745;
+            color: white;
+        }
+
+        .btn-edit {
+            background-color: #007bff;
+            color: white;
+        }
+
+        .btn-delete {
+            background-color: #dc3545;
+            color: white;
+        }
+
+        .search-btn {
+            height: 33px;
+            margin-bottom: 0;
+            background-color: #007bff;
+            color: white;
+            padding: 0 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 500;
+        }
+
+        .excel-btn {
+            height: 33px;
+            margin-bottom: 0;
+            background-color: #17a2b8;
+            color: white;
+            padding: 0 14px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 500;
+        }
+
+        .business-grid {
+            width: 100%;
+            min-width: 1200px; /* 표가 너무 좁지 않게 최소 너비 추가 (원하는 값으로 조정) */
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+
+            .business-grid th, .business-grid td {
+                padding: 12px;
+                text-align: left;
+                border-bottom: 1px solid #dee2e6;
+                font-size: 13px;
+            }
+
+            .business-grid th {
+                background-color: #f8f9fa;
+                font-weight: 600;
+                color: #495057;
+            }
+
+            .business-grid tr:hover {
+                background-color: #f8f9fa;
+            }
+
+            .business-grid input[type="checkbox"] {
+                margin: 0;
+            }
+        .content-area {
+            width: 100%;
+        }
+    </style>
+</head>
+<body>
+    {% include 'nav.html' %}
+
+    <main class="content-area">
+        <div class="form-container">
+            <h2>{{ get_text('business_cost_list') }}</h2>
+
+            <div class="search-section">
+                <form id="searchForm" class="search-form" onsubmit="return false;" style="width:100%;">
+                    <div class="form-group">
+                        <label for="vendorSelect">{{ get_text('customer') or 'Vendor' }}</label>
+                        <select id="vendorSelect" name="vendor">
+                            <option value="">{{ get_text('all') or 'All' }}</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="partName">{{ get_text('part_name') or 'Part Name' }}</label>
+                        <input type="text" id="partName" name="partName" placeholder="{{ get_text('enter_part_name') }}">
+                    </div>
+                    <button type="button" id="searchBtn" class="search-btn">{{ get_text('search') }}</button>
+                    <button id="excelDownload" class="excel-btn" style="margin-left:auto;">
+                        <i class="fas fa-file-excel me-1"></i>{{ get_text('excel') or 'Excel' }}
+                    </button>
+                </form>
+            </div>
+
+            <div class="grid-section">
+                <table class="business-grid">
+                    <thead>
+                        <tr>
+                            <th width="50">{{ get_text('select') }}</th>
+                            <th width="80">ID</th>
+                            <th width="200">{{ get_text('vendor') or 'Vendor' }}</th> <!-- CUSTOMER_ID -> VD_NAME -->
+                            <th>{{ get_text('part_name') or 'Part Name' }}</th>
+                            <th width="120">{{ get_text('scrap') or 'Scrap' }}</th>
+                            <th width="120">{{ get_text('crush_fee') or 'Crush Fee' }}</th>
+                            <th width="120">{{ get_text('melting') or 'Melting' }}</th>
+                            <th width="140">{{ get_text('melting_color') or 'Melting Color' }}</th>
+                            <th width="140">{{ get_text('create_by') or 'Create By' }}</th>
+                            <th width="180">{{ get_text('creation_date') or 'Creation Date' }}</th>
+                            </tr>
+                            </thead>
+                            <tbody id="businessCostBody">
+                                <!-- JS will populate -->
+                            </tbody>
+                    </table>
+            </div>
+    </main>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            loadVendorOptions();
+            loadBusinessCosts();
+
+            document.getElementById('searchBtn').addEventListener('click', function() {
+                const part = document.getElementById('partName').value.trim();
+                const vendor = document.getElementById('vendorSelect').value;
+                loadBusinessCosts(part, vendor);
+            });
+
+            document.getElementById('excelDownload').addEventListener('click', function() {
+                const part = document.getElementById('partName').value.trim();
+                const vendor = document.getElementById('vendorSelect').value;
+                let url = '/business_cost/excel';
+                const params = new URLSearchParams();
+                if (part) params.append('part', part);
+                if (vendor) params.append('vendor', vendor);
+                if (params.toString()) url += '?' + params.toString();
+
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = '';
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            });
+
+            document.getElementById('newBusinessCost').addEventListener('click', function() {
+                alert('{{ get_text("not_implemented") or "Not implemented" }}');
+            });
+
+            document.getElementById('editBusinessCost').addEventListener('click', function() {
+                const sel = document.querySelector('input[type="checkbox"]:checked');
+                if (!sel) { alert('{{ get_text("select_record_to_edit") or "Select a record to edit." }}'); return; }
+                const id = sel.closest('tr').dataset.id;
+                window.location.href = `/business_cost/edit/${id}`;
+            });
+
+            document.getElementById('deleteBusinessCost').addEventListener('click', function() {
+                alert('{{ get_text("not_implemented") or "Not implemented" }}');
+            });
+        });
+
+        function loadVendorOptions() {
+            fetch('/purchase/api/vendor/options')
+                .then(r => r.json())
+                .then(data => {
+                    const sel = document.getElementById('vendorSelect');
+                    data.forEach(v => {
+                        const opt = document.createElement('option');
+                        opt.value = v.code;
+                        opt.textContent = `${v.name}`;
+                        sel.appendChild(opt);
+                    });
+                })
+                .catch(err => {
+                    console.error('vendor load failed', err);
+                });
+        }
+
+        function loadBusinessCosts(partName = '', vendor = '') {
+            let url = '/business_cost/list';
+            const params = new URLSearchParams();
+            if (partName) params.append('part', partName);
+            if (vendor) params.append('vendor', vendor);
+            if (params.toString()) url += '?' + params.toString();
+
+            fetch(url)
+                .then(r => r.json())
+                .then(data => {
+                    const tbody = document.getElementById('businessCostBody');
+                    tbody.innerHTML = '';
+                    data.forEach(row => {
+                        const tr = document.createElement('tr');
+                        tr.dataset.id = row.id || '';
+                        tr.innerHTML = `
+                            <td><input type="checkbox"></td>
+                            <td>${row.id || ''}</td>
+                            <td>${row.vd_name || ''}</td>
+                            <td>${row.part_name || ''}</td>
+                            <td>${row.scrap != null ? row.scrap : ''}</td>
+                            <td>${row.crush_fee != null ? row.crush_fee : ''}</td>
+                            <td>${row.melting != null ? row.melting : ''}</td>
+                            <td>${row.melting_color || ''}</td>
+                            <td>${row.create_by || ''}</td>
+                            <td>${row.creation_date ? new Date(row.creation_date).toLocaleString() : ''}</td>
+                        `;
+                        tbody.appendChild(tr);
+                    });
+                })
+                .catch(err => {
+                    console.error('Error loading business costs', err);
+                    alert('{{ get_text("load_data_fail") }}');
+                });
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,746 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ get_text('salary_management') }} - MES System</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <style>
+        .search-section {
+            background-color: #f9f9f9;
+            padding: 15px;
+            margin-bottom: 20px;
+            border-radius: 5px;
+            border: 1px solid #ddd;
+        }
+
+        .search-form {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 10px;
+        }
+
+            .search-form .form-group {
+                display: flex;
+                align-items: center;
+                gap: 6px;
+            }
+
+            .search-form label {
+                font-weight: bold;
+                white-space: nowrap;
+            }
+
+            .search-form input, .search-form select {
+                padding: 7px 10px;
+                border: 1px solid #ccc;
+                border-radius: 4px;
+                font-size: 14px;
+            }
+
+        .button-group {
+            display: flex;
+            gap: 6px;
+        }
+
+        .search-btn {
+            padding: 8px 15px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            background-color: #007bff;
+            color: white;
+        }
+
+        .reset-btn {
+            padding: 8px 15px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            background-color: #6c757d;
+            color: white;
+        }
+
+        .button-section {
+            margin-bottom: 10px;
+        }
+
+        .btn {
+            padding: 8px 14px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-right: 5px;
+            font-size: 14px;
+        }
+
+        .btn-add {
+            background-color: #28a745;
+            color: white;
+        }
+
+        .btn-remove {
+            background-color: #dc3545;
+            color: white;
+        }
+
+        .btn-excel {
+            background-color: #217346;
+            color: white;
+        }
+
+        .salary-grid {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 14px;
+        }
+
+            .salary-grid th {
+                text-align: center;
+                background-color: #f2f2f2;
+                padding: 10px;
+                border: 1px solid #ddd;
+                white-space: nowrap;
+            }
+
+            .salary-grid td {
+                padding: 8px 10px;
+                border: 1px solid #ddd;
+                white-space: nowrap;
+            }
+
+                .salary-grid td:first-child {
+                    text-align: center;
+                }
+
+                .salary-grid td.num {
+                    text-align: right;
+                }
+
+                .salary-grid td.center {
+                    text-align: center;
+                }
+
+            .salary-grid tfoot tr.page-total td {
+                background-color: #eef2f7;
+                font-weight: bold;
+            }
+
+            .salary-grid tfoot tr.grand-total td {
+                background-color: #d0e8ff;
+                font-weight: bold;
+                border-top: 2px solid #007bff;
+            }
+
+        /* ── 페이징 ── */
+        .pagination-wrap {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 4px;
+            margin-top: 14px;
+            flex-wrap: wrap;
+        }
+
+            .pagination-wrap button {
+                min-width: 34px;
+                height: 34px;
+                padding: 0 8px;
+                border: 1px solid #dee2e6;
+                border-radius: 4px;
+                background: #fff;
+                cursor: pointer;
+                font-size: 13px;
+                color: #495057;
+                transition: background .15s;
+            }
+
+                .pagination-wrap button:hover:not(:disabled) {
+                    background: #e9ecef;
+                }
+
+                .pagination-wrap button.active {
+                    background: #007bff;
+                    color: #fff;
+                    border-color: #007bff;
+                    font-weight: bold;
+                }
+
+                .pagination-wrap button:disabled {
+                    color: #adb5bd;
+                    cursor: default;
+                }
+
+        .page-info {
+            font-size: 13px;
+            color: #666;
+            margin-top: 6px;
+            text-align: center;
+        }
+
+        /* ── 모달 ── */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+
+            .modal-overlay.active {
+                display: flex;
+            }
+
+        .modal-box {
+            background: white;
+            border-radius: 8px;
+            padding: 30px;
+            width: 560px;
+            max-width: 95%;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+
+            .modal-box h3 {
+                margin-top: 0;
+                margin-bottom: 20px;
+                font-size: 18px;
+                border-bottom: 2px solid #007bff;
+                padding-bottom: 10px;
+            }
+
+        .modal-form-group {
+            display: flex;
+            align-items: center;
+            margin-bottom: 14px;
+        }
+
+            .modal-form-group label {
+                width: 140px;
+                font-weight: bold;
+                flex-shrink: 0;
+                font-size: 14px;
+            }
+
+            .modal-form-group input,
+            .modal-form-group select {
+                flex: 1;
+                padding: 7px 10px;
+                border: 1px solid #ccc;
+                border-radius: 4px;
+                font-size: 14px;
+            }
+
+                .modal-form-group input[readonly] {
+                    background-color: #f8f9fa;
+                    color: #555;
+                }
+
+        .required {
+            color: red;
+        }
+
+        .modal-buttons {
+            text-align: right;
+            margin-top: 20px;
+        }
+
+            .modal-buttons button {
+                padding: 8px 18px;
+                border: none;
+                border-radius: 4px;
+                cursor: pointer;
+                margin-left: 8px;
+                font-size: 14px;
+            }
+
+        .btn-save {
+            background-color: #007bff;
+            color: white;
+        }
+
+        .btn-cancel {
+            background-color: #6c757d;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    {% include 'nav.html' %}
+
+    <main class="content-area">
+        <div class="product-code-container">
+            <h2>{{ get_text('salary_management') }}</h2>
+
+            <!-- 검색 -->
+            <div class="search-section">
+                <form class="search-form" id="searchForm">
+                    <div class="form-group">
+                        <label>{{ get_text('company') }}</label>
+                        <select id="searchCompany">
+                            <option value="">-- {{ get_text('all') }} --</option>
+                            <option value="RECYCLE">RECYCLE</option>
+                            <option value="INJECTION">INJECTION</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>{{ get_text('year') }}</label>
+                        <input type="number" id="searchYear" style="width:90px;" placeholder="YYYY">
+                    </div>
+                    <div class="form-group">
+                        <label>{{ get_text('month_from') }}</label>
+                        <select id="searchMonthFrom" style="width:100px;">
+                            <option value="">-- {{ get_text('all') }} --</option>
+                            {% for m in range(1,13) %}
+                            <option value="{{ m }}">{{ '%02d'|format(m) }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>{{ get_text('to') }}</label>
+                        <select id="searchMonthTo" style="width:100px;">
+                            <option value="">-- {{ get_text('all') }} --</option>
+                            {% for m in range(1,13) %}
+                            <option value="{{ m }}">{{ '%02d'|format(m) }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="button-group">
+                        <button type="submit" class="search-btn">{{ get_text('search') }}</button>
+                        <button type="button" class="reset-btn" onclick="resetSearch()">{{ get_text('reset') }}</button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- 버튼 -->
+            <div class="button-section">
+                <button class="btn btn-add" onclick="openAddModal()">{{ get_text('new') }}</button>
+                <button class="btn btn-remove" onclick="confirmRemove()">{{ get_text('delete') }}</button>
+                <button class="btn btn-excel" onclick="downloadExcel()">
+                    &#x1F4E5; {{ get_text('excel') }}
+                </button>
+            </div>
+
+            <!-- 그리드 -->
+            <div style="overflow-x:auto;">
+                <table class="salary-grid">
+                    <thead>
+                        <tr>
+                            <th style="width:40px;">{{ get_text('select') }}</th>
+                            <th style="width:50px;">#</th>
+                            <th>{{ get_text('company') }}</th>
+                            <th>{{ get_text('year') }}</th>
+                            <th>{{ get_text('month') }}</th>
+                            <th>{{ get_text('recipient') }}</th>
+                            <th>{{ get_text('basic_salary') }}</th>
+                            <th>{{ get_text('allowance') }}</th>
+                            <th>{{ get_text('deduction') }}</th>
+                            <th>{{ get_text('net_pay') }}</th>
+                            <th>{{ get_text('remark') }}</th>
+                        </tr>
+                    </thead>
+                    <tbody id="gridBody"></tbody>
+                    <tfoot id="gridFoot"></tfoot>
+                </table>
+            </div>
+
+            <!-- 페이징 -->
+            <div class="pagination-wrap" id="pagination"></div>
+            <div class="page-info" id="pageInfo"></div>
+        </div>
+    </main>
+
+    <footer>
+        <p style="text-align:center;padding:16px;color:#888;font-size:13px;">&copy; 2024 MES System. All rights reserved.</p>
+    </footer>
+
+    <!-- 모달 -->
+    <div class="modal-overlay" id="formModal">
+        <div class="modal-box">
+            <h3 id="modalTitle">{{ get_text('new_salary_record') }}</h3>
+            <input type="hidden" id="modalId">
+
+            <div class="modal-form-group">
+                <label>{{ get_text('company') }} <span class="required">*</span></label>
+                <select id="fCompany">
+                    <option value="">-- {{ get_text('select') }} --</option>
+                    <option value="RECYCLE">RECYCLE</option>
+                    <option value="INJECTION">INJECTION</option>
+                </select>
+            </div>
+            <div class="modal-form-group">
+                <label>{{ get_text('year') }} <span class="required">*</span></label>
+                <input type="number" id="fYear" min="2000" max="2099" placeholder="YYYY">
+            </div>
+            <div class="modal-form-group">
+                <label>{{ get_text('month') }} <span class="required">*</span></label>
+                <select id="fMonth">
+                    <option value="">-- {{ get_text('select') }} --</option>
+                    {% for m in range(1,13) %}
+                    <option value="{{ m }}">{{ '%02d'|format(m) }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="modal-form-group">
+                <label>{{ get_text('recipient') }} <span class="required">*</span></label>
+                <input type="text" id="fRecipient" placeholder="{{ get_text('enter_name') }}">
+            </div>
+            <div class="modal-form-group">
+                <label>{{ get_text('basic_salary') }}</label>
+                <input type="number" id="fSalaryAmount" min="0" step="0.01" placeholder="0.00" oninput="calcPaid()">
+            </div>
+            <div class="modal-form-group">
+                <label>{{ get_text('allowance') }}</label>
+                <input type="number" id="fAllowance" min="0" step="0.01" placeholder="0.00" oninput="calcPaid()">
+            </div>
+            <div class="modal-form-group">
+                <label>{{ get_text('deduction') }}</label>
+                <input type="number" id="fDeduction" min="0" step="0.01" placeholder="0.00" oninput="calcPaid()">
+            </div>
+            <div class="modal-form-group">
+                <label>{{ get_text('net_pay') }}</label>
+                <input type="number" id="fPaidAmount" readonly placeholder="{{ get_text('auto_calculated') }}">
+            </div>
+            <div class="modal-form-group">
+                <label>{{ get_text('remark') }}</label>
+                <input type="text" id="fRemark" placeholder="{{ get_text('optional') }}">
+            </div>
+
+            <div class="modal-buttons">
+                <button class="btn-save" onclick="saveModal()">{{ get_text('save') }}</button>
+                <button class="btn-cancel" onclick="closeModal()">{{ get_text('cancel') }}</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const PER_PAGE = 20;
+        let allData = [];
+        let curPage = 1;
+
+        // 다국어 텍스트
+        const i18n = {
+            no_data: "{{ get_text('no_data_found') }}",
+            page_total: "{{ get_text('page_total') }}",
+            grand_total: "{{ get_text('grand_total') }}",
+            rows: "{{ get_text('rows') }}",
+            total: "{{ get_text('total') }}",
+            page: "{{ get_text('page') }}",
+            select_one_edit: "{{ get_text('select_one_edit') }}",
+            select_at_least_one: "{{ get_text('select_at_least_one') }}",
+            confirm_delete: "{{ get_text('confirm_delete') }}",
+            company_required: "{{ get_text('company_required') }}",
+            year_required: "{{ get_text('year_required') }}",
+            month_required: "{{ get_text('month_required') }}",
+            recipient_required: "{{ get_text('recipient_required') }}",
+            updated: "{{ get_text('updated') }}",
+            saved: "{{ get_text('saved') }}",
+            save_failed: "{{ get_text('save_failed') }}",
+            deleted: "{{ get_text('deleted') }}",
+            delete_failed: "{{ get_text('delete_failed') }}",
+            failed_load_data: "{{ get_text('failed_load_data') }}",
+            failed_load_record: "{{ get_text('failed_load_record') }}",
+            error_saving: "{{ get_text('error_saving') }}",
+            error_deleting: "{{ get_text('error_deleting') }}",
+            new_salary_record: "{{ get_text('new_salary_record') }}",
+            edit_salary_record: "{{ get_text('edit_salary_record') }}"
+        };
+
+        /* ── 현재 검색 파라미터 공통 함수 ── */
+        function buildParams() {
+            const params = new URLSearchParams();
+            const company = document.getElementById('searchCompany').value;
+            const year = document.getElementById('searchYear').value;
+            const monthFrom = document.getElementById('searchMonthFrom').value;
+            const monthTo = document.getElementById('searchMonthTo').value;
+            if (company) params.append('company', company);
+            if (year) params.append('year', year);
+            if (monthFrom) params.append('month_from', monthFrom);
+            if (monthTo) params.append('month_to', monthTo);
+            return params;
+        }
+
+        /* ── Net Pay 자동계산 ── */
+        function calcPaid() {
+            const salary = parseFloat(document.getElementById('fSalaryAmount').value) || 0;
+            const allowance = parseFloat(document.getElementById('fAllowance').value) || 0;
+            const deduction = parseFloat(document.getElementById('fDeduction').value) || 0;
+            document.getElementById('fPaidAmount').value = (salary + allowance - deduction).toFixed(2);
+        }
+
+        function fmtMoney(v) {
+            if (v === null || v === undefined || v === '') return '';
+            return parseFloat(v).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        }
+
+        /* ── 전체 합계 계산 ── */
+        function calcGrandTotals() {
+            let totSalary = 0, totAllow = 0, totDeduct = 0, totPaid = 0;
+            allData.forEach(item => {
+                totSalary += parseFloat(item.SalaryAmount || 0);
+                totAllow += parseFloat(item.TotalAllowance || 0);
+                totDeduct += parseFloat(item.TotalDeduction || 0);
+                totPaid += parseFloat(item.PaidAmount || 0);
+            });
+            return { totSalary, totAllow, totDeduct, totPaid };
+        }
+
+        /* ── 페이지 렌더링 ── */
+        function renderPage(page) {
+            curPage = page;
+            const tbody = document.getElementById('gridBody');
+            const tfoot = document.getElementById('gridFoot');
+            tbody.innerHTML = '';
+            tfoot.innerHTML = '';
+
+            const total = allData.length;
+            const totalPages = Math.ceil(total / PER_PAGE) || 1;
+            const start = (page - 1) * PER_PAGE;
+            const end = Math.min(start + PER_PAGE, total);
+            const pageData = allData.slice(start, end);
+
+            if (total === 0) {
+                tbody.innerHTML = `<tr><td colspan="11" style="text-align:center;padding:20px;">${i18n.no_data}</td></tr>`;
+                renderPagination(1, 1);
+                document.getElementById('pageInfo').textContent = '';
+                return;
+            }
+
+            /* 페이지 소계 */
+            let pgSalary = 0, pgAllow = 0, pgDeduct = 0, pgPaid = 0;
+
+            pageData.forEach((item, idx) => {
+                pgSalary += parseFloat(item.SalaryAmount || 0);
+                pgAllow += parseFloat(item.TotalAllowance || 0);
+                pgDeduct += parseFloat(item.TotalDeduction || 0);
+                pgPaid += parseFloat(item.PaidAmount || 0);
+
+                const rowNum = start + idx + 1;
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                        <td><input type="checkbox" data-id="${item.SalaryID}"></td>
+                        <td class="center">${rowNum}</td>
+                        <td>${item.CompanyName || ''}</td>
+                        <td class="center">${item.Year}</td>
+                        <td class="center">${String(item.Month).padStart(2, '0')}</td>
+                        <td>${item.RecipientName || ''}</td>
+                        <td class="num">${fmtMoney(item.SalaryAmount)}</td>
+                        <td class="num">${fmtMoney(item.TotalAllowance)}</td>
+                        <td class="num">${fmtMoney(item.TotalDeduction)}</td>
+                        <td class="num">${fmtMoney(item.PaidAmount)}</td>
+                        <td>${item.Remark || ''}</td>
+                    `;
+                tbody.appendChild(tr);
+            });
+
+            /* 전체 합계 */
+            const { totSalary, totAllow, totDeduct, totPaid } = calcGrandTotals();
+
+            tfoot.innerHTML = `
+                    <tr class="page-total">
+                        <td colspan="6" style="text-align:right;">${i18n.page_total}</td>
+                        <td class="num">${fmtMoney(pgSalary)}</td>
+                        <td class="num">${fmtMoney(pgAllow)}</td>
+                        <td class="num">${fmtMoney(pgDeduct)}</td>
+                        <td class="num">${fmtMoney(pgPaid)}</td>
+                        <td></td>
+                    </tr>
+                    <tr class="grand-total">
+                        <td colspan="6" style="text-align:right;">${i18n.grand_total} (${total.toLocaleString()} ${i18n.rows})</td>
+                        <td class="num">${fmtMoney(totSalary)}</td>
+                        <td class="num">${fmtMoney(totAllow)}</td>
+                        <td class="num">${fmtMoney(totDeduct)}</td>
+                        <td class="num">${fmtMoney(totPaid)}</td>
+                        <td></td>
+                    </tr>
+                `;
+
+            renderPagination(page, totalPages);
+            document.getElementById('pageInfo').textContent =
+                `${i18n.total} ${total.toLocaleString()} ${i18n.rows}  |  ${i18n.page} ${page} / ${totalPages}`;
+        }
+
+        /* ── 페이지 버튼 렌더링 ── */
+        function renderPagination(page, totalPages) {
+            const wrap = document.getElementById('pagination');
+            wrap.innerHTML = '';
+
+            const btn = (label, targetPage, disabled = false, active = false) => {
+                const b = document.createElement('button');
+                b.textContent = label;
+                if (disabled) b.disabled = true;
+                if (active) b.classList.add('active');
+                b.addEventListener('click', () => renderPage(targetPage));
+                return b;
+            };
+
+            wrap.appendChild(btn('«', 1, page === 1));
+            wrap.appendChild(btn('‹', page - 1, page === 1));
+
+            const delta = 2;
+            let prev = null;
+            for (let p = 1; p <= totalPages; p++) {
+                if (p === 1 || p === totalPages || (p >= page - delta && p <= page + delta)) {
+                    if (prev !== null && p - prev > 1) {
+                        const dots = document.createElement('button');
+                        dots.textContent = '…';
+                        dots.disabled = true;
+                        wrap.appendChild(dots);
+                    }
+                    wrap.appendChild(btn(p, p, false, p === page));
+                    prev = p;
+                }
+            }
+
+            wrap.appendChild(btn('›', page + 1, page === totalPages));
+            wrap.appendChild(btn('»', totalPages, page === totalPages));
+        }
+
+        /* ── 목록 로드 ── */
+        function loadList() {
+            fetch('/accounting/salary/list?' + buildParams().toString())
+                .then(r => r.json())
+                .then(data => { allData = data; renderPage(1); })
+                .catch(err => { console.error(err); alert(i18n.failed_load_data); });
+        }
+
+        /* ── 엑셀 다운로드 ── */
+        function downloadExcel() {
+            window.location.href = '/accounting/salary/excel?' + buildParams().toString();
+        }
+
+        /* ── 검색 ── */
+        document.getElementById('searchForm').addEventListener('submit', function (e) {
+            e.preventDefault();
+            loadList();
+        });
+
+        /* ── 리셋 ── */
+        function resetSearch() {
+            const today = new Date();
+            document.getElementById('searchCompany').value = '';
+            document.getElementById('searchYear').value = today.getFullYear();
+            document.getElementById('searchMonthFrom').value = 1;
+            document.getElementById('searchMonthTo').value = today.getMonth() + 1;
+            loadList();
+        }
+
+        /* ── 모달 초기화 ── */
+        function clearModal() {
+            document.getElementById('modalId').value = '';
+            document.getElementById('fCompany').value = '';
+            document.getElementById('fYear').value = new Date().getFullYear();
+            document.getElementById('fMonth').value = new Date().getMonth() + 1;
+            document.getElementById('fRecipient').value = '';
+            document.getElementById('fSalaryAmount').value = '';
+            document.getElementById('fAllowance').value = '';
+            document.getElementById('fDeduction').value = '';
+            document.getElementById('fPaidAmount').value = '';
+            document.getElementById('fRemark').value = '';
+        }
+
+        /* ── 신규 ── */
+        function openAddModal() {
+            clearModal();
+            document.getElementById('modalTitle').textContent = i18n.new_salary_record;
+            document.getElementById('formModal').classList.add('active');
+        }
+
+        /* ── 수정 ── */
+        function openEditModal() {
+            const checked = document.querySelectorAll('#gridBody input[type="checkbox"]:checked');
+            if (checked.length !== 1) { alert(i18n.select_one_edit); return; }
+            fetch(`/accounting/salary/detail/${checked[0].dataset.id}`)
+                .then(r => r.json())
+                .then(item => {
+                    document.getElementById('modalTitle').textContent = i18n.edit_salary_record;
+                    document.getElementById('modalId').value = item.SalaryID;
+                    document.getElementById('fCompany').value = item.CompanyName || '';
+                    document.getElementById('fYear').value = item.Year;
+                    document.getElementById('fMonth').value = item.Month;
+                    document.getElementById('fRecipient').value = item.RecipientName || '';
+                    document.getElementById('fSalaryAmount').value = item.SalaryAmount ?? '';
+                    document.getElementById('fAllowance').value = item.TotalAllowance ?? '';
+                    document.getElementById('fDeduction').value = item.TotalDeduction ?? '';
+                    document.getElementById('fPaidAmount').value = item.PaidAmount ?? '';
+                    document.getElementById('fRemark').value = item.Remark || '';
+                    document.getElementById('formModal').classList.add('active');
+                })
+                .catch(() => alert(i18n.failed_load_record));
+        }
+
+        function closeModal() { document.getElementById('formModal').classList.remove('active'); }
+        document.getElementById('formModal').addEventListener('click', function (e) {
+            if (e.target === this) closeModal();
+        });
+
+        /* ── 저장 ── */
+        function saveModal() {
+            const id = document.getElementById('modalId').value;
+            const CompanyName = document.getElementById('fCompany').value;
+            const Year = document.getElementById('fYear').value;
+            const Month = document.getElementById('fMonth').value;
+            const RecipientName = document.getElementById('fRecipient').value.trim();
+            const SalaryAmount = document.getElementById('fSalaryAmount').value;
+            const TotalAllowance = document.getElementById('fAllowance').value;
+            const TotalDeduction = document.getElementById('fDeduction').value;
+            const Remark = document.getElementById('fRemark').value.trim();
+
+            if (!CompanyName) { alert(i18n.company_required); return; }
+            if (!Year) { alert(i18n.year_required); return; }
+            if (!Month) { alert(i18n.month_required); return; }
+            if (!RecipientName) { alert(i18n.recipient_required); return; }
+
+            const url = id ? '/accounting/salary/update' : '/accounting/salary/save';
+            const body = { CompanyName, Year, Month, RecipientName, SalaryAmount, TotalAllowance, TotalDeduction, Remark };
+            if (id) body.SalaryID = id;
+
+            fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(body)
+            })
+                .then(r => r.json())
+                .then(data => {
+                    if (data.success) { alert(id ? i18n.updated : i18n.saved); closeModal(); loadList(); }
+                    else alert(i18n.save_failed + ': ' + (data.error || ''));
+                })
+                .catch(() => alert(i18n.error_saving));
+        }
+
+        /* ── 삭제 ── */
+        function confirmRemove() {
+            const checked = document.querySelectorAll('#gridBody input[type="checkbox"]:checked');
+            if (checked.length === 0) { alert(i18n.select_at_least_one); return; }
+            if (!confirm(`${i18n.confirm_delete} ${checked.length} ${i18n.rows}?`)) return;
+            fetch('/accounting/salary/delete', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ ids: Array.from(checked).map(cb => cb.dataset.id) })
+            })
+                .then(r => r.json())
+                .then(data => {
+                    if (data.success) { alert(i18n.deleted); loadList(); }
+                    else alert(i18n.delete_failed + ': ' + (data.error || ''));
+                })
+                .catch(() => alert(i18n.error_deleting));
+        }
+
+        /* ── 초기화 ── */
+        document.addEventListener('DOMContentLoaded', function () {
+            const today = new Date();
+            document.getElementById('searchYear').value = today.getFullYear();
+            document.getElementById('searchMonthFrom').value = 1;
+            document.getElementById('searchMonthTo').value = today.getMonth() + 1;
+            loadList();
+        });
+    </script>
+</body>
+</html>

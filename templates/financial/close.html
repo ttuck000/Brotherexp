@@ -1,0 +1,864 @@
+{% extends "base.html" %}
+
+{% block title %}{{ get_text('financial_close') }}{% endblock %}
+
+{% block content %}
+<div class="financial-close-dashboard">
+    <!-- 헤더 섹션 -->
+    <div class="dashboard-header">
+        <div class="header-content">
+            <div class="header-title">
+                <div class="title-icon">
+                    <i class="fas fa-file-invoice"></i>
+                </div>
+                <div class="title-text">
+                    <h1>{{ get_text('financial_close') }}</h1>
+                    <p>{{ get_text('financial_close_desc') }}</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 메인 콘텐츠 -->
+    <div class="dashboard-content">
+        <!-- 결산마감 폼 -->
+        <div class="close-form-section">
+            <div class="close-form-card">
+                <div class="close-form-header">
+                    <div class="header-icon">
+                        <i class="fas fa-lock"></i>
+                    </div>
+                    <h3>{{ get_text('close_period') }}</h3>
+                </div>
+                <div class="close-form-content">
+                    <form method="POST" class="close-form">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="close_date">{{ get_text('close_date') }}</label>
+                                <input type="date" class="form-control" id="close_date" name="close_date" 
+                                       value="{{ default_close_date }}" 
+                                       min="{{ latest_close_date if latest_close_date else '' }}"
+                                       required>
+                                {% if latest_close_date %}
+                                <div class="date-info">
+                                    <i class="fas fa-info-circle"></i>
+                                    <span>{{ get_text('next_close_date_info') }}: {{ latest_close_date }}</span>
+                                </div>
+                                {% endif %}
+                            </div>
+                            <div class="form-actions">
+                                <button type="submit" class="btn-close-period">
+                                    <i class="fas fa-lock"></i>
+                                    <span>{{ get_text('close_period') }}</span>
+                                </button>
+                                <div class="warning-text">
+                                    <i class="fas fa-exclamation-triangle"></i>
+                                    <span>{{ get_text('close_period_warning') }}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- 마감된 기간 목록 -->
+        <div class="closed-periods-section">
+            <div class="closed-periods-card">
+                <div class="closed-periods-header">
+                    <div class="header-icon">
+                        <i class="fas fa-history"></i>
+                    </div>
+                    <h3>{{ get_text('closed_periods') }}</h3>
+                </div>
+                <div class="closed-periods-content">
+                    {% if closed_periods %}
+                    <div class="periods-table">
+                        <table class="modern-table">
+                            <thead>
+                                <tr>
+                                    <th>{{ get_text('close_date') }}</th>
+                                    <th>{{ get_text('total_purchase') }}</th>
+                                    <th>{{ get_text('total_purchase_payment') }}</th>
+                                    <th>{{ get_text('total_sales') }}</th>
+                                    <th>{{ get_text('total_sales_payment') }}</th>
+                                    <th>{{ get_text('gross_profit') }}</th>
+                                    <th>{{ get_text('closed_by') }}</th>
+                                    <th>{{ get_text('closed_at') }}</th>
+                                    <th>{{ get_text('actions') }}</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for period in closed_periods %}
+                                <tr>
+                                    <td class="date-cell">
+                                        <div class="date-badge">
+                                            {{ period.close_date.strftime('%Y-%m-%d') if period.close_date else '' }}
+                                        </div>
+                                    </td>
+                                    <td class="purchase-cell">
+                                        {{ "{:,.0f}".format(period.total_purchase or 0) }}
+                                    </td>
+                                    <td class="payment-cell">
+                                        {{ "{:,.0f}".format(period.total_purchase_payment or 0) }}
+                                    </td>
+                                    <td class="sales-cell">
+                                        {{ "{:,.0f}".format(period.total_sales or 0) }}
+                                    </td>
+                                    <td class="receipt-cell">
+                                        {{ "{:,.0f}".format(period.total_sales_payment or 0) }}
+                                    </td>
+                                    <td class="profit-cell">
+                                        <div class="profit-badge">
+                                            {{ "{:,.0f}".format((period.total_sales or 0) - (period.total_purchase or 0)) }}
+                                        </div>
+                                    </td>
+                                    <td class="user-cell">
+                                        <div class="user-badge">
+                                            {{ period.closed_by or '' }}
+                                        </div>
+                                    </td>
+                                    <td class="time-cell">
+                                        <div class="time-badge">
+                                            {{ period.closed_at.strftime('%Y-%m-%d %H:%M') if period.closed_at else '' }}
+                                        </div>
+                                    </td>
+                                    <td class="action-cell">
+                                        <form method="POST" action="{{ url_for('financial.financial_close_cancel', close_date=period.close_date.strftime('%Y-%m-%d') if period.close_date else '') }}" 
+                                              style="display: inline;" onsubmit="return confirm('{{ get_text('confirm_cancel_close') }}')">
+                                            <button type="submit" class="btn-cancel-close" title="{{ get_text('cancel_close') }}">
+                                                <i class="fas fa-undo"></i>
+                                            </button>
+                                        </form>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                                {% if totals %}
+                                <tr class="total-row">
+                                    <td class="total-label">
+                                        <div class="total-badge">
+                                            {{ get_text('total') }}
+                                        </div>
+                                    </td>
+                                    <td class="total-purchase">
+                                        {{ "{:,.0f}".format(totals.total_purchase_sum or 0) }}
+                                    </td>
+                                    <td class="total-payment">
+                                        {{ "{:,.0f}".format(totals.total_purchase_payment_sum or 0) }}
+                                    </td>
+                                    <td class="total-sales">
+                                        {{ "{:,.0f}".format(totals.total_sales_sum or 0) }}
+                                    </td>
+                                    <td class="total-receipt">
+                                        {{ "{:,.0f}".format(totals.total_sales_payment_sum or 0) }}
+                                    </td>
+                                    <td class="total-profit">
+                                        <div class="total-profit-badge">
+                                            {{ "{:,.0f}".format((totals.total_sales_sum or 0) - (totals.total_purchase_sum or 0)) }}
+                                        </div>
+                                    </td>
+                                    <td class="total-user">
+                                        <div class="total-user-badge">
+                                            -
+                                        </div>
+                                    </td>
+                                    <td class="total-time">
+                                        <div class="total-time-badge">
+                                            -
+                                        </div>
+                                    </td>
+                                    <td class="total-action">
+                                        -
+                                    </td>
+                                </tr>
+                                {% endif %}
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    <!-- 페이지네이션 -->
+                    {% if pagination.total_pages > 1 %}
+                    <div class="pagination-container">
+                        <div class="pagination-info">
+                            {{ get_text('showing') }} {{ (pagination.page - 1) * pagination.per_page + 1 }} - {{ [pagination.page * pagination.per_page, pagination.total_count] | min }} {{ get_text('of') }} {{ pagination.total_count }} {{ get_text('entries') }}
+                        </div>
+                        <div class="pagination-controls">
+                            {% if pagination.page > 1 %}
+                            <a href="{{ url_for('financial.financial_close', page=pagination.page-1) }}" class="pagination-btn">
+                                <i class="fas fa-chevron-left"></i>
+                            </a>
+                            {% endif %}
+                            
+                            {% for p in range(1, pagination.total_pages + 1) %}
+                                {% if p == pagination.page %}
+                                <span class="pagination-btn active">{{ p }}</span>
+                                {% elif p <= 3 or p > pagination.total_pages - 3 or (p >= pagination.page - 1 and p <= pagination.page + 1) %}
+                                <a href="{{ url_for('financial.financial_close', page=p) }}" class="pagination-btn">{{ p }}</a>
+                                {% elif p == 4 and pagination.page > 5 %}
+                                <span class="pagination-dots">...</span>
+                                {% elif p == pagination.total_pages - 3 and pagination.page < pagination.total_pages - 4 %}
+                                <span class="pagination-dots">...</span>
+                                {% endif %}
+                            {% endfor %}
+                            
+                            {% if pagination.page < pagination.total_pages %}
+                            <a href="{{ url_for('financial.financial_close', page=pagination.page+1) }}" class="pagination-btn">
+                                <i class="fas fa-chevron-right"></i>
+                            </a>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% endif %}
+                    {% else %}
+                    <div class="empty-state">
+                        <div class="empty-icon">
+                            <i class="fas fa-inbox"></i>
+                        </div>
+                        <h4>{{ get_text('no_closed_periods') }}</h4>
+                        <p>{{ get_text('no_closed_periods_message') }}</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+/* 전체 대시보드 스타일 */
+.financial-close-dashboard {
+    min-height: 100vh;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    padding: 15px;
+}
+
+/* 헤더 스타일 */
+.dashboard-header {
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(10px);
+    border-radius: 16px;
+    padding: 20px;
+    margin-bottom: 20px;
+    box-shadow: 0 6px 24px rgba(0, 0, 0, 0.1);
+}
+
+.header-content {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 20px;
+}
+
+.header-title {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+}
+
+.title-icon {
+    width: 50px;
+    height: 50px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 20px;
+}
+
+.title-text h1 {
+    margin: 0;
+    font-size: 24px;
+    font-weight: 700;
+    color: #2d3748;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.title-text p {
+    margin: 3px 0 0 0;
+    color: #718096;
+    font-size: 14px;
+}
+
+/* 메인 콘텐츠 */
+.dashboard-content {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+/* 결산마감 폼 스타일 */
+.close-form-section {
+    margin-bottom: 20px;
+}
+
+.close-form-card {
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(10px);
+    border-radius: 16px;
+    padding: 20px;
+    box-shadow: 0 6px 24px rgba(0, 0, 0, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.close-form-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 20px;
+}
+
+.header-icon {
+    width: 40px;
+    height: 40px;
+    background: linear-gradient(135deg, #e53e3e 0%, #f56565 100%);
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 16px;
+}
+
+.close-form-header h3 {
+    margin: 0;
+    font-size: 20px;
+    font-weight: 700;
+    color: #2d3748;
+}
+
+.close-form-content {
+    padding: 0;
+}
+
+.close-form {
+    margin: 0;
+}
+
+.form-row {
+    display: flex;
+    align-items: end;
+    gap: 20px;
+    flex-wrap: wrap;
+}
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    min-width: 200px;
+}
+
+.form-group label {
+    font-size: 12px;
+    font-weight: 600;
+    color: #4a5568;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.form-control {
+    padding: 12px 16px;
+    border: 2px solid #e2e8f0;
+    border-radius: 10px;
+    font-size: 14px;
+    transition: all 0.3s ease;
+    background: white;
+}
+
+.form-control:focus {
+    outline: none;
+    border-color: #e53e3e;
+    box-shadow: 0 0 0 3px rgba(229, 62, 62, 0.1);
+}
+
+.form-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    align-items: flex-start;
+}
+
+.btn-close-period {
+    padding: 12px 24px;
+    background: linear-gradient(135deg, #e53e3e 0%, #f56565 100%);
+    color: white;
+    border: none;
+    border-radius: 10px;
+    font-weight: 600;
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.btn-close-period:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(229, 62, 62, 0.3);
+}
+
+.warning-text {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    color: #e53e3e;
+    font-weight: 500;
+}
+
+.warning-text i {
+    font-size: 14px;
+}
+
+.date-info {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    color: #3182ce;
+    font-weight: 500;
+    margin-top: 4px;
+}
+
+.date-info i {
+    font-size: 12px;
+}
+
+/* 마감된 기간 목록 스타일 */
+.closed-periods-section {
+    margin-top: 20px;
+}
+
+.closed-periods-card {
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(10px);
+    border-radius: 16px;
+    padding: 20px;
+    box-shadow: 0 6px 24px rgba(0, 0, 0, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.closed-periods-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 20px;
+}
+
+.closed-periods-header .header-icon {
+    background: linear-gradient(135deg, #3182ce 0%, #4299e1 100%);
+}
+
+.closed-periods-content {
+    padding: 0;
+}
+
+/* 테이블 스타일 */
+.periods-table {
+    overflow-x: auto;
+    border-radius: 12px;
+    background: white;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.modern-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+}
+
+.modern-table thead {
+    background: linear-gradient(135deg, #2d3748 0%, #4a5568 100%);
+}
+
+.modern-table th {
+    padding: 16px 12px;
+    text-align: center;
+    color: white;
+    font-weight: 600;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    border: none;
+}
+
+.modern-table tbody tr {
+    border-bottom: 1px solid #e2e8f0;
+    transition: all 0.3s ease;
+}
+
+.modern-table tbody tr:hover {
+    background: #f7fafc;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.modern-table td {
+    padding: 16px 12px;
+    vertical-align: middle;
+    border: none;
+}
+
+/* 셀 스타일 */
+.date-cell {
+    font-weight: 600;
+    color: #2d3748;
+}
+
+.date-badge {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 6px 12px;
+    border-radius: 8px;
+    font-size: 12px;
+    font-weight: 600;
+    display: inline-block;
+}
+
+.purchase-cell {
+    color: #e53e3e;
+    font-weight: 600;
+    text-align: center;
+}
+
+.payment-cell {
+    color: #d69e2e;
+    font-weight: 600;
+    text-align: center;
+}
+
+.sales-cell {
+    color: #38a169;
+    font-weight: 600;
+    text-align: center;
+}
+
+.receipt-cell {
+    color: #3182ce;
+    font-weight: 600;
+    text-align: center;
+}
+
+.profit-cell {
+    text-align: center;
+}
+
+.profit-badge {
+    background: linear-gradient(135deg, #38a169 0%, #48bb78 100%);
+    color: white;
+    padding: 6px 12px;
+    border-radius: 8px;
+    font-size: 12px;
+    font-weight: 600;
+    display: inline-block;
+}
+
+.user-cell {
+    text-align: center;
+}
+
+.user-badge {
+    background: #e2e8f0;
+    color: #4a5568;
+    padding: 4px 8px;
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: 500;
+    display: inline-block;
+}
+
+.time-cell {
+    text-align: center;
+}
+
+.time-badge {
+    background: #f7fafc;
+    color: #718096;
+    padding: 4px 8px;
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: 500;
+    display: inline-block;
+}
+
+.action-cell {
+    text-align: center;
+}
+
+.btn-cancel-close {
+    width: 32px;
+    height: 32px;
+    background: linear-gradient(135deg, #e53e3e 0%, #f56565 100%);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.btn-cancel-close:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(229, 62, 62, 0.3);
+    background: linear-gradient(135deg, #c53030 0%, #e53e3e 100%);
+}
+
+/* 합계 행 스타일 */
+.total-row {
+    background: linear-gradient(135deg, #2d3748 0%, #4a5568 100%) !important;
+    border-top: 2px solid #e2e8f0;
+}
+
+.total-row:hover {
+    background: linear-gradient(135deg, #2d3748 0%, #4a5568 100%) !important;
+    transform: none !important;
+    box-shadow: none !important;
+}
+
+.total-label {
+    font-weight: 700;
+    color: white;
+    text-align: center;
+}
+
+.total-badge {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 8px 16px;
+    border-radius: 10px;
+    font-size: 13px;
+    font-weight: 700;
+    display: inline-block;
+}
+
+.total-purchase {
+    color: #fed7d7;
+    font-weight: 700;
+    text-align: center;
+    font-size: 15px;
+}
+
+.total-payment {
+    color: #fef5e7;
+    font-weight: 700;
+    text-align: center;
+    font-size: 15px;
+}
+
+.total-sales {
+    color: #c6f6d5;
+    font-weight: 700;
+    text-align: center;
+    font-size: 15px;
+}
+
+.total-receipt {
+    color: #bee3f8;
+    font-weight: 700;
+    text-align: center;
+    font-size: 15px;
+}
+
+.total-profit {
+    text-align: center;
+}
+
+.total-profit-badge {
+    background: linear-gradient(135deg, #38a169 0%, #48bb78 100%);
+    color: white;
+    padding: 8px 16px;
+    border-radius: 10px;
+    font-size: 13px;
+    font-weight: 700;
+    display: inline-block;
+}
+
+.total-user, .total-time, .total-action {
+    text-align: center;
+    color: #a0aec0;
+    font-weight: 500;
+}
+
+.total-user-badge, .total-time-badge {
+    background: #4a5568;
+    color: #a0aec0;
+    padding: 4px 8px;
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: 500;
+    display: inline-block;
+}
+
+/* 페이지네이션 스타일 */
+.pagination-container {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 20px;
+    padding: 15px 0;
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.pagination-info {
+    color: #718096;
+    font-size: 14px;
+    font-weight: 500;
+    margin-left: 20px;
+}
+
+.pagination-controls {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-right: 20px;
+}
+
+.pagination-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    background: #f7fafc;
+    color: #4a5568;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 500;
+    text-decoration: none;
+    transition: all 0.3s ease;
+    cursor: pointer;
+}
+
+.pagination-btn:hover {
+    background: #edf2f7;
+    border-color: #cbd5e0;
+    transform: translateY(-1px);
+}
+
+.pagination-btn.active {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border-color: #667eea;
+}
+
+.pagination-dots {
+    color: #a0aec0;
+    font-weight: 500;
+    padding: 0 8px;
+}
+
+@media (max-width: 768px) {
+    .pagination-container {
+        flex-direction: column;
+        gap: 15px;
+    }
+    
+    .pagination-info {
+        margin-left: 0;
+    }
+    
+    .pagination-controls {
+        margin-right: 0;
+    }
+}
+
+/* 빈 상태 스타일 */
+.empty-state {
+    text-align: center;
+    padding: 60px 20px;
+    color: #718096;
+}
+
+.empty-icon {
+    width: 80px;
+    height: 80px;
+    background: #f7fafc;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 20px;
+    font-size: 32px;
+    color: #a0aec0;
+}
+
+.empty-state h4 {
+    margin: 0 0 10px 0;
+    font-size: 18px;
+    font-weight: 600;
+    color: #4a5568;
+}
+
+.empty-state p {
+    margin: 0;
+    font-size: 14px;
+    color: #718096;
+}
+
+/* 반응형 디자인 */
+@media (max-width: 768px) {
+    .financial-close-dashboard {
+        padding: 10px;
+    }
+    
+    .dashboard-header {
+        padding: 15px;
+    }
+    
+    .close-form-card,
+    .closed-periods-card {
+        padding: 15px;
+    }
+    
+    .form-row {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 15px;
+    }
+    
+    .form-group {
+        min-width: auto;
+    }
+    
+    .modern-table {
+        font-size: 12px;
+    }
+    
+    .modern-table th,
+    .modern-table td {
+        padding: 12px 8px;
+    }
+    
+    .date-badge,
+    .profit-badge {
+        font-size: 11px;
+        padding: 4px 8px;
+    }
+    
+    .user-badge,
+    .time-badge {
+        font-size: 10px;
+        padding: 3px 6px;
+    }
+    
+    .btn-cancel-close {
+        width: 28px;
+        height: 28px;
+        font-size: 11px;
+    }
+}
+</style>
+{% endblock %} 

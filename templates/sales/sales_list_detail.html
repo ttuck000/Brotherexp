@@ -1,0 +1,537 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="summary-payment-container">
+    <div class="summary-payment-card">
+        <div class="summary-payment-header">
+            <h2>{{ get_text('sales_management_list_detail') }}</h2>
+        </div>
+        <div class="summary-payment-filters">
+            <div class="filter-group">
+                <label>{{ get_text('period') }}</label>
+                <div class="date-inputs">
+                    <input type="date" id="startDate" class="form-control">
+                    <span class="tilde">{{ get_text('tilde') }}</span>
+                    <input type="date" id="endDate" class="form-control">
+                </div>
+            </div>
+            <div class="filter-group">
+                <label>{{ get_text('customer') }}</label>
+                <select id="customerCode" class="form-control">
+                    <option value="">{{ get_text('all') }}</option>
+                </select>
+            </div>
+            <div class="filter-group">
+                <label>{{ get_text('warehouse') }}</label>
+                <select id="warehouseCode" class="form-control">
+                    <option value="">{{ get_text('all') }}</option>
+                </select>
+            </div>
+            <div class="filter-group">
+                <label>{{ get_text('sales_no') }}</label>
+                <input type="text" id="salesNo" class="form-control" placeholder="출고번호 입력">
+            </div>
+            <div class="filter-group">
+                <label>PO.Number</label>
+                <input type="text" id="poNo" class="form-control" placeholder="PO.Number 입력">
+            </div>
+            <div class="summary-payment-actions">
+                <button type="button" class="btn btn-primary" onclick="searchSalesDetail(1)">
+                    <i class="fas fa-search"></i> {{ get_text('search') }}
+                </button>
+                <button type="button" class="btn btn-success" onclick="downloadExcel()">
+                    <i class="fas fa-file-excel"></i> {{ get_text('excel_download') }}
+                </button>
+            </div>
+        </div>
+        <div class="summary-payment-table-wrap">
+            <table class="summary-payment-table">
+                <thead>
+                    <tr>
+                        <th>{{ get_text('sequence') }}</th>
+                        <th>{{ get_text('sales_date') }}</th>
+                        <th>{{ get_text('sales_no') }}</th>
+                        <th>{{ get_text('customer') }}</th>
+                        <th>PO.Number</th>
+                        <th>{{ get_text('warehouse') }}</th>
+                        <th>{{ get_text('item_code') }}</th>
+                        <th>{{ get_text('item_name') }}</th>
+                        <th>{{ get_text('specification') }}</th>
+                        <th>{{ get_text('unit') }}</th>
+                        <th>{{ get_text('quantity') }}</th>
+                        <th>{{ get_text('unit_price') }}</th>
+                        <th>{{ get_text('amount') }}</th>
+                        <th>{{ get_text('currency') }}</th>
+                        <th>{{ get_text('exchange_rate') }}</th>
+                        <th>{{ get_text('payment_method') }}</th>
+                        <th>{{ get_text('sales_status') }}</th>
+                        <th>{{ get_text('payment_due_date') }}</th>
+                    </tr>
+                </thead>
+                <tbody id="salesTableBody"></tbody>
+                <tfoot>
+                  
+                        <td colspan="8" class="center"><strong>{{ get_text('total') }}</strong></td>
+                        
+                        <td></td>
+                        <td class="right" id="totalQuantity"><strong></strong></td>
+                        <td></td>
+                        <td class="right" id="totalAmount"><strong></strong></td>
+                        <td colspan="5"></td>
+                  
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+        <div class="summary-payment-pagination" id="pagination"></div>
+    </div>
+</div>
+
+<style>
+.summary-payment-container {
+    flex: 1;
+    width: 100%;
+    padding: 15px;
+    box-sizing: border-box;
+    background-color: #f8f9fa;
+    min-height: calc(100vh - 60px);
+}
+
+.summary-payment-card {
+    background: #fff;
+    border-radius: 6px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+    padding: 20px;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.summary-payment-header h2 {
+    font-size: 16px;
+    font-weight: 600;
+    color: #2c3e50;
+    margin-bottom: 15px;
+    padding-bottom: 8px;
+    border-bottom: 1.5px solid #007bff;
+}
+
+.summary-payment-filters {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    margin-bottom: 15px;
+}
+
+.filter-group {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-width: 180px;
+}
+
+.filter-group label {
+    font-size: 12px;
+    color: #444;
+    font-weight: 500;
+}
+
+.date-inputs {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.form-control {
+    height: 30px;
+    padding: 4px 8px;
+    font-size: 12px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    background-color: #fff;
+    transition: all 0.2s;
+}
+
+.form-control:focus {
+    border-color: #007bff;
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.1);
+}
+
+.summary-payment-actions {
+    display: flex;
+    gap: 6px;
+    margin-left: auto;
+}
+
+.btn {
+    height: 30px;
+    padding: 0 12px;
+    font-size: 12px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.btn i {
+    font-size: 11px;
+}
+
+.btn-primary {
+    background-color: #007bff;
+    color: white;
+}
+
+.btn-primary:hover {
+    background-color: #0056b3;
+}
+
+.btn-success {
+    background-color: #28a745;
+    color: white;
+}
+
+.btn-success:hover {
+    background-color: #218838;
+}
+
+.summary-payment-table-wrap {
+    overflow-x: auto;
+    border-radius: 6px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+.summary-payment-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12px;
+    background: #fff;
+}
+
+.summary-payment-table th,
+.summary-payment-table td {
+    border: 1px solid #ddd;
+    padding: 8px;
+    text-align: center;
+}
+
+.summary-payment-table th {
+    background-color: #f8f9fa;
+    font-weight: 600;
+    color: #2c3e50;
+}
+
+.summary-payment-table td {
+    color: #444;
+}
+
+.summary-payment-table .center {
+    text-align: center;
+}
+
+.summary-payment-table .right {
+    text-align: right !important;
+}
+
+.summary-payment-table .text-danger {
+    color: #dc3545;
+}
+
+.summary-payment-table .text-success {
+    color: #28a745;
+}
+
+.summary-row {
+    background-color: #f8f9fa;
+    border-top: 2px solid #007bff;
+}
+
+.summary-row td {
+    font-weight: 600;
+    color: #2c3e50;
+}
+
+.summary-payment-pagination {
+    display: flex;
+    justify-content: center;
+    gap: 6px;
+    margin-top: 15px;
+}
+
+.summary-payment-pagination button {
+    background-color: #f8f9fa;
+    border: 1px solid #ddd;
+    color: #2c3e50;
+    border-radius: 4px;
+    padding: 4px 10px;
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.summary-payment-pagination button.active,
+.summary-payment-pagination button:hover {
+    background-color: #007bff;
+    color: white;
+    border-color: #007bff;
+}
+
+@media (max-width: 700px) {
+    .summary-payment-filters {
+        flex-direction: column;
+        gap: 8px;
+    }
+    .summary-payment-card {
+        padding: 16px 6px 12px 6px;
+    }
+    .summary-payment-header h2 {
+        font-size: 14px;
+    }
+    .summary-payment-table th, .summary-payment-table td {
+        font-size: 11px;
+        padding: 5px 4px;
+    }
+}
+</style>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+let currentPage = 1;
+const itemsPerPage = 20;
+
+document.addEventListener('DOMContentLoaded', function() {
+    initializeDateRange();
+    loadCustomerOptions();
+    loadWarehouseOptions();
+    loadSalesDetails();
+});
+
+function toKoreaDateString(date) {
+    // UTC+9로 보정
+    const korea = new Date(date.getTime() + 9 * 60 * 60 * 1000);
+    return korea.toISOString().slice(0, 10);
+}
+
+function initializeDateRange() {
+    const today = new Date();
+    const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
+    const lastDay = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+    document.getElementById('startDate').value = toKoreaDateString(firstDay);
+    document.getElementById('endDate').value = toKoreaDateString(lastDay);
+}
+
+function loadCustomerOptions() {
+    fetch('/sales/api/vendor/options')
+        .then(response => response.json())
+        .then(data => {
+            const select = document.getElementById('customerCode');
+            data.forEach(customer => {
+                const option = document.createElement('option');
+                option.value = customer.code;
+                option.textContent = `${customer.code} - ${customer.name}`;
+                select.appendChild(option);
+            });
+        });
+}
+
+function loadWarehouseOptions() {
+    fetch('/sales/api/warehouse/options')
+        .then(response => response.json())
+        .then(data => {
+            const select = document.getElementById('warehouseCode');
+            data.forEach(warehouse => {
+                const option = document.createElement('option');
+                option.value = warehouse.code;
+                option.textContent = `${warehouse.code} - ${warehouse.name}`;
+                select.appendChild(option);
+            });
+        });
+}
+
+function searchSalesDetail(page = 1) {
+    currentPage = page;
+    loadSalesDetails();
+}
+
+function loadSalesDetails() {
+    const formData = {
+        startDate: document.getElementById('startDate').value,
+        endDate: document.getElementById('endDate').value,
+        customerCode: document.getElementById('customerCode').value,
+        warehouseCode: document.getElementById('warehouseCode').value,
+        salesNo: document.getElementById('salesNo').value,
+        poNo: document.getElementById('poNo').value,
+        page: currentPage,
+        itemsPerPage: itemsPerPage
+    };
+
+    fetch('/sales/api/sales/list-detail', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(formData)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === 'success') {
+            displaySalesDetails(data.items);
+            updatePagination(data.pagination);
+        }
+    })
+    .catch(error => console.error('Error:', error));
+}
+
+function displaySalesDetails(items) {
+    const tbody = document.getElementById('salesTableBody');
+    tbody.innerHTML = '';
+
+    let totalQuantity = 0;
+    let totalAmount = 0;
+
+    const startSequence = (currentPage - 1) * itemsPerPage + 1;
+
+    items.forEach((item, idx) => {
+        const sequence = startSequence + idx;
+        const row = document.createElement('tr');
+        row.innerHTML = `
+            <td>${sequence}</td>
+            <td>${item.salesDate}</td>
+            <td>${item.salesNo}</td>
+            <td>${item.customerName}</td>
+            <td>${item.poNo || ''}</td>
+            <td>${item.warehouseName}</td>
+            <td>${item.itemCode}</td>
+            <td>${item.itemName}</td>
+            <td>${item.specification}</td>
+            <td>${item.unit}</td>
+            <td class="text-right">${formatNumber(item.quantity)}</td>
+            <td class="text-right">${formatNumber(item.unitPrice)}</td>
+            <td class="text-right">${formatNumber(item.amount)}</td>
+            <td>${item.currency}</td>
+            <td class="text-right">${formatNumber(item.exchangeRate)}</td>
+            <td>${item.paymentMethod}</td>
+            <td>${formatSalesStatus(item.salesStatus)}</td>
+            <td>${item.paymentDueDate}</td>
+        `;
+        tbody.appendChild(row);
+
+        totalQuantity += parseFloat(item.quantity);
+        totalAmount += parseFloat(item.amount);
+    });
+
+    document.getElementById('totalQuantity').innerHTML = `<strong>${formatNumber(totalQuantity)}</strong>`;
+    document.getElementById('totalAmount').innerHTML = `<strong>${formatNumber(totalAmount)}</strong>`;
+}
+
+function formatNumber(value) {
+    return new Intl.NumberFormat('ko-KR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(value);
+}
+
+function formatSalesStatus(status) {
+    const statuses = {
+        'PROCESS': "{{ get_text('sales_status_process') }}",
+        'COMPLETED': "{{ get_text('sales_status_completed') }}"
+    };
+    return statuses[status] || status;
+}
+
+function updatePagination(pagination) {
+    const paginationDiv = document.getElementById('pagination');
+    paginationDiv.innerHTML = '';
+
+    if (pagination.total_pages > 1) {
+        addPaginationButton(paginationDiv, 1, "{{ get_text('first') }}", pagination.current_page === 1);
+
+        if (pagination.current_page > 1) {
+            addPaginationButton(paginationDiv, pagination.current_page - 1, "{{ get_text('previous') }}");
+        }
+
+        let startPage = Math.max(1, pagination.current_page - 2);
+        let endPage = Math.min(pagination.total_pages, startPage + 4);
+        
+        if (endPage - startPage < 4) {
+            startPage = Math.max(1, endPage - 4);
+        }
+
+        if (startPage > 1) {
+            addPaginationButton(paginationDiv, null, '...', true, true);
+        }
+
+        for (let i = startPage; i <= endPage; i++) {
+            addPaginationButton(paginationDiv, i, i.toString(), pagination.current_page === i);
+        }
+
+        if (endPage < pagination.total_pages) {
+            addPaginationButton(paginationDiv, null, '...', true, true);
+        }
+
+        if (pagination.current_page < pagination.total_pages) {
+            addPaginationButton(paginationDiv, pagination.current_page + 1, "{{ get_text('next') }}");
+        }
+
+        addPaginationButton(paginationDiv, pagination.total_pages, "{{ get_text('last') }}", pagination.current_page === pagination.total_pages);
+    }
+}
+
+function addPaginationButton(container, page, text, isActive = false, isDisabled = false) {
+    const button = document.createElement('button');
+    button.textContent = text;
+    button.className = `btn btn-sm ${isActive ? 'btn-primary' : 'btn-outline-primary'}`;
+    if (isDisabled) {
+        button.disabled = true;
+    } else {
+        button.onclick = () => searchSalesDetail(page);
+    }
+    container.appendChild(button);
+}
+
+function formatDate(date) {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}${month}${day}`;
+}
+
+function downloadExcel() {
+    const formData = {
+        startDate: document.getElementById('startDate').value,
+        endDate: document.getElementById('endDate').value,
+        customerCode: document.getElementById('customerCode').value,
+        warehouseCode: document.getElementById('warehouseCode').value,
+        salesNo: document.getElementById('salesNo').value,
+        poNo: document.getElementById('poNo').value
+    };
+
+    fetch('/sales/api/sales/list-detail/excel', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(formData)
+    })
+    .then(response => response.blob())
+    .then(blob => {
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `sales_list_detail_${formatDate(new Date())}.xlsx`;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        a.remove();
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert("{{ get_text('excel_download_error') }}");
+    });
+}
+</script>
+{% endblock %} 

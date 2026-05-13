@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ get_text('unit_code_management') }} - MES 시스템</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/product_code.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+    <style>
+   
+        .form-container {
+            background-color: #fff;
+            border-radius: 8px;
+            padding: 30px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        h2 {
+            font-size: 22px;
+            margin-bottom: 25px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #007bff;
+            color: #2c3e50;
+        }
+
+        .search-section {
+            background-color: #f8f9fa;
+            padding: 15px 20px;
+            border-radius: 4px;
+            margin-bottom: 20px;
+            border: 1px solid #e9ecef;
+        }
+
+        .search-form {
+            display: flex;
+            align-items: flex-end;
+            gap: 10px;
+        }
+
+        .form-group {
+            margin-bottom: 0;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 4px;
+            font-weight: 500;
+            color: #495057;
+            font-size: 13px;
+            white-space: nowrap;
+        }
+
+        .form-group input {
+            padding: 6px 10px;
+            border: 1px solid #ced4da;
+            border-radius: 4px;
+            font-size: 13px;
+            line-height: 1.5;
+            height: 31px;
+            transition: border-color 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+        }
+
+        #unitCode {
+            width: 120px;
+        }
+
+        #unitName {
+            width: 180px;
+        }
+
+        .button-section {
+            margin: 20px 0;
+            display: flex;
+            gap: 8px;
+        }
+
+        .btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 4px;
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease-in-out;
+            min-width: 80px;
+        }
+
+        .btn-add {
+            background-color: #28a745;
+            color: white;
+        }
+
+        .btn-edit {
+            background-color: #007bff;
+            color: white;
+        }
+
+        .btn-delete {
+            background-color: #dc3545;
+            color: white;
+        }
+
+        .btn:hover {
+            transform: translateY(-1px);
+        }
+
+        .btn-add:hover {
+            background-color: #218838;
+        }
+
+        .btn-edit:hover {
+            background-color: #0056b3;
+        }
+
+        .btn-delete:hover {
+            background-color: #c82333;
+        }
+
+        .search-btn {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 6px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 500;
+            min-width: 80px;
+            height: 31px;
+            margin-left: 5px;
+            white-space: nowrap;
+        }
+
+        .search-btn:hover {
+            background-color: #0056b3;
+            transform: translateY(-1px);
+        }
+
+        .unit-grid {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+
+        .unit-grid th,
+        .unit-grid td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #dee2e6;
+            font-size: 13px;
+        }
+
+        .unit-grid th {
+            background-color: #f8f9fa;
+            font-weight: 600;
+            color: #495057;
+        }
+
+        .unit-grid tr:hover {
+            background-color: #f8f9fa;
+        }
+
+        .unit-grid input[type="checkbox"] {
+            margin: 0;
+        }
+    </style>
+</head>
+<body>
+        {% include 'nav.html' %}
+
+    <main class="content-area">
+        <div class="form-container">
+            <h2>{{ get_text('unit_code_management') }}</h2>
+            
+            <!-- 검색 영역 -->
+            <div class="search-section">
+                <form id="searchForm" class="search-form">
+                    <div class="form-group">
+                        <label for="unitCode">{{ get_text('unit_code') }}</label>
+                        <input type="text" id="unitCode" name="unitCode">
+                    </div>
+                    <div class="form-group">
+                        <label for="unitName">{{ get_text('unit_name') }}</label>
+                        <input type="text" id="unitName" name="unitName">
+                    </div>
+                    <div class="form-group">
+                        <button type="submit" class="search-btn">{{ get_text('search') }}</button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- 버튼 영역 -->
+            <div class="button-section">
+                <button id="newUnit" class="btn btn-add">{{ get_text('new') }}</button>
+                <button id="editUnit" class="btn btn-edit">{{ get_text('edit') }}</button>
+                <button id="deleteUnit" class="btn btn-delete">{{ get_text('delete') }}</button>
+            </div>
+
+            <!-- 그리드 영역 -->
+            <div class="grid-section">
+                <table class="unit-grid">
+                    <thead>
+                        <tr>
+                            <th>{{ get_text('select') }}</th>
+                            <th>{{ get_text('unit_code') }}</th>
+                            <th>{{ get_text('unit_name') }}</th>
+                            <th>{{ get_text('usage') }}</th>
+                            <th>{{ get_text('remarks') }}</th>
+                            <th>{{ get_text('create_user') }}</th>
+                            <th>{{ get_text('create_date') }}</th>
+                            <th>{{ get_text('update_user') }}</th>
+                            <th>{{ get_text('update_date') }}</th>
+                        </tr>
+                    </thead>
+                    <tbody id="unitTableBody">
+                        <!-- 데이터는 JavaScript로 동적 추가 -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+
+    <footer>
+        <p>&copy; 2024 MES 시스템. All rights reserved.</p>
+    </footer>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // 초기 데이터 로드
+            loadUnits();
+            
+            // 검색 폼 제출 이벤트
+            document.getElementById('searchForm').addEventListener('submit', function(e) {
+                e.preventDefault();
+                searchUnits();
+            });
+
+            // 신규 버튼 클릭 이벤트
+            document.getElementById('newUnit').addEventListener('click', function() {
+                window.location.href = '/unit_code/new';
+            });
+
+            // 수정 버튼 클릭 이벤트
+            document.getElementById('editUnit').addEventListener('click', function() {
+                const selectedRow = document.querySelector('input[type="checkbox"]:checked');
+                if (selectedRow) {
+                    const code = selectedRow.closest('tr').querySelector('td:nth-child(2)').textContent;
+                    window.location.href = `/unit_code/edit/${code}`;
+                } else {
+                    alert("{{ get_text('select_unit_to_edit') }}");
+                }
+            });
+
+            // 삭제 버튼 클릭 이벤트
+            document.getElementById('deleteUnit').addEventListener('click', function() {
+                const selectedRows = document.querySelectorAll('input[type="checkbox"]:checked');
+                if (selectedRows.length === 0) {
+                    alert("{{ get_text('select_unit_to_delete') }}");
+                    return;
+                }
+
+                if (confirm("{{ get_text('confirm_delete') }}")) {
+                    const codes = Array.from(selectedRows).map(checkbox => 
+                        checkbox.closest('tr').querySelector('td:nth-child(2)').textContent
+                    );
+
+                    deleteUnits(codes);
+                }
+            });
+        });
+
+        // 단위코드 목록 로드
+        function loadUnits() {
+            fetch('/unit_code', {
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (Array.isArray(data)) {
+                    displayUnits(data);
+                } else {
+                    console.error('Invalid data format:', data);
+                }
+            })
+            .catch(error => {
+                console.error('Error loading units:', error);
+            });
+        }
+
+        // 단위코드 검색
+        function searchUnits() {
+            const code = document.getElementById('unitCode').value;
+            const name = document.getElementById('unitName').value;
+
+            fetch(`/unit_code/search?code=${encodeURIComponent(code)}&name=${encodeURIComponent(name)}`)
+            .then(response => response.json())
+            .then(data => {
+                if (Array.isArray(data)) {
+                    displayUnits(data);
+                } else {
+                    console.error('Invalid data format:', data);
+                }
+            })
+            .catch(error => {
+                console.error('Error searching units:', error);
+            });
+        }
+
+        // 단위코드 삭제
+        function deleteUnits(codes) {
+            fetch('/unit_code/delete', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ codes: codes })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert("{{ get_text('delete_success') }}");
+                    loadUnits();
+                } else {
+                    alert(data.error || "{{ get_text('delete_failed') }}");
+                }
+            })
+            .catch(error => {
+                console.error('Error deleting units:', error);
+                alert("{{ get_text('delete_failed') }}");
+            });
+        }
+
+        // 단위코드 목록 표시
+        function displayUnits(units) {
+            const tbody = document.getElementById('unitTableBody');
+            tbody.innerHTML = '';
+
+            units.forEach(unit => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td><input type="checkbox"></td>
+                    <td>${unit.code || ''}</td>
+                    <td>${unit.name || ''}</td>
+                    <td>${unit.usage || ''}</td>
+                    <td>${unit.remark || ''}</td>
+                    <td>${unit.createuser || ''}</td>
+                    <td>${unit.createdate || ''}</td>
+                    <td>${unit.updateuser || ''}</td>
+                    <td>${unit.updatedate || ''}</td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+    </script>   
+
+    <script>
+        document.querySelectorAll('.nav-item').forEach(item => {
+            item.addEventListener('mouseover', function() {
+                this.querySelector('.submenu').style.display = 'block';
+            }); 
+            
+            item.addEventListener('mouseout', function() {
+                this.querySelector('.submenu').style.display = 'none';
+            });
+        });
+    </script>
+</body>
+</html> 

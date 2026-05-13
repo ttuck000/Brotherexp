@@ -1,0 +1,1075 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ get_text('purchase_edit') }} - MES 시스템</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+    <style>
+        .content-area {
+            max-width: 1200px;
+            margin: 20px auto;
+            padding: 20px;
+            background-color: white;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            border-radius: 4px;
+        }
+
+        .form-container {
+            background-color: #fff;
+            border-radius: 8px;
+            padding: 30px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        h2 {
+            font-size: 22px;
+            margin-bottom: 25px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #007bff;
+            color: #2c3e50;
+        }
+
+        .form-section {
+            margin-bottom: 30px;
+        }
+
+        .form-row {
+            display: flex;
+            flex-wrap: wrap;
+            margin-bottom: 15px;
+            gap: 20px;
+        }
+
+        .form-group {
+            flex: 1;
+            min-width: 250px;
+        }
+
+            .form-group label {
+                display: block;
+                margin-bottom: 8px;
+                font-weight: 500;
+                color: #333;
+                font-size: 14px;
+            }
+
+            .form-group input, .form-group select, .form-group textarea {
+                width: 100%;
+                padding: 8px 12px;
+                border: 1px solid #ced4da;
+                border-radius: 4px;
+                font-size: 14px;
+                line-height: 1.5;
+                transition: all 0.2s ease-in-out;
+            }
+
+                .form-group input:focus, .form-group select:focus, .form-group textarea:focus {
+                    border-color: #86b7fe;
+                    outline: 0;
+                    box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+                }
+
+            .form-group textarea {
+                min-height: 100px;
+                resize: vertical;
+            }
+
+        .button-section {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-top: 30px;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease-in-out;
+            min-width: 100px;
+        }
+
+        .btn-primary {
+            background-color: #007bff;
+            color: white;
+        }
+
+        .btn-secondary {
+            background-color: #6c757d;
+            color: white;
+        }
+
+        .btn:hover {
+            transform: translateY(-1px);
+        }
+
+        .btn-primary:hover {
+            background-color: #0056b3;
+        }
+
+        .btn-secondary:hover {
+            background-color: #545b62;
+        }
+
+        .required::after {
+            content: " *";
+            color: #dc3545;
+        }
+
+        .item-details {
+            margin-top: 20px;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .item-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+            .item-table th, .item-table td {
+                padding: 12px;
+                text-align: left;
+                border-bottom: 1px solid #dee2e6;
+                font-size: 14px;
+            }
+
+            .item-table th {
+                background-color: #f8f9fa;
+                font-weight: 600;
+                color: #495057;
+            }
+
+            .item-table tr:last-child td {
+                border-bottom: none;
+            }
+
+            .item-table input {
+                width: 100%;
+                padding: 6px 10px;
+                border: 1px solid #ced4da;
+                border-radius: 4px;
+                font-size: 14px;
+            }
+
+        .add-item-btn {
+            background-color: #28a745;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            margin-top: 10px;
+            transition: all 0.2s ease-in-out;
+        }
+
+            .add-item-btn:hover {
+                background-color: #218838;
+                transform: translateY(-1px);
+            }
+
+        .remove-item-btn {
+            background-color: #dc3545;
+            color: white;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.2s ease-in-out;
+        }
+
+            .remove-item-btn:hover {
+                background-color: #c82333;
+            }
+
+        .text-right {
+            text-align: right;
+        }
+
+        .total-section {
+            margin-top: 20px;
+            padding: 15px;
+            background-color: #f8f9fa;
+            border-radius: 4px;
+            display: flex;
+            justify-content: flex-end;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .total-label {
+            font-weight: 600;
+            font-size: 16px;
+        }
+
+        .total-value {
+            font-weight: 700;
+            font-size: 18px;
+            color: #007bff;
+        }
+
+        .form-control {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid #ced4da;
+            border-radius: 4px;
+            font-size: 14px;
+            line-height: 1.5;
+            transition: all 0.2s ease-in-out;
+            background-color: #fff;
+        }
+
+            .form-control:focus {
+                border-color: #86b7fe;
+                outline: 0;
+                box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+            }
+
+            .form-control:disabled {
+                background-color: #e9ecef;
+                cursor: not-allowed;
+            }
+
+        .search-item-btn {
+            background-color: #6c757d;
+            color: white;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            margin-left: 5px;
+            transition: all 0.2s ease-in-out;
+        }
+
+            .search-item-btn:hover {
+                background-color: #5a6268;
+            }
+
+        .item-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .item-code-container {
+            display: flex;
+            align-items: center;
+            flex: 1;
+        }
+
+            .item-code-container select {
+                flex: 1;
+            }
+
+        .item-details-container {
+            display: flex;
+            gap: 10px;
+            flex: 3;
+        }
+
+            .item-details-container input {
+                flex: 1;
+            }
+
+        .item-actions {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            width: 50px;
+        }
+
+        input[readonly], select[disabled] {
+            background-color: #e9ecef !important;
+            color: #6c757d !important;
+            cursor: not-allowed;
+        }
+    </style>
+</head>
+<body>
+    <nav class="main-nav">
+        {% include 'nav.html' %}
+    </nav>
+
+    <main class="content-area">
+        <div class="form-container">
+            <h2>{{ get_text('purchase_edit') }} <span id="paymentCompletedNotice" style="display: none; color: #dc3545; font-size: 18px; margin-left: 15px; font-weight: 600;">(매입지급 기록이 있어 수정할 수 없습니다)</span></h2>
+
+            <form id="purchaseForm">
+                <!-- 기본 정보 섹션 -->
+                <div class="form-section">
+                    <h3>{{ get_text('basic_info') }}</h3>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="purchaseDate" class="required">{{ get_text('purchase_date') }}</label>
+                            <input type="date" id="purchaseDate" name="purchaseDate" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="purchaseNo">{{ get_text('purchase_no') }}</label>
+                            <input type="text" id="purchaseNo" name="purchaseNo" readonly>
+                        </div>
+                        <div class="form-group">
+                            <label for="vendorCode" class="required">{{ get_text('vendor') }}</label>
+                            <div style="display: flex; gap: 8px; align-items: center;">
+                                <select id="vendorCode" name="vendorCode" required>
+                                    <option value="">{{ get_text('select') }}</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="warehouseCode" class="required">{{ get_text('warehouse') }}</label>
+                            <select id="warehouseCode" name="warehouseCode" required>
+                                <option value="">{{ get_text('select') }}</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="currency" class="required">{{ get_text('currency') }}</label>
+                            <select id="currency" name="currency" class="form-control" required>
+                                <option value="">{{ get_text('select') }}</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="exchangeRate">{{ get_text('exchange_rate') }}</label>
+                            <input type="number" id="exchangeRate" name="exchangeRate" value="1" min="0" step="0.01">
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="paymentMethod">{{ get_text('payment_method') }}</label>
+                            <select id="paymentMethod" name="paymentMethod">
+                                <option value="CASH">{{ get_text('cash') }}</option>
+                                <option value="BANK_TRANSFER">{{ get_text('bank_transfer') }}</option>
+                                <option value="CREDIT_CARD">{{ get_text('credit_card') }}</option>
+                                <option value="CHECK">{{ get_text('check') }}</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="paymentDueDate">{{ get_text('purchase_payment_due_date') }}</label>
+                            <input type="date" id="paymentDueDate" name="paymentDueDate">
+                        </div>
+                        <div class="form-group">
+                            <label for="status">{{ get_text('status') }}</label>
+                            <select id="status" name="status">
+                                <option value="PROCESS">{{ get_text('in_process') }}</option>
+                                <option value="COMPLETED">{{ get_text('confirmed') }}</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="trCode" class="required">{{ get_text('transaction_code') }}</label>
+                            <select id="trCode" name="trCode" required>
+                                <option value="">선택</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group" style="flex: 2;">
+                            <label for="remarks">{{ get_text('remark') }}</label>
+                            <textarea id="remarks" name="remarks"></textarea>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 품목 정보 섹션 -->
+                <div class="form-section">
+                    <h3>{{ get_text('item_info') }}</h3>
+                    <div class="item-details">
+                        <table class="item-table">
+                            <thead>
+                                <tr>
+                                    <th style="width: 220px;">{{ get_text('item_code') }}</th>
+                                    <th style="width: 300px;">{{ get_text('item_name') }}</th>
+                                    <th>{{ get_text('specification') }}</th>
+                                    <th>{{ get_text('unit') }}</th>
+                                    <th>{{ get_text('quantity') }}</th>
+                                    <th>{{ get_text('unit_price') }}</th>
+                                    <th>{{ get_text('amount') }}</th>
+                                    <th>{{ get_text('action') }}</th>
+                                </tr>
+                            </thead>
+                            <tbody id="itemTableBody">
+                                <!-- 품목 행은 JavaScript로 동적 추가 -->
+                            </tbody>
+                        </table>
+                        <button type="button" id="addItemBtn" class="add-item-btn">
+                            <i class="fas fa-plus"></i> {{ get_text('add_item') }}
+                        </button>
+                    </div>
+                    <div class="total-section">
+                        <div class="total-label">{{ get_text('total_amount') }}:</div>
+                        <div class="total-value" id="totalAmount">0</div>
+                    </div>
+                </div>
+
+                <!-- 버튼 섹션 -->
+                <div class="button-section">
+                    <button type="submit" class="btn btn-primary">{{ get_text('save') }}</button>
+                    <button type="button" class="btn btn-secondary" id="cancelBtn">{{ get_text('cancel') }}</button>
+                </div>
+            </form>
+        </div>
+    </main>
+
+    <footer>
+        <p>&copy; 2024 MES 시스템. All rights reserved.</p>
+    </footer>
+
+    <script>
+        let loadedPurchaseData = null;
+        let paymentStatus = null;
+
+        // 매입지급 상태 확인 함수
+        function checkPaymentStatus(purchaseNo) {
+            console.log('Checking payment status for:', purchaseNo);
+            return fetch(`/purchase/api/purchase/${purchaseNo}/payment-status`)
+                .then(response => {
+                    console.log('Payment status response status:', response.status);
+                    if (!response.ok) {
+                        throw new Error('Network response was not ok');
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    console.log('Payment status data:', data);
+                    paymentStatus = data;
+
+                    if (data.isPaymentCompleted) {
+                        const paymentNotice = document.getElementById('paymentCompletedNotice');
+                        if (paymentNotice) paymentNotice.style.display = 'inline';
+
+                        const saveButton = document.querySelector('button[type="submit"]');
+                        const addItemBtn = document.getElementById('addItemBtn');
+
+                        if (saveButton) {
+                            saveButton.disabled = true;
+                            saveButton.style.backgroundColor = '#6c757d';
+                            saveButton.style.cursor = 'not-allowed';
+                            saveButton.style.opacity = '0.6';
+                            saveButton.style.border = '1px solid #6c757d';
+                            saveButton.title = '매입지급 기록이 있어 수정할 수 없습니다.';
+                            saveButton.textContent = '수정 불가';
+                            saveButton.onclick = function(e) {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                alert('매입지급 기록이 있어 수정할 수 없습니다.');
+                                return false;
+                            };
+                        }
+
+                        if (addItemBtn) {
+                            addItemBtn.disabled = true;
+                            addItemBtn.style.backgroundColor = '#6c757d';
+                            addItemBtn.style.cursor = 'not-allowed';
+                            addItemBtn.title = '매입지급 기록이 있어 수정할 수 없습니다.';
+                            addItemBtn.onclick = function(e) {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                alert('매입지급 기록이 있어 수정할 수 없습니다.');
+                                return false;
+                            };
+                        }
+
+                        const formInputs = document.querySelectorAll('input, select, textarea');
+                        formInputs.forEach(input => {
+                            if (input.type !== 'hidden' && input.id !== 'cancelBtn') {
+                                input.disabled = true;
+                                input.style.backgroundColor = '#f8f9fa';
+                                input.style.cursor = 'not-allowed';
+                                input.onkeydown = function(e) { e.preventDefault(); return false; };
+                                input.onpaste = function(e) { e.preventDefault(); return false; };
+                            }
+                        });
+
+                        const form = document.getElementById('purchaseForm');
+                        if (form) {
+                            form.onsubmit = function(e) {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                alert('매입지급 기록이 있어 수정할 수 없습니다.');
+                                return false;
+                            };
+                        }
+
+                        const alertDiv = document.createElement('div');
+                        alertDiv.className = 'alert alert-warning';
+                        alertDiv.style.cssText = 'background-color: #d4edda; border: 2px solid #c3e6cb; color: #155724; padding: 15px; margin-bottom: 25px; border-radius: 6px; font-size: 16px; font-weight: 500; text-align: center;';
+                        alertDiv.innerHTML = '<i class="fas fa-info-circle" style="margin-right: 8px;"></i><strong>매입지급 기록이 있어 수정할 수 없습니다.</strong>';
+                        const formContainer = document.querySelector('.form-container');
+                        if (formContainer) formContainer.insertBefore(alertDiv, formContainer.firstChild);
+                    }
+
+                    return data;
+                })
+                .catch(error => {
+                    console.error('Error checking payment status:', error);
+                    return null;
+                });
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            const pathParts = window.location.pathname.split('/');
+            const purchaseNo = pathParts[pathParts.length - 1];
+
+            if (purchaseNo) {
+                checkPaymentStatus(purchaseNo).then(() => {
+                    loadPurchaseData(purchaseNo);
+                });
+            } else {
+                alert('올바르지 않은 접근입니다.');
+                window.location.href = '/purchase/list';
+            }
+            loadItems();
+            document.getElementById('addItemBtn').addEventListener('click', addItemRow);
+            document.getElementById('cancelBtn').addEventListener('click', cancelEdit);
+            document.getElementById('purchaseForm').addEventListener('submit', updatePurchase);
+
+            document.addEventListener('DOMNodeInserted', function(event) {
+                if (event.target.classList && event.target.classList.contains('item-select')) {
+                    const select = event.target;
+                    select.disabled = false;
+                    select.removeAttribute('disabled');
+                    select.style.pointerEvents = 'auto';
+                    select.style.opacity = '1';
+                    select.style.cursor = 'pointer';
+                    select.style.backgroundColor = 'white';
+                    select.style.color = 'black';
+                }
+            });
+        });
+
+        function loadPurchaseData(purchaseNo) {
+            fetch(`/purchase/api/purchase/${purchaseNo}`)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Network response was not ok');
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    console.log('Purchase data loaded:', data);
+                    loadedPurchaseData = data;
+                    document.getElementById('purchaseDate').value = data.purchaseDate;
+                    document.getElementById('purchaseNo').value = data.purchaseNo;
+                    document.getElementById('exchangeRate').value = data.exchangeRate;
+                    document.getElementById('paymentMethod').value = data.paymentMethod;
+                    document.getElementById('paymentDueDate').value = data.paymentDueDate;
+                    document.getElementById('status').value = data.status;
+                    document.getElementById('trCode').value = data.trCode || '';
+                    document.getElementById('remarks').value = data.remarks;
+
+                    loadVendors(data.vendorCode)
+                        .then(() => loadWarehousesForEdit(data.warehouseCode))
+                        .then(() => loadCurrencies(data.currency))
+                        .then(() => loadTransactionCodes(data.trCode))
+                        .then(() => loadItems())
+                        .then(() => {
+                            const itemTableBody = document.getElementById('itemTableBody');
+                            itemTableBody.innerHTML = '';
+                            data.items.forEach(item => {
+                                addItemRow(item);
+                            });
+                            calculateTotal();
+
+                            fetch(`/purchase/api/purchase/payment/exist/${purchaseNo}`)
+                                .then(res => res.json())
+                                .then(payData => {
+                                    if (payData.exists) {
+                                        setFormDisabled(true);
+                                    }
+                                })
+                                .catch(error => {
+                                    console.error('Error checking payment status:', error);
+                                });
+                        })
+                        .catch(error => {
+                            console.error('Error loading dropdown data:', error);
+                            alert('드롭다운 데이터를 불러오는데 실패했습니다.');
+                        });
+                })
+                .catch(error => {
+                    console.error('Error loading purchase data:', error);
+                    alert('매입 데이터를 불러오는데 실패했습니다.');
+                    window.location.href = '/purchase/list';
+                });
+        }
+
+        function loadVendors(selectedValue) {
+            const vendorSelect = document.getElementById('vendorCode');
+            vendorSelect.innerHTML = '<option value="">선택</option>';
+            return fetch('/api/vendor/options')
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Network response was not ok');
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    data.forEach(vendor => {
+                        const option = document.createElement('option');
+                        option.value = vendor.code;
+                        option.textContent = `${vendor.code} - ${vendor.name}`;
+                        vendorSelect.appendChild(option);
+                    });
+                    if (selectedValue) vendorSelect.value = selectedValue;
+                    return data;
+                })
+                .catch(error => {
+                    console.error('Error loading vendors:', error);
+                    alert('공급업체 목록을 불러오지 못했습니다.');
+                    throw error;
+                });
+        }
+
+        function loadWarehousesForEdit(selectedValue) {
+            const warehouseSelect = document.getElementById('warehouseCode');
+            if (!warehouseSelect) {
+                return Promise.reject(new Error('창고 선택 요소를 찾을 수 없습니다.'));
+            }
+
+            warehouseSelect.innerHTML = '<option value="">선택</option>';
+
+            return fetch('/api/warehouse/options')
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`창고 목록을 불러오지 못했습니다. (${response.status})`);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    if (!Array.isArray(data)) {
+                        throw new Error('잘못된 데이터 형식입니다.');
+                    }
+                    if (data.length === 0) {
+                        return data;
+                    }
+
+                    data.forEach(warehouse => {
+                        const option = document.createElement('option');
+                        option.value = warehouse.code;
+                        option.textContent = `${warehouse.code} - ${warehouse.name}`;
+                        warehouseSelect.appendChild(option);
+                    });
+
+                    if (selectedValue) {
+                        warehouseSelect.value = selectedValue;
+                        if (warehouseSelect.value !== selectedValue) {
+                            for (const opt of warehouseSelect.options) {
+                                if ((opt.value || '').trim().toUpperCase() === (selectedValue || '').trim().toUpperCase()) {
+                                    warehouseSelect.value = opt.value;
+                                    break;
+                                }
+                            }
+                        }
+                    }
+
+                    return data;
+                })
+                .catch(error => {
+                    console.error('Error loading warehouses for edit:', error);
+                    alert(`창고 목록을 불러오지 못했습니다: ${error.message}`);
+                    throw error;
+                });
+        }
+
+        function loadCurrencies(selectedValue) {
+            const currencySelect = document.getElementById('currency');
+            currencySelect.innerHTML = '<option value="">선택</option>';
+            return fetch('/api/currencies')
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('통화 목록을 불러오지 못했습니다.');
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    const validCurrencies = data.filter(c => c && (c.currencyCode || c.code));
+                    validCurrencies.sort((a, b) => {
+                        const codeA = a.currencyCode || a.code || '';
+                        const codeB = b.currencyCode || b.code || '';
+                        return codeA.localeCompare(codeB);
+                    });
+                    validCurrencies.forEach(currency => {
+                        const code = currency.currencyCode || currency.code;
+                        const name = currency.currencyName || currency.name;
+                        const rate = currency.exchangeRate || 1;
+                        if (code && name) {
+                            const option = document.createElement('option');
+                            option.value = code;
+                            option.textContent = `${code} - ${name}`;
+                            option.dataset.exchangeRate = rate;
+                            currencySelect.appendChild(option);
+                        }
+                    });
+                    if (selectedValue) currencySelect.value = selectedValue;
+                    return data;
+                })
+                .catch(error => {
+                    console.error('Error loading currencies:', error);
+                    alert('통화 목록을 불러오지 못했습니다.');
+                    throw error;
+                });
+        }
+
+        function loadTransactionCodes(selectedValue) {
+            const trCodeSelect = document.getElementById('trCode');
+            trCodeSelect.innerHTML = '<option value="">선택</option>';
+            return fetch('/purchase/api/transaction-codes/purchase')
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('수불코드 목록을 불러오지 못했습니다.');
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    if (!Array.isArray(data) || data.length === 0) {
+                        return data;
+                    }
+                    data.forEach(trCode => {
+                        const option = document.createElement('option');
+                        option.value = trCode.tr_code;
+                        option.textContent = `${trCode.tr_code} - ${trCode.tr_name}`;
+                        trCodeSelect.appendChild(option);
+                    });
+                    if (selectedValue) {
+                        trCodeSelect.value = selectedValue;
+                    }
+                    return data;
+                })
+                .catch(error => {
+                    console.error('Error loading transaction codes:', error);
+                    alert('수불코드 목록을 불러오지 못했습니다.');
+                    throw error;
+                });
+        }
+
+        function loadItems() {
+            return fetch('/api/items')
+                .then(response => {
+                    if (!response.ok) {
+                        return response.text().then(text => {
+                            console.error('Frontend: Response text:', text);
+                            throw new Error('Network response was not ok');
+                        });
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    window.itemsList = data;
+                    return data;
+                })
+                .catch(error => {
+                    console.error('Frontend: Error loading items:', error);
+                    throw error;
+                });
+        }
+
+        function populateItemDropdown(selectElement, items) {
+            selectElement.innerHTML = '<option value="">선택</option>';
+            if (!Array.isArray(items)) {
+                return;
+            }
+            items.forEach(item => {
+                if (item && item.itemCode) {
+                    const option = document.createElement('option');
+                    option.value = item.itemCode;
+                    option.textContent = `${item.itemCode} - ${item.itemName}`;
+                    selectElement.appendChild(option);
+                }
+            });
+        }
+
+        function addItemRow(itemData = null) {
+            const tbody = document.getElementById('itemTableBody');
+            const tr = document.createElement('tr');
+
+            if (itemData) {
+                tr.innerHTML = `
+                    <td>
+                        <select class="form-control item-select" data-existing-item="true">
+                            <option value="">선택</option>
+                        </select>
+                    </td>
+                    <td><input type="text" class="form-control" name="itemName" value="${itemData.itemName || ''}" readonly></td>
+                    <td><input type="text" class="form-control" name="specification" value="${itemData.itemSpec || ''}" readonly></td>
+                    <td><input type="text" class="form-control" name="unit" value="${itemData.unit || ''}" readonly></td>
+                    <td><input type="number" class="form-control" name="quantity" value="${parseFloat(itemData.quantity) || 0}" min="0" step="0.01"></td>
+                    <td><input type="number" class="form-control" name="unitPrice" value="${parseFloat(itemData.unitPrice) || 0}" min="0" step="0.01"></td>
+                    <td><input type="text" class="form-control" name="amount" value="${(parseFloat(itemData.amount) || 0).toFixed(2)}" readonly></td>
+                    <td>
+                        <button type="button" class="remove-item-btn" onclick="removeItem(this)">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </td>
+                `;
+            } else {
+                tr.innerHTML = `
+                    <td>
+                        <select class="form-control item-select" id="new-item-select-${Date.now()}">
+                            <option value="">선택</option>
+                        </select>
+                    </td>
+                    <td><input type="text" class="form-control" name="itemName" readonly></td>
+                    <td><input type="text" class="form-control" name="specification" readonly></td>
+                    <td><input type="text" class="form-control" name="unit" readonly></td>
+                    <td><input type="number" class="form-control" name="quantity" value="1" min="0" step="0.01"></td>
+                    <td><input type="number" class="form-control" name="unitPrice" value="0" min="0" step="0.01"></td>
+                    <td><input type="text" class="form-control" name="amount" value="0.00" readonly></td>
+                    <td>
+                        <button type="button" class="remove-item-btn" onclick="removeItem(this)">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </td>
+                `;
+            }
+
+            tbody.appendChild(tr);
+
+            const selectItem = tr.querySelector('.item-select');
+            selectItem.disabled = false;
+            selectItem.removeAttribute('disabled');
+            selectItem.style.pointerEvents = 'auto';
+            selectItem.style.opacity = '1';
+            selectItem.style.cursor = 'pointer';
+            selectItem.style.backgroundColor = 'white';
+            selectItem.style.color = 'black';
+
+            setTimeout(() => {
+                selectItem.disabled = false;
+                selectItem.removeAttribute('disabled');
+                selectItem.style.pointerEvents = 'auto';
+                selectItem.style.opacity = '1';
+                selectItem.style.cursor = 'pointer';
+            }, 100);
+
+            if (itemData) {
+                loadItems().then(items => {
+                    const selectItem = tr.querySelector('.item-select');
+                    populateItemDropdown(selectItem, items);
+                    tr.dataset.itemsList = JSON.stringify(items);
+                    selectItem.value = itemData.itemCode || '';
+                }).catch(error => {
+                    console.error('Failed to load items for existing item:', error);
+                });
+            } else {
+                loadItems().then(items => {
+                    const selectItem = tr.querySelector('.item-select');
+                    populateItemDropdown(selectItem, items);
+                    tr.dataset.itemsList = JSON.stringify(items);
+                }).catch(error => {
+                    console.error('Failed to load items for new row:', error);
+                });
+            }
+
+            const quantityInput = tr.querySelector('[name="quantity"]');
+            const unitPriceInput = tr.querySelector('[name="unitPrice"]');
+            const selectItemForEvents = tr.querySelector('.item-select');
+
+            [quantityInput, unitPriceInput].forEach(input => {
+                input.addEventListener('input', () => {
+                    let val = input.value;
+                    if (val && !/^\d*(\.\d{0,2})?$/.test(val)) {
+                        input.value = parseFloat(val).toFixed(2);
+                    }
+                    calculateRowAmount(tr);
+                });
+            });
+
+            selectItemForEvents.addEventListener('change', function() {
+                const selectedCode = this.value;
+                const row = this.closest('tr');
+
+                const itemNameInput = row.querySelector('[name="itemName"]');
+                const specInput = row.querySelector('[name="specification"]');
+                const unitInput = row.querySelector('[name="unit"]');
+                const quantityInput = row.querySelector('[name="quantity"]');
+                const unitPriceInput = row.querySelector('[name="unitPrice"]');
+                const amountInput = row.querySelector('[name="amount"]');
+
+                let currentItemsList = null;
+                if (row.dataset.itemsList) {
+                    try {
+                        currentItemsList = JSON.parse(row.dataset.itemsList);
+                    } catch (e) {
+                        currentItemsList = window.itemsList;
+                    }
+                } else {
+                    currentItemsList = window.itemsList;
+                }
+
+                if (selectedCode && currentItemsList) {
+                    const selectedItem = currentItemsList.find(item => item.itemCode === selectedCode);
+
+                    if (selectedItem) {
+                        itemNameInput.value = selectedItem.itemName || '';
+                        specInput.value = selectedItem.specification || '';
+                        unitInput.value = selectedItem.unit || '';
+
+                        const standardPrice = parseFloat(selectedItem.standardPrice) || 0;
+                        unitPriceInput.value = standardPrice.toFixed(2);
+
+                        quantityInput.value = quantityInput.value || '1';
+                        calculateRowAmount(row);
+                    } else {
+                        itemNameInput.value = '';
+                        specInput.value = '';
+                        unitInput.value = '';
+                        quantityInput.value = '1';
+                        unitPriceInput.value = '0';
+                        amountInput.value = '0.00';
+                        calculateTotal();
+                    }
+                } else {
+                    itemNameInput.value = '';
+                    specInput.value = '';
+                    unitInput.value = '';
+                    quantityInput.value = '1';
+                    unitPriceInput.value = '0';
+                    amountInput.value = '0.00';
+                    calculateTotal();
+                }
+            });
+
+            const selectItemElement = tr.querySelector('.item-select');
+            const inputItemName = tr.querySelector('[name="itemName"]');
+            selectItemElement.style.width = '200px';
+            inputItemName.style.width = '280px';
+        }
+
+        function removeItem(button) {
+            const tr = button.closest('tr');
+            const itemTableBody = document.getElementById('itemTableBody');
+            if (itemTableBody.children.length > 1) {
+                tr.remove();
+                calculateTotal();
+            } else {
+                alert("{{ get_text('min_item_required') }}");
+            }
+        }
+
+        function calculateRowAmount(row) {
+            const quantity = parseFloat(row.querySelector('[name="quantity"]').value) || 0;
+            const unitPrice = parseFloat(row.querySelector('[name="unitPrice"]').value) || 0;
+            const amount = quantity * unitPrice;
+            row.querySelector('[name="amount"]').value = amount.toFixed(2);
+            calculateTotal();
+        }
+
+        function calculateTotal() {
+            const amounts = Array.from(document.querySelectorAll('[name="amount"]'))
+                .map(input => parseFloat(input.value) || 0);
+
+            const total = amounts.reduce((sum, amount) => sum + amount, 0);
+            document.getElementById('totalAmount').textContent = total.toLocaleString('ko-KR', {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2
+            });
+        }
+
+        function setFormDisabled(disabled) {
+            document.getElementById('addItemBtn').disabled = disabled;
+            document.querySelectorAll('.btn-primary').forEach(btn => btn.disabled = disabled);
+            document.querySelectorAll('.btn-danger').forEach(btn => btn.disabled = disabled);
+            document.querySelectorAll('input, select, textarea').forEach(el => {
+                el.disabled = disabled;
+            });
+            if (disabled && !document.getElementById('pay-block-msg')) {
+                const msg = document.createElement('div');
+                msg.id = 'pay-block-msg';
+                msg.style.color = 'red';
+                msg.style.margin = '20px 0';
+                msg.textContent = '매입지급 기록이 있어 수정할 수 없습니다.';
+                document.querySelector('.form-container').prepend(msg);
+            }
+        }
+
+        function cancelEdit() {
+            if (confirm("{{ get_text('cancel') }}?")) {
+                window.location.href = '/purchase/list';
+            }
+        }
+
+        function updatePurchase(event) {
+            event.preventDefault();
+
+            if (paymentStatus && paymentStatus.isPaymentCompleted) {
+                alert('매입지급 기록이 있어 수정할 수 없습니다.');
+                return false;
+            }
+
+            const saveButton = document.querySelector('button[type="submit"]');
+            if (saveButton && saveButton.disabled) {
+                alert('매입지급 기록이 있어 수정할 수 없습니다.');
+                return false;
+            }
+
+            const formData = {
+                purchaseNo: document.getElementById('purchaseNo').value,
+                purchaseDate: document.getElementById('purchaseDate').value,
+                vendorCode: document.getElementById('vendorCode').value,
+                warehouseCode: document.getElementById('warehouseCode').value,
+                currencyCode: document.getElementById('currency').value,
+                exchangeRate: parseFloat(document.getElementById('exchangeRate').value),
+                paymentMethod: document.getElementById('paymentMethod').value,
+                paymentDueDate: document.getElementById('paymentDueDate').value || null,
+                status: document.getElementById('status').value,
+                trCode: document.getElementById('trCode').value,
+                remarks: document.getElementById('remarks').value,
+                totalAmount: parseFloat(document.getElementById('totalAmount').textContent.replace(/,/g, '')) || 0,
+                items: []
+            };
+
+            const rows = document.querySelectorAll('#itemTableBody tr');
+            formData.items = [];
+
+            rows.forEach(row => {
+                const itemSelect = row.querySelector('.item-select');
+                const itemCode = itemSelect.value;
+
+                if (itemCode) {
+                    const item = {
+                        itemCode: itemCode,
+                        quantity: parseFloat(row.querySelector('[name="quantity"]').value) || 0,
+                        unitPrice: parseFloat(row.querySelector('[name="unitPrice"]').value) || 0,
+                        amount: parseFloat(row.querySelector('[name="amount"]').value) || 0,
+                        remarks: ''
+                    };
+                    formData.items.push(item);
+                }
+            });
+
+            fetch(`/purchase/update/${formData.purchaseNo}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(formData)
+            })
+            .then(response => {
+                if (!response.ok) {
+                    return response.text().then(text => {
+                        throw new Error(`Server responded with ${response.status}: ${text}`);
+                    });
+                }
+                return response.json();
+            })
+            .then(data => {
+                alert("{{ get_text('save') }}");
+                window.location.href = '/purchase/list';
+            })
+            .catch(error => {
+                console.error('Error updating purchase:', error);
+                alert("{{ get_text('save_failed') }}");
+            });
+        }
+    </script>
+</body>
+</html>

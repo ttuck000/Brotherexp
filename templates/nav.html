@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+<div class="top-bar">
+    <div class="auth-links">
+        <div class="nav-language">
+            <form id="language-form" style="display:inline;">
+                <i class="fas fa-globe" style="color:#fff;margin-right:6px;"></i>
+                <select id="language-select" onchange="changeLanguage(this.value)" class="language-select">
+                    <option value="ko" {% if session.get('language', 'ko')=='ko' %}selected{% endif %}>한국어</option>
+                    <option value="en" {% if session.get('language', 'ko')=='en' %}selected{% endif %}>English</option>
+                    <option value="th" {% if session.get('language', 'ko')=='th' %}selected{% endif %}>ไทย</option>
+                </select>
+            </form>
+        </div>  
+        {% if session.get('user_id') %}
+        <span class="welcome-text">{{ get_text('welcome') }}, <a href="{{ url_for('auth.user_profile') }}" style="text-decoration: none; color: inherit;">{{ session.get('username') }}</a>님!</span>
+        {% if session.get('role') == 'admin' %}
+        <a href="{{ url_for('user_manage') }}" class="user-manage-btn">{{ get_text('user_manage') }}</a>
+        {% endif %}
+        <a href="{{ url_for('auth.logout') }}" class="login-btn">{{ get_text('logout') }}</a>
+        {% else %}
+        <a href="{{ url_for('auth.login') }}" class="login-btn">{{ get_text('login') }}</a>
+        <a href="{{ url_for('auth.signup') }}" class="signup-btn">{{ get_text('signup') }}</a>
+        {% endif %}
+    </div>
+</div>
+<header class="main-header">
+    <div class="nav-container">
+        <div class="logo">
+            <h1><a href="/" class="logo-link">BROTHER MIS SYSTEM</a></h1>
+        </div>
+        <nav class="main-nav">
+            <ul class="nav-menu">
+
+                <li class="nav-item">
+                    <a href="#" class="nav-link">
+                        <i class="fas fa-database"></i>
+                        <span>{{ get_text('base_info') }}</span>
+                        <i class="fas fa-chevron-down arrow-icon"></i>
+                    </a>
+                    <ul class="submenu">
+                        <!-- <li><a href="{{ url_for('base.process_line_page') }}"><i class="fas fa-industry"></i>{{ get_text('process_line_list') }}</a></li>
+            <li><a href="{{ url_for('base.item_code') }}"><i class="fas fa-barcode"></i>{{ get_text('item_code') }}</a></li>
+            <li><a href="{{ url_for('base.warehouse') }}"><i class="fas fa-warehouse"></i>{{ get_text('warehouse') }}</a></li>
+            <li><a href="{{ url_for('base.transaction_type') }}"><i class="fas fa-exchange-alt"></i>{{ get_text('transaction_type') }}</a></li>
+
+    <li><a href="{{ url_for('base.customer_code') }}"><i class="fas fa-users"></i>{{ get_text('customer') }}</a></li> -->
+                        <!-- insert after the existing Account List menu item inside Base Information submenu -->
+                        <!--  <li><a href="{{ url_for('base.business_cost_list_page') }}"><i class="fas fa-calculator"></i>{{ get_text('business_cost_list') }}</a></li> -->
+
+                        <li><a href="{{ url_for('base.customer_code_expense') }}"><i class="fas fa-users"></i>{{ get_text('customer_expense') }}</a></li>
+
+                        <!--  <li><a href="{{ url_for('base.currency') }}"><i class="fas fa-money-bill-wave"></i>{{ get_text('currency') }}</a></li>
+    <li><a href="{{ url_for('base.unit') }}"><i class="fas fa-ruler"></i>{{ get_text('unit') }}</a></li> --> 
+
+                        <li><a href="{{ url_for('base.account_list') }}"><i class="fas fa-ruler"></i>{{ get_text('account_list') }}</a></li>
+                    </ul>
+                    </li>
+
+                    <li class="nav-item">
+                        <a href="#" class="nav-link">
+                            <i class="fas fa-shopping-cart"></i>
+                            <span>{{ get_text('accounting_management') }}</span>
+                            <i class="fas fa-chevron-down arrow-icon"></i>
+                        </a>
+                        <ul class="submenu">
+                            <li><a href="{{ url_for('accounting.account_actual_list') }}"><i class="fas fa-ruler"></i>{{ get_text('actual_register') }}</a></li>
+                            <li><a href="{{ url_for('accounting.account_actual_report') }}"><i class="fas fa-ruler"></i>{{ get_text('actual_report') }}</a></li>
+                            <li><a href="{{ url_for('accounting.salary_page') }}"><i class="fas fa-user-tie"></i>{{ get_text('salary_management') }}</a></li>
+                        </ul>
+                    </li>
+
+                    <li class="nav-item">
+                        <a href="#" class="nav-link">
+                            <i class="fas fa-shopping-cart"></i>
+                            <span>{{ get_text('purchase_management') }}</span>
+                            <i class="fas fa-chevron-down arrow-icon"></i>
+                        </a>
+                        <ul class="submenu">
+                            <!--      <li><a href="{{ url_for('purchase.purchase_list') }}"><i class="fas fa-list"></i>{{ get_text('purchase_list') }}</a></li>
+    <li><a href="{{ url_for('purchase.purchase_list_detail') }}"><i class="fas fa-list-alt"></i>{{ get_text('purchase_list_detail') }}</a></li>
+    <li><a href="{{ url_for('purchase.purchase_payment') }}"><i class="fas fa-money-check"></i>{{ get_text('purchase_payment_manage') }}</a></li>
+    <li><a href="{{ url_for('purchase.purchase_payment_summary_list') }}"><i class="fas fa-file-invoice-dollar"></i>{{ get_text('purchase_payment_summary_list') }}</a></li>
+    <li><a href="{{ url_for('purchase.purchase_payment_summary_unpaid') }}"><i class="fas fa-clock"></i>{{ get_text('purchase_unpaid_summary') }}</a></li>
+    <li><a href="{{ url_for('purchase.purchase_list2') }}"><i class="fas fa-list"></i>{{ get_text('purchase_list2') }}</a></li> -->
+                        </ul>
+                    </li>
+
+                    <li class="nav-item">
+                        <a href="#" class="nav-link">
+                            <i class="fas fa-chart-line"></i>
+                            <span>{{ get_text('sales_management') }}</span>
+                            <i class="fas fa-chevron-down arrow-icon"></i>
+                        </a>
+                        <ul class="submenu">
+                            <!--     <li><a href="{{ url_for('sales.sales_list') }}"><i class="fas fa-list"></i>{{ get_text('sales_list') }}</a></li>
+      <li><a href="{{ url_for('sales.sales_list_detail_page') }}"><i class="fas fa-list-alt"></i>{{ get_text('sales_list_detail') }}</a></li>
+      <li><a href="{{ url_for('sales.sales_payment') }}"><i class="fas fa-money-check"></i>{{ get_text('sales_payment') }}</a></li>
+      <li><a href="{{ url_for('sales.sales_payment_summary') }}"><i class="fas fa-file-invoice-dollar"></i>{{ get_text('sales_payment_summary') }}</a></li>
+      <li><a href="{{ url_for('sales.sales_payment_summary_nopay') }}"><i class="fas fa-clock"></i>{{ get_text('sales_payment_summary_nopay') }}</a></li>
+      <li><a href="{{ url_for('sales.sales_list2') }}"><i class="fas fa-list"></i>{{ get_text('sales_list2') }}</a></li> -->
+                        </ul>
+                    </li>
+
+                    <li class="nav-item">
+                        <a href="#" class="nav-link">
+                            <i class="fas fa-boxes"></i>
+                            <span>{{ get_text('production_management') }}</span>
+                            <i class="fas fa-chevron-down arrow-icon"></i>
+                        </a>
+                        <ul class="submenu">
+                            <!--       <li><a href="{{ url_for('production.production_page') }}"><i class="fas fa-clipboard-list"></i>{{ get_text('production_log') }}</a></li>  -->
+
+                        </ul>
+                    </li>
+
+                    <li class="nav-item">
+                        <a href="#" class="nav-link">
+                            <i class="fas fa-boxes"></i>
+                            <span>{{ get_text('inventory_management') }}</span>
+                            <i class="fas fa-chevron-down arrow-icon"></i>
+                        </a>
+                        <ul class="submenu">
+                            <!--       <li><a href="{{ url_for('inventory.inbound_manage') }}"><i class="fas fa-arrow-down"></i>{{ get_text('inbound_manage') }}</a></li>
+    <li><a href="{{ url_for('inventory.outbound_manage') }}"><i class="fas fa-arrow-up"></i>{{ get_text('outbound_manage') }}</a></li>
+    <li><a href="{{ url_for('inventory.inventory_transaction') }}"><i class="fas fa-exchange-alt"></i>{{ get_text('inventory_transaction') }}</a></li>
+    <li><a href="{{ url_for('inventory.inventory_list') }}"><i class="fas fa-box"></i>{{ get_text('inventory_current') }}</a></li>
+    <li><a href="{{ url_for('inventory.inventory_audit_list') }}"><i class="fas fa-clipboard-list"></i>{{ get_text('inventory_check') }}</a></li>
+    <li><a href="{{ url_for('inventory.inventory_audit_detail_list_page') }}"><i class="fas fa-search"></i>{{ get_text('inventory_audit_detail') }}</a></li>  -->
+                        </ul>
+                    </li>
+
+                    <li class="nav-item">
+                        <a href="#" class="nav-link">
+                            <i class="fas fa-calculator"></i>
+                            <span>{{ get_text('financial_management') }}</span>
+                            <i class="fas fa-chevron-down arrow-icon"></i>
+                        </a>
+                        <ul class="submenu">
+                            <!--   <li><a href="{{ url_for('financial.financial_summary') }}"><i class="fas fa-chart-pie"></i>{{ get_text('financial_summary') }}</a></li>
+      <li><a href="{{ url_for('financial.financial_close') }}"><i class="fas fa-file-invoice"></i>{{ get_text('financial_close') }}</a></li>
+      <li><a href="{{ url_for('financial.pnl_report') }}"><i class="fas fa-file-invoice"></i>{{ get_text('P&L_Report_Recycle') }}</a></li>  -->
+                        </ul>
+                    </li>
+
+                </ul>
+
+            </nav>
+            <div class="logo-image">
+                <img src="{{ url_for('static', filename='images/bigboy-logo.jpg') }}" alt="Big Boy Logo">
+            </div>
+        </div>
+    </header>
+
+    <style>
+        .main-header {
+            background: linear-gradient(135deg, #1a237e 0%, #283593 100%);
+            box-shadow: 0 2px 12px rgba(0,0,0,0.1);
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+        }
+
+        .nav-container {
+            width: 100%;
+            margin: 0;
+            padding: 0 20px;
+            height: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            position: relative;
+        }
+
+        .logo {
+            justify-self: start;
+        }
+
+        .main-nav {
+            justify-self: center;
+        }
+
+        .logo-image {
+            justify-self: end;
+        }
+
+        .logo-link {
+            text-decoration: none;
+            color: #fff;
+            font-size: 1.2rem;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+        }
+
+
+        .nav-menu {
+            display: flex;
+            gap: 4px;
+            margin: 0;
+            padding: 0;
+            list-style: none;
+            flex: 1;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .nav-item {
+            position: relative;
+        }
+
+        .nav-link {
+            color: rgba(255, 255, 255, 0.9);
+            text-decoration: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.9rem;
+            font-weight: 500;
+            transition: all 0.2s ease;
+            white-space: nowrap;
+        }
+
+        .nav-link:hover {
+            background: rgba(255, 255, 255, 0.1);
+            color: #fff;
+        }
+
+        .nav-link i {
+            font-size: 1rem;
+        }
+
+        .arrow-icon {
+            font-size: 0.8rem !important;
+            margin-left: 4px;
+            transition: transform 0.2s ease;
+        }
+
+        .nav-item:hover .arrow-icon {
+            transform: rotate(180deg);
+        }
+
+        .submenu {
+            display: block;
+            position: absolute;
+            top: 100%;
+            left: 0;
+            background: #fff;
+            border-radius: 8px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+            min-width: 220px;
+            padding: 8px;
+            margin-top: 4px;
+
+            /* 변경: display 대신 visibility/opacity로 토글, 포인트 허용 및 높은 z-index 보장 */
+            opacity: 0;
+            visibility: hidden;
+            transform: translateY(-10px);
+            transition: all 0.2s ease;
+            list-style: none;
+            z-index: 99999;            /* 더 큰 값으로 오버레이 문제 회피 */
+            pointer-events: none;      /* 숨겨져 있을 때 포인터를 막음(숨김 상태에선 클릭 불가) */
+        }
+
+        /* 열린 상태 표시용 클래스 */
+        .submenu.open {
+            opacity: 1;
+            visibility: visible;
+            transform: translateY(0);
+            pointer-events: auto;      /* 보일 때는 클릭 허용 */
+        }
+
+        /* 기존 :hover 방식과 병행 가능(보조) */
+        .nav-item:hover .submenu {
+            /* 기존 동작 유지하되, JS와 충돌하지 않게 open 클래스 우선 사용 */
+        }
+
+        .submenu li a {
+            color: #2c3e50;
+            text-decoration: none;
+            padding: 10px 16px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 0.9rem;
+            border-radius: 6px;
+            transition: all 0.2s ease;
+        }
+
+        .submenu li a:hover {
+            background: #f8f9fa;
+            color: #1a237e;
+        }
+
+        .submenu li a i {
+            font-size: 0.9rem;
+            color: #64748b;
+            width: 16px;
+            text-align: center;
+        }
+
+        .submenu li a:hover i {
+            color: #1a237e;
+        }
+
+        @media (max-width: 1200px) {
+            .nav-link span {
+                display: none;
+            }
+
+            .nav-link {
+                padding: 8px;
+                border-radius: 50%;
+                width: 36px;
+                height: 36px;
+                justify-content: center;
+            }
+
+            .arrow-icon {
+                display: none;
+            }
+
+            .submenu {
+                left: 50%;
+                transform: translateX(-50%) translateY(-10px);
+            }
+
+            .nav-item:hover .submenu {
+                transform: translateX(-50%) translateY(0);
+            }
+        }
+
+        @media (max-width: 768px) {
+            .nav-container {
+                padding: 0 12px;
+            }
+
+            .nav-menu {
+                gap: 2px;
+            }
+
+            .nav-link {
+                padding: 6px;
+                width: 32px;
+                height: 32px;
+            }
+
+            .submenu {
+                min-width: 200px;
+            }
+        }
+
+        /* keep wider central content panel you requested */
+        .container, .page-content, .main-content {
+            max-width: 1400px !important;
+            width: 100% !important;
+            padding-left: 30px;
+            padding-right: 30px;
+        }
+
+        .nav-language {
+            display: flex;
+            align-items: center;
+        }
+
+        .language-select {
+            background: rgba(255,255,255,0.1);
+            border: 1px solid rgba(255,255,255,0.2);
+            color: #fff;
+            padding: 5px 10px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: all 0.2s ease;
+        }
+
+        .language-select:hover {
+            background: rgba(255,255,255,0.2);
+        }
+
+        .language-select option {
+            background: #1a237e;
+            color: #fff;
+        }
+    </style>
+
+    <script>
+        function changeLanguage(lang) {
+            window.location = "{{ url_for('change_language', language='') }}" + lang;
+        }
+
+        document.querySelectorAll('.nav-item').forEach(item => {
+            const submenu = item.querySelector('.submenu');
+            if (!submenu) return;
+
+            let closeTimer = null; // ← 닫기 타이머 변수
+
+            // 마우스 진입: 닫기 타이머 취소 + 열기
+            item.addEventListener('mouseenter', () => {
+                if (closeTimer) {
+                    clearTimeout(closeTimer); // ← 다시 올라오면 타이머 취소
+                    closeTimer = null;
+                }
+                submenu.classList.add('open');
+            });
+
+            // 마우스 이탈: 3초 후 닫기
+            item.addEventListener('mouseleave', () => {
+                closeTimer = setTimeout(() => {
+                    submenu.classList.remove('open');
+                    closeTimer = null;
+                }, 2000); // ← 3000ms = 3초
+            });
+
+            // 키보드 접근성: 포커스가 들어오면 열기
+            const link = item.querySelector('.nav-link');
+            if (link) {
+                link.addEventListener('focus', () => submenu.classList.add('open'));
+                link.addEventListener('blur', () => {
+                    setTimeout(() => {
+                        if (!item.contains(document.activeElement)) {
+                            submenu.classList.remove('open');
+                        }
+                    }, 50);
+                });
+            }
+
+            // 드롭다운 내부 링크 포커스/블러 처리
+            submenu.querySelectorAll('a').forEach(a => {
+                a.addEventListener('focus', () => submenu.classList.add('open'));
+                a.addEventListener('blur', () => {
+                    setTimeout(() => {
+                        if (!item.contains(document.activeElement)) {
+                            submenu.classList.remove('open');
+                        }
+                    }, 50);
+                });
+            });
+        });
+    </script>
+
+    <style>
+    /* add/modify */
+    .submenu { display: block; }   /* ensures display is not none so opacity/visibility take effect */
+    </style>

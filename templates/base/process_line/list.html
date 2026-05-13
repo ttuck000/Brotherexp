@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Process Line Management - MES System</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <style>
+        .search-section {
+            background-color: #f9f9f9;
+            padding: 15px;
+            margin-bottom: 20px;
+            border-radius: 5px;
+            border: 1px solid #ddd;
+        }
+
+        .search-form {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+            .search-form .form-group {
+                margin-right: 15px;
+                margin-bottom: 10px;
+            }
+
+            .search-form label {
+                margin-right: 8px;
+                font-weight: bold;
+            }
+
+            .search-form input {
+                padding: 8px;
+                border: 1px solid #ccc;
+                border-radius: 4px;
+                width: 180px;
+            }
+
+            .search-form select {
+                padding: 8px;
+                border: 1px solid #ccc;
+                border-radius: 4px;
+                width: 200px;
+                background-color: white;
+            }
+
+        .button-group {
+            display: flex;
+        }
+
+        .search-btn {
+            padding: 8px 15px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-right: 5px;
+            background-color: #007bff;
+            color: white;
+        }
+
+        .reset-btn {
+            padding: 8px 15px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            background-color: #6c757d;
+            color: white;
+        }
+
+        .button-section {
+            margin-bottom: 10px;
+        }
+
+        .btn {
+            padding: 8px 14px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-right: 5px;
+            font-size: 14px;
+        }
+
+        .btn-add {
+            background-color: #28a745;
+            color: white;
+        }
+
+        .btn-edit {
+            background-color: #007bff;
+            color: white;
+        }
+
+        .btn-delete {
+            background-color: #dc3545;
+            color: white;
+        }
+
+        .process-grid {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+            .process-grid th {
+                text-align: center;
+                background-color: #f2f2f2;
+                padding: 10px;
+                border: 1px solid #ddd;
+                white-space: nowrap;
+            }
+
+            .process-grid td {
+                padding: 8px;
+                border: 1px solid #ddd;
+                white-space: nowrap;
+            }
+
+                .process-grid td:first-child {
+                    text-align: center;
+                }
+
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+
+            .modal-overlay.active {
+                display: flex;
+            }
+
+        .modal-box {
+            background: white;
+            border-radius: 8px;
+            padding: 30px;
+            width: 500px;
+            max-width: 95%;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+        }
+
+            .modal-box h3 {
+                margin-top: 0;
+                margin-bottom: 20px;
+                font-size: 18px;
+                border-bottom: 2px solid #007bff;
+                padding-bottom: 10px;
+            }
+
+        .modal-form-group {
+            display: flex;
+            align-items: center;
+            margin-bottom: 14px;
+        }
+
+            .modal-form-group label {
+                width: 140px;
+                font-weight: bold;
+                flex-shrink: 0;
+            }
+
+            .modal-form-group input,
+            .modal-form-group select {
+                flex: 1;
+                padding: 7px 10px;
+                border: 1px solid #ccc;
+                border-radius: 4px;
+                font-size: 14px;
+            }
+
+        .required {
+            color: red;
+        }
+
+        .modal-buttons {
+            text-align: right;
+            margin-top: 20px;
+        }
+
+            .modal-buttons button {
+                padding: 8px 18px;
+                border: none;
+                border-radius: 4px;
+                cursor: pointer;
+                margin-left: 8px;
+                font-size: 14px;
+            }
+
+        .btn-save {
+            background-color: #007bff;
+            color: white;
+        }
+
+        .btn-cancel {
+            background-color: #6c757d;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    {% include 'nav.html' %}
+
+    <main class="content-area">
+        <div class="product-code-container">
+            <h2>{{ get_text('process_line_management') }}</h2>
+
+            <!-- Search Area -->
+            <div class="search-section">
+                <form class="search-form" id="searchForm">
+                    <div class="form-group">
+                        <label for="searchCompanyCode">{{ get_text('company_code') }}</label>
+                        <select id="searchCompanyCode">
+                            <option value="">-- {{ get_text('all') }} --</option>
+                            <option value="RECYCLE">RECYCLE</option>
+                            <option value="INJECTION">INJECTION</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="searchProcess">{{ get_text('process') }}</label>
+                        <select id="searchProcess">
+                            <option value="">-- {{ get_text('all') }} --</option>
+                            <option value="CRUSH">CRUSH</option>
+                            <option value="MOLD">MOLD</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="searchProductLine">{{ get_text('product_line') }}</label>
+                        <input type="text" id="searchProductLine" placeholder="{{ get_text('enter_line_name') }}">
+                    </div>
+                    <div class="button-group">
+                        <button type="submit" class="search-btn">{{ get_text('search') }}</button>
+                        <button type="button" class="reset-btn" onclick="resetSearch()">{{ get_text('reset') }}</button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="button-section">
+                <button class="btn btn-add" onclick="location.href='/process_line/new'">{{ get_text('new') }}</button>
+                <button class="btn btn-edit" onclick="openEditModal()">{{ get_text('edit') }}</button>
+                <button class="btn btn-delete" onclick="deleteSelected()">{{ get_text('delete') }}</button>
+            </div>
+
+            <!-- Grid -->
+            <div class="grid-section">
+                <table class="process-grid">
+                    <thead>
+                        <tr>
+                            <th style="width:50px;">{{ get_text('select') }}</th>
+                            <th>{{ get_text('company_code') }}</th>
+                            <th>{{ get_text('process') }}</th>
+                            <th>{{ get_text('product_line') }}</th>
+                            <th>{{ get_text('setup_date') }}</th>
+                            <th>{{ get_text('prod_start_date') }}</th>
+                            <th>{{ get_text('remark') }}</th>
+                        </tr>
+                    </thead>
+                    <tbody id="gridBody"></tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+
+    <footer>
+        <p>&copy; 2024 MES System. All rights reserved.</p>
+    </footer>
+
+    <!-- Edit Modal -->
+    <div class="modal-overlay" id="formModal">
+        <div class="modal-box">
+            <h3 id="modalTitle">{{ get_text('edit_process_line') }}</h3>
+            <input type="hidden" id="modalId">
+
+            <div class="modal-form-group">
+                <label>Company Code <span class="required">*</span></label>
+                <select id="fCompanyCode">
+                    <option value="">-- Select --</option>
+                    <option value="RECYCLE">RECYCLE</option>
+                    <option value="INJECTION">INJECTION</option>
+                </select>
+            </div>
+            <div class="modal-form-group">
+                <label>Process <span class="required">*</span></label>
+                <select id="fProcess">
+                    <option value="">-- Select --</option>
+                    <option value="CRUSH">CRUSH</option>
+                    <option value="MOLD">MOLD</option>
+                </select>
+            </div>
+            <div class="modal-form-group">
+                <label>Product Line <span class="required">*</span></label>
+                <input type="text" id="fProductLine" placeholder="Enter line name">
+            </div>
+            <div class="modal-form-group">
+                <label>Setup Date</label>
+                <input type="date" id="fSetupDate">
+            </div>
+            <div class="modal-form-group">
+                <label>Prod. Start Date</label>
+                <input type="date" id="fStartDate">
+            </div>
+            <div class="modal-form-group">
+                <label>Remark</label>
+                <input type="text" id="fRemark" placeholder="Enter remark">
+            </div>
+
+            <div class="modal-buttons">
+                <button class="btn-save" onclick="saveModal()">Save</button>
+                <button class="btn-cancel" onclick="closeModal()">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function renderRows(data) {
+            const tbody = document.getElementById('gridBody');
+            tbody.innerHTML = '';
+            if (!data || data.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:20px;">No data found.</td></tr>`;
+                return;
+            }
+            data.forEach(item => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                        <td><input type="checkbox" data-id="${item.id}"></td>
+                        <td>${item.company_code || ''}</td>
+                        <td>${item.process || ''}</td>
+                        <td>${item.product_line || ''}</td>
+                        <td>${item.setup_date || ''}</td>
+                        <td>${item.product_startdate || ''}</td>
+                        <td>${item.remark || ''}</td>
+                    `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function loadList(params) {
+            const qs = params ? '?' + new URLSearchParams(params).toString() : '';
+            fetch(`/process_line/list${qs}`)
+                .then(res => res.json())
+                .then(data => renderRows(data))
+                .catch(err => { console.error(err); alert('Failed to load data.'); });
+        }
+
+        document.getElementById('searchForm').addEventListener('submit', function (e) {
+            e.preventDefault();
+            const params = {};
+            const cc = document.getElementById('searchCompanyCode').value;
+            const pr = document.getElementById('searchProcess').value;
+            const pl = document.getElementById('searchProductLine').value.trim();
+            if (cc) params.company_code = cc;
+            if (pr) params.process = pr;
+            if (pl) params.product_line = pl;
+            loadList(Object.keys(params).length ? params : null);
+        });
+
+        function resetSearch() {
+            document.getElementById('searchCompanyCode').value = '';
+            document.getElementById('searchProcess').value = '';
+            document.getElementById('searchProductLine').value = '';
+            loadList();
+        }
+
+        function openEditModal() {
+            const checked = document.querySelectorAll('#gridBody input[type="checkbox"]:checked');
+            if (checked.length !== 1) { alert('Please select exactly one item to edit.'); return; }
+            fetch(`/process_line/detail/${checked[0].dataset.id}`)
+                .then(res => res.json())
+                .then(item => {
+                    document.getElementById('modalTitle').textContent = 'Edit Process Line';
+                    document.getElementById('modalId').value = item.id;
+                    document.getElementById('fCompanyCode').value = item.company_code || '';
+                    document.getElementById('fProcess').value = item.process || '';
+                    document.getElementById('fProductLine').value = item.product_line || '';
+                    document.getElementById('fSetupDate').value = item.setup_date || '';
+                    document.getElementById('fStartDate').value = item.product_startdate || '';
+                    document.getElementById('fRemark').value = item.remark || '';
+                    document.getElementById('formModal').classList.add('active');
+                })
+                .catch(() => alert('Failed to load item data.'));
+        }
+
+        function closeModal() { document.getElementById('formModal').classList.remove('active'); }
+        document.getElementById('formModal').addEventListener('click', function (e) { if (e.target === this) closeModal(); });
+
+        function saveModal() {
+            const id = document.getElementById('modalId').value;
+            const company_code = document.getElementById('fCompanyCode').value;
+            const process = document.getElementById('fProcess').value;
+            const product_line = document.getElementById('fProductLine').value.trim();
+
+            if (!company_code || !process || !product_line) {
+                alert('Company Code, Process, and Product Line are required.');
+                return;
+            }
+
+            const payload = {
+                id, company_code, process, product_line,
+                setup_date: document.getElementById('fSetupDate').value || null,
+                product_startdate: document.getElementById('fStartDate').value || null,
+                remark: document.getElementById('fRemark').value.trim()
+            };
+
+            fetch(id ? '/process_line/update' : '/process_line/save', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) { alert(id ? 'Updated.' : 'Saved.'); closeModal(); loadList(); }
+                    else alert('Save failed: ' + (data.error || ''));
+                })
+                .catch(() => alert('An error occurred while saving.'));
+        }
+
+        function deleteSelected() {
+            const checked = document.querySelectorAll('#gridBody input[type="checkbox"]:checked');
+            if (checked.length === 0) { alert('Please select at least one item.'); return; }
+            if (!confirm(`Delete ${checked.length} item(s)?`)) return;
+
+            fetch('/process_line/delete', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ ids: Array.from(checked).map(cb => cb.dataset.id) })
+            })
+                .then(res => res.json())
+                .then (data => {
+                    if (data.success) { alert('Deleted.'); loadList(); }
+                    else alert('Delete failed: ' + (data.error || ''));
+                })
+                .catch(() => alert('An error occurred while deleting.'));
+        }
+
+        document.addEventListener('DOMContentLoaded', () => loadList());
+    </script>
+</body>
+</html>

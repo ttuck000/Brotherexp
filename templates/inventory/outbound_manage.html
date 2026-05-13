@@ -1,0 +1,518 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container-fluid mt-4">
+    <div class="row justify-content-center">
+        <div class="col-12 col-xl-11">
+            <h2 class="mb-4" style="font-weight:700;color:#2a4365;font-size:1.5rem;">
+                <i class="fas fa-warehouse me-2"></i>{{ get_text('outbound_management') }}
+            </h2>
+
+            <div class="card shadow-sm mb-4 rounded-4">
+                <div class="card-body bg-light rounded-4">
+                    <form class="row g-2 align-items-end" id="searchForm" style="font-size:0.875rem;">
+                        <div class="col-md-3">
+                            <label class="form-label">{{ get_text('trans_date') }}</label>
+                            <div class="d-flex">
+                                <input type="date" id="searchTransDateStart" class="form-control me-2" placeholder="{{ get_text('start_date') }}">
+                                <input type="date" id="searchTransDateEnd" class="form-control" placeholder="{{ get_text('end_date') }}">
+                            </div>
+                        </div>
+
+                        <div class="col-md-3">
+                            <label class="form-label">{{ get_text('item_code') }}</label>
+                            <input type="text" id="searchItemCode" class="form-control" placeholder="{{ get_text('item_code') }}">
+                        </div>
+
+                        <div class="col-md-3">
+                            <label class="form-label">{{ get_text('warehouse') }}</label>
+                            <select id="searchWarehouse" class="form-select">
+                                <option value="">{{ get_text('all') }}</option>
+                            </select>
+                        </div>
+
+                        <div class="col-md-3 d-flex justify-content-end align-items-end">
+                            <button type="submit" class="btn btn-primary me-2" style="font-size:0.875rem;">
+                                <i class="fas fa-search me-1"></i>{{ get_text('search') }}
+                            </button>
+
+                            <button type="button" id="addNewBtn" class="btn btn-info me-2" style="font-size:0.875rem;">
+                                <i class="fas fa-plus me-1"></i>{{ get_text('new') }}
+                            </button>
+
+                            <button id="excelExportBtn" class="btn btn-success" style="font-size:0.875rem;">
+                                <i class="fas fa-file-excel me-1"></i>{{ get_text('excel_download') }}
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <div class="card shadow rounded-4">
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-bordered table-hover align-middle mb-0 rounded-4 overflow-hidden report-table" id="outboundTransTable" style="font-size:0.875rem;">
+                            <thead class="table-primary text-center">
+                                <tr>
+                                    <th style="width:80px;">{{ get_text('sequence') }}</th>
+                                    <th>TransId</th>
+                                    <th>{{ get_text('trans_date') }}</th>
+                                    <th>{{ get_text('item_code') }}</th>
+                                    <th>{{ get_text('lot_no') }}</th>
+                                    <th>{{ get_text('trans_type') }}</th>
+                                    <th>{{ get_text('trans_type2') }}</th>
+                                    <th>{{ get_text('ref_no') }}</th>
+                                    <th>{{ get_text('warehouse') }}</th>
+                                    <th>{{ get_text('out_qty') }}</th>
+                                    <th>{{ get_text('remark') }}</th>
+                                </tr>
+                            </thead>
+                            <tbody id="outboundTransBody">
+                                <!-- JS로 행 추가 -->
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div id="pagination" class="d-flex justify-content-center mt-3"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- New row modal (Bootstrap 5) -->
+<div class="modal fade" id="newRowModal" tabindex="-1" aria-labelledby="newRowModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <form id="newRowForm">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="newRowModalLabel">{{ get_text('add_new_record') }}</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row g-3">
+                        <div class="col-md-3">
+                            <label class="form-label">{{ get_text('trans_date') }}</label>
+                            <input type="date" class="form-control" id="newTransDate">
+                        </div>
+
+                        <div class="col-12">
+                            <label class="form-label">{{ get_text('item_code') }}</label>
+                            <select class="form-select" id="newItemCode">
+                                <option value="">{{ get_text('select') }}</option>
+                            </select>
+                        </div>
+
+                        <div class="col-md-4">
+                            <label class="form-label">{{ get_text('lot_no') }}</label>
+                            <input type="text" class="form-control" id="newLotNo">
+                        </div>
+
+                        <div class="w-100"></div>
+
+                        <div class="col-md-4">
+                            <label class="form-label">{{ get_text('trans_type') }}</label>
+                            <select class="form-select" id="newTransType">
+                                <option value="">{{ get_text('select') }}</option>
+                            </select>
+                        </div>
+
+                        <div class="col-md-4">
+                            <label class="form-label">{{ get_text('ref_no') }}</label>
+                            <input type="text" class="form-control" id="newRefNo">
+                        </div>
+
+                        <div class="w-100"></div>
+
+                        <div class="col-md-4">
+                            <label class="form-label">{{ get_text('warehouse') }}</label>
+                            <select class="form-select" id="newWarehouseCode">
+                                <option value="">{{ get_text('select') }}</option>
+                            </select>
+                        </div>
+
+                        <div class="col-md-4">
+                            <label class="form-label">{{ get_text('out_qty') }}</label>
+                            <input type="number" step="any" class="form-control" id="newOutQty">
+                        </div>
+
+                        <div class="col-12">
+                            <label class="form-label">{{ get_text('remark') }}</label>
+                            <textarea class="form-control" id="newRemarks" rows="3"></textarea>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">{{ get_text('cancel') }}</button>
+                    <button type="submit" class="btn btn-primary">{{ get_text('save') }}</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+let allData = [];
+let currentPage = 1;
+const pageSize = 20;
+
+// 다국어 텍스트
+const i18n = {
+    all: "{{ get_text('all') }}",
+    prev: "{{ get_text('prev') }}",
+    next: "{{ get_text('next') }}",
+    select: "{{ get_text('select') }}",
+    save_failed: "{{ get_text('save_failed') }}",
+    save_success: "{{ get_text('save_success') }}",
+    error_occurred: "{{ get_text('error_occurred') }}",
+    load_failed: "{{ get_text('load_failed') }}",
+    item_load_failed: "{{ get_text('item_load_failed') }}",
+    trans_type_load_failed: "{{ get_text('trans_type_load_failed') }}",
+    warehouse_load_failed: "{{ get_text('warehouse_load_failed') }}",
+    check_console: "{{ get_text('check_console') }}",
+    outbound_save_error: "{{ get_text('outbound_save_error') }}"
+};
+
+document.addEventListener('DOMContentLoaded', function() {
+    setDefaultDates();
+    loadWarehouses();
+    loadOutboundTransList();
+    document.getElementById('excelExportBtn').addEventListener('click', exportToExcel);
+    document.getElementById('searchForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        currentPage = 1;
+        loadOutboundTransList();
+    });
+});
+
+function setDefaultDates() {
+    const startEl = document.getElementById('searchTransDateStart');
+    const endEl = document.getElementById('searchTransDateEnd');
+    if (!startEl && !endEl) return;
+    const today = new Date();
+    const firstOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+    const fmt = d => {
+        const mm = String(d.getMonth() + 1).padStart(2, '0');
+        const dd = String(d.getDate()).padStart(2, '0');
+        return `${d.getFullYear()}-${mm}-${dd}`;
+    };
+    if (startEl && !startEl.value) startEl.value = fmt(firstOfMonth);
+    if (endEl && !endEl.value) endEl.value = fmt(today);
+}
+
+function loadWarehouses() {
+    fetch("{{ url_for('inventory.warehouse_options') }}")
+        .then(response => response.json())
+        .then(data => {
+            const select = document.getElementById('searchWarehouse');
+            select.innerHTML = `<option value="">${i18n.all}</option>`;
+            data.sort((a, b) => (a.code || '').localeCompare(b.code || ''));
+            data.forEach(wh => {
+                const option = document.createElement('option');
+                option.value = wh.code;
+                option.textContent = `${wh.code} - ${wh.name}`;
+                select.appendChild(option);
+            });
+        })
+        .catch(error => {
+            console.error(i18n.warehouse_load_failed, error);
+        });
+}
+
+function renderOutboundTransTable(data) {
+    const tbody = document.getElementById('outboundTransBody');
+    if (!tbody) return;
+    tbody.innerHTML = '';
+    data.forEach((row, idx) => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td class="text-center">${idx + 1}</td>
+            <td class="text-center">${row.TransId ?? ''}</td>
+            <td class="text-center">${row.TransDate ?? ''}</td>
+            <td class="text-center">${row.ItemCode ?? ''}</td>
+            <td class="text-center">${row.LotNo ?? ''}</td>
+            <td class="text-center">${row.TransType ?? ''}</td>
+            <td class="text-center">${row.TransType2 ?? ''}</td>
+            <td class="text-center">${row.RefNo ?? ''}</td>
+            <td class="text-center">${row.WarehouseCode ?? ''}</td>
+            <td class="text-end numeric">${row.OutQty != null ? Number(row.OutQty).toLocaleString() : ''}</td>
+            <td class="text-start">${row.Remarks ?? ''}</td>
+    `;
+        tbody.appendChild(tr);
+    });
+}
+
+function loadOutboundTransList() {
+    const startDate = document.getElementById('searchTransDateStart')?.value || '';
+    const endDate = document.getElementById('searchTransDateEnd')?.value || '';
+    const itemCode = document.getElementById('searchItemCode')?.value || '';
+    const itemName = document.getElementById('searchItemName')?.value || '';
+    const warehouse = document.getElementById('searchWarehouse')?.value || '';
+
+    const params = new URLSearchParams({
+        start_date: startDate,
+        end_date: endDate,
+        item_code: itemCode,
+        item_name: itemName,
+        warehouse_code: warehouse
+    });
+
+    fetch("{{ url_for('inventory.outbound_transaction_list') }}" + '?' + params.toString())
+        .then(r => r.json())
+        .then(json => {
+            if (json.success) {
+                allData = json.data || [];
+                currentPage = 1;
+                renderPage();
+                renderPagination();
+            } else {
+                renderOutboundTransTable([]);
+            }
+        })
+        .catch(e => {
+            console.error(e);
+            renderOutboundTransTable([]);
+        });
+}
+
+function renderPage() {
+    const startIdx = (currentPage - 1) * pageSize;
+    const endIdx = Math.min(startIdx + pageSize, allData.length);
+    const pageData = allData.slice(startIdx, endIdx);
+    renderOutboundTransTable(pageData);
+}
+
+function renderPagination() {
+    const totalPages = Math.ceil(allData.length / pageSize);
+    const paginationDiv = document.getElementById('pagination');
+    if (!paginationDiv) return;
+    paginationDiv.innerHTML = '';
+    if (totalPages <= 1) return;
+    let html = '';
+    html += `<button class='btn btn-outline-secondary btn-sm' ${currentPage === 1 ? 'disabled' : ''} onclick='gotoPage(${currentPage - 1})'>${i18n.prev}</button> `;
+    for (let i = 1; i <= totalPages; i++) {
+        html += `<button class='btn btn-${i === currentPage ? 'primary' : 'light'} btn-sm mx-1' onclick='gotoPage(${i})'>${i}</button>`;
+    }
+    html += `<button class='btn btn-outline-secondary btn-sm' ${currentPage === totalPages ? 'disabled' : ''} onclick='gotoPage(${currentPage + 1})'>${i18n.next}</button>`;
+    paginationDiv.innerHTML = html;
+}
+
+function gotoPage(page) {
+    currentPage = page;
+    renderPage();
+    renderPagination();
+}
+
+function exportToExcel(e) {
+    e?.preventDefault?.();
+    const itemCode = document.getElementById('searchItemCode')?.value || '';
+    const itemName = document.getElementById('searchItemName')?.value || '';
+    const warehouse = document.getElementById('searchWarehouse')?.value || '';
+    const params = new URLSearchParams({
+        page: currentPage,
+        pageSize: pageSize,
+        item_code: itemCode,
+        item_name: itemName,
+        warehouse_code: warehouse
+    });
+    const url = "{{ url_for('inventory.outbound_transaction_list_excel') }}" + '?' + params.toString();
+    window.open(url, '_blank');
+}
+
+function formatNumber(num) {
+    if (num === null || num === undefined) return '0';
+    return Number(num).toLocaleString();
+}
+
+document.addEventListener('DOMContentLoaded', function () {
+    const addNewBtn = document.getElementById('addNewBtn');
+    addNewBtn?.addEventListener('click', async function(){
+        document.getElementById('newRowForm')?.reset();
+
+        const today = new Date();
+        const mm = String(today.getMonth()+1).padStart(2,'0');
+        const dd = String(today.getDate()).padStart(2,'0');
+        const ymd = `${today.getFullYear()}-${mm}-${dd}`;
+        const dateEl = document.getElementById('newTransDate');
+        if (dateEl) dateEl.value = ymd;
+
+        try {
+            const resp = await fetch("{{ url_for('inventory.inventory_item_options') }}");
+            if (resp.ok) {
+                const items = await resp.json();
+                const itemSelect = document.getElementById('newItemCode');
+                if (itemSelect) {
+                    itemSelect.innerHTML = `<option value="">${i18n.select}</option>`;
+                    items.sort((a,b) => (a.item_code || '').localeCompare(b.item_code || ''));
+                    items.forEach(it => {
+                        const opt = document.createElement('option');
+                        opt.value = it.item_code;
+                        opt.textContent = `${it.item_code} - ${it.item_name || ''}`;
+                        itemSelect.appendChild(opt);
+                    });
+                }
+            } else {
+                console.warn(i18n.item_load_failed, resp.status);
+            }
+        } catch (err) {
+            console.error(i18n.item_load_failed, err);
+        }
+
+        try {
+            const resp2 = await fetch("{{ url_for('base.transaction_type') }}", {
+                headers: {'X-Requested-With': 'XMLHttpRequest'}
+            });
+            if (resp2.ok) {
+                const types = await resp2.json();
+                const typeSelect = document.getElementById('newTransType');
+                if (typeSelect) {
+                    typeSelect.innerHTML = `<option value="">${i18n.select}</option>`;
+                    types
+                        .filter(t => (t.TR_DIV || '').trim() === 'OUT')
+                        .sort((a,b) => (a.TR_CODE || '').localeCompare(b.TR_CODE || ''))
+                        .forEach(t => {
+                            const opt = document.createElement('option');
+                            opt.value = (t.TR_CODE || '').trim();
+                            opt.textContent = (t.TR_NAME || '').trim();
+                            typeSelect.appendChild(opt);
+                        });
+                }
+            } else {
+                console.warn(i18n.trans_type_load_failed, resp2.status);
+            }
+        } catch (err) 
+        {
+            console.error(i18n.trans_type_load_failed, err);
+        }
+
+        try {
+            const resp3 = await fetch("{{ url_for('inventory.warehouse_options') }}");
+            if (resp3.ok) {
+                const warehouses = await resp3.json();
+                const whSelect = document.getElementById('newWarehouseCode');
+                if (whSelect) {
+                    whSelect.innerHTML = `<option value="">${i18n.select}</option>`;
+                    warehouses.sort((a, b) => (a.code || '').localeCompare(b.code || ''));
+                    warehouses.forEach(wh => {
+                        const opt = document.createElement('option');
+                        opt.value = wh.code;
+                        opt.textContent = `${wh.code} - ${wh.name}`;
+                        whSelect.appendChild(opt);
+                    });
+                }
+            }
+        } catch (err) {
+            console.error(i18n.warehouse_load_failed, err);
+        }
+
+        const newRowModalEl = document.getElementById('newRowModal');
+        if (newRowModalEl && typeof bootstrap !== 'undefined') {
+            const modalInstance = bootstrap.Modal.getOrCreateInstance(newRowModalEl);
+            modalInstance.show();
+        } else {
+            console.warn('Modal element or bootstrap not available:', newRowModalEl, typeof bootstrap);
+        }
+    });
+
+    const formEl = document.getElementById('newRowForm');
+    if (!formEl) {
+        console.warn('newRowForm element not found');
+        return;
+    }
+    
+    formEl.addEventListener('submit', function (e) {
+        e.preventDefault();
+
+        const payload = {
+            TransDate: document.getElementById('newTransDate')?.value || '',
+            ItemCode: document.getElementById('newItemCode')?.value || '',
+            LotNo: document.getElementById('newLotNo')?.value || '',
+            TransType: 'OUT',
+            TransType2: document.getElementById('newTransType')?.value || '',
+            RefNo: document.getElementById('newRefNo')?.value || '',
+            WarehouseCode: document.getElementById('newWarehouseCode')?.value || '',
+            OutQty: Number(document.getElementById('newOutQty')?.value || 0),
+            Remarks: document.getElementById('newRemarks')?.value || ''
+        };
+
+        const renderedUrl = "{{ url_for('inventory.outbound_transaction_create') }}";
+        const fallbackUrl = '/inventory/api/inventory/outbound_transaction';
+        const postUrl = (renderedUrl && renderedUrl.trim()) ? renderedUrl : fallbackUrl;
+
+        fetch(postUrl, {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest'
+            },
+            body: JSON.stringify(payload)
+        })
+            .then(r => r.json())
+            .then(json => {
+                if (json.success) {
+                    const row = json.data || payload;
+                    allData.unshift(row);
+                    currentPage = 1;
+                    renderPage();
+                    renderPagination();
+                    const modalEl = document.getElementById('newRowModal');
+                    if (modalEl && typeof bootstrap !== 'undefined') {
+                        bootstrap.Modal.getInstance(modalEl)?.hide();
+                    }
+                } else {
+                    alert(i18n.save_failed + ': ' + (json.message || ''));
+                }
+            })
+            .catch(err => {
+                console.error(i18n.outbound_save_error, err);
+                alert(i18n.outbound_save_error + ' ' + i18n.check_console);
+            });
+    });
+});
+</script>
+
+<style>
+    .form-control, .form-select {
+        font-size: 0.875rem !important;
+    }
+
+    .form-label {
+        font-size: 0.875rem !important;
+        font-weight: 500;
+    }
+
+    .btn-sm {
+        font-size: 0.75rem !important;
+        padding: 0.375rem 0.75rem;
+    }
+
+    .report-table th {
+        font-size: 0.875rem !important;
+        font-weight: 600;
+        padding: 0.75rem 0.5rem;
+    }
+
+    .report-table td {
+        font-size: 0.875rem !important;
+        padding: 0.5rem;
+    }
+
+    .pagination .btn {
+        font-size: 0.875rem !important;
+    }
+
+    .card {
+        border-radius: 0.75rem;
+        box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+    }
+
+    .card-body {
+        padding: 1.25rem;
+    }
+
+    .numeric {
+        text-align: right;
+        font-variant-numeric: tabular-nums;
+    }
+</style>
+{% endblock %}

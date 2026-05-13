@@ -1,0 +1,120 @@
+.product-code-container {
+    padding: 20px;
+}
+
+.product-code-container h2 {
+    margin-bottom: 20px;
+    color: #1a237e;
+}
+
+/* 검색 영역 스타일 */
+.search-section {
+    background-color: #f5f5f5;
+    padding: 20px;
+    border-radius: 5px;
+    margin-bottom: 20px;
+}
+
+.search-form {
+    display: flex;
+    gap: 20px;
+    align-items: flex-end;
+}
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.form-group label {
+    font-weight: 500;
+    color: #333;
+}
+
+.form-group input {
+    padding: 8px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    width: 200px;
+}
+
+.search-btn {
+    padding: 8px 20px;
+    background-color: #1a237e;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.search-btn:hover {
+    background-color: #0e1642;
+}
+
+/* 버튼 영역 스타일 */
+.button-section {
+    margin-bottom: 20px;
+    display: flex;
+    gap: 10px;
+}
+
+.btn {
+    padding: 8px 20px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: 500;
+}
+
+.btn-add {
+    background-color: #4CAF50;
+    color: white;
+}
+
+.btn-save {
+    background-color: #2196F3;
+    color: white;
+}
+
+.btn-delete {
+    background-color: #f44336;
+    color: white;
+}
+
+.btn:hover {
+    opacity: 0.9;
+}
+
+/* 그리드 영역 스타일 */
+.grid-section {
+    overflow-x: auto;
+}
+
+.product-grid {
+    width: 100%;
+    border-collapse: collapse;
+    background-color: white;
+}
+
+.product-grid th,
+.product-grid td {
+    padding: 12px;
+    text-align: left;
+    border: 1px solid #ddd;
+}
+
+.product-grid th {
+    background-color: #f5f5f5;
+    font-weight: 500;
+    color: #333;
+}
+
+.product-grid tr:hover {
+    background-color: #f9f9f9;
+}
+
+.product-grid input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+} 

@@ -1,0 +1,507 @@
+<!DOCTYPE html>
+<html lang="{{ lang }}">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ get_text('item_code_management') }} - MES 시스템</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/product_code.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+    <style>
+      .content-area {
+            flex: 1;
+            padding: 40px 0 40px 0;
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+
+        .form-container {
+            background-color: #fff;
+            border-radius: 8px;
+            padding: 30px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        h2 {
+            font-size: 22px;
+            margin-bottom: 25px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #007bff;
+            color: #2c3e50;
+        }
+
+        .search-section {
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            border: 1px solid #e9ecef;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+        }
+
+        .search-form {
+            display: flex;
+            align-items: flex-end;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+
+        .form-group {
+            margin-bottom: 0;
+            flex: 0 0 auto;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+            color: #333;
+            font-size: 14px;
+        }
+
+        .form-group input {
+            padding: 8px 12px;
+            border: 1px solid #ced4da;
+            border-radius: 4px;
+            font-size: 14px;
+            line-height: 1.5;
+            transition: all 0.2s ease-in-out;
+            width: 100%;
+        }
+
+        .form-group input:focus {
+            border-color: #86b7fe;
+            outline: 0;
+            box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+        }
+
+        #itemCode {
+            width: 180px;
+        }
+
+        #itemName {
+            width: 250px;
+        }
+
+        .button-section {
+            margin: 20px 0;
+            display: flex;
+            gap: 8px;
+        }
+
+        .btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 4px;
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease-in-out;
+            min-width: 80px;
+        }
+
+        .btn-add {
+            background-color: #28a745;
+            color: white;
+        }
+
+        .btn-edit {
+            background-color: #007bff;
+            color: white;
+        }
+
+        .btn-delete {
+            background-color: #dc3545;
+            color: white;
+        }
+
+        .btn:hover {
+            transform: translateY(-1px);
+        }
+
+        .btn-add:hover {
+            background-color: #218838;
+        }
+
+        .btn-edit:hover {
+            background-color: #0056b3;
+        }
+
+        .btn-delete:hover {
+            background-color: #c82333;
+        }
+
+        .search-btn {
+            background-color: #0d6efd;
+            color: white;
+            border: none;
+            padding: 8px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            min-width: 80px;
+            height: 38px;
+            transition: all 0.2s ease-in-out;
+            margin-left: auto;
+        }
+
+        .search-btn:hover {
+            background-color: #0b5ed7;
+            transform: translateY(-1px);
+        }
+
+        .item-grid {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+
+        .item-grid th,
+        .item-grid td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #dee2e6;
+            font-size: 13px;
+        }
+
+        .item-grid th {
+            background-color: #f8f9fa;
+            font-weight: 600;
+            color: #495057;
+        }
+
+        .item-grid tr:hover {
+            background-color: #f8f9fa;
+        }
+
+        .item-grid input[type="checkbox"] {
+            margin: 0;
+        }
+
+        .text-right {
+            text-align: right;
+        }
+
+        /* 페이지네이션 스타일 */
+        .pagination {
+            display: flex;
+            justify-content: center;
+            margin-top: 20px;
+            gap: 5px;
+        }
+
+        .pagination button {
+            padding: 6px 12px;
+            border: 1px solid #dee2e6;
+            background-color: #fff;
+            color: #007bff;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.2s ease-in-out;
+        }
+
+        .pagination button:hover {
+            background-color: #e9ecef;
+            border-color: #dee2e6;
+            color: #0056b3;
+        }
+
+        .pagination button.active {
+            background-color: #007bff;
+            border-color: #007bff;
+            color: #fff;
+        }
+
+        .pagination button:disabled {
+            color: #6c757d;
+            pointer-events: none;
+            background-color: #fff;
+            border-color: #dee2e6;
+        }
+    </style>
+</head>
+<body>
+                    {% include 'nav.html' %}
+
+    <main class="content-area">
+        <div class="form-container">
+            <h2>{{ get_text('item_code_management') }}</h2>
+            
+            <!-- 검색 영역 -->
+            <div class="search-section">
+                <form id="searchForm" class="search-form">
+                    <div class="form-group">
+                        <label for="itemCode">{{ get_text('item_code') }}</label>
+                        <input type="text" id="itemCode" name="itemCode">
+                    </div>
+                    <div class="form-group">
+                        <label for="itemName">{{ get_text('item_name') }}</label>
+                        <input type="text" id="itemName" name="itemName">
+                    </div>
+                    <div class="form-group">
+                        <button type="submit" class="search-btn">{{ get_text('search') }}</button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- 버튼 영역 -->
+            <div class="button-section">
+                <button id="newItem" class="btn btn-add">{{ get_text('new') }}</button>
+                <button id="editItem" class="btn btn-edit">{{ get_text('edit') }}</button>
+                <button id="deleteItem" class="btn btn-delete">{{ get_text('delete') }}</button>
+                <button id="excelDownload" class="btn btn-edit"><i class="fas fa-file-excel"></i> {{ get_text('excel_download') }}</button>
+            </div>
+
+            <!-- 그리드 영역 -->
+            <div class="grid-section">
+                <table class="item-grid">
+                    <thead>
+                        <tr>
+                            <th>{{ get_text('select') }}</th>
+                            <th>번호</th>
+                            <th>{{ get_text('item_code') }}</th>
+                            <th>{{ get_text('item_name') }}</th>
+                            <th>{{ get_text('specification') }}</th>
+                            <th>{{ get_text('unit') }}</th>
+                            <th>{{ get_text('purchase_price') }}</th>
+                            <th>{{ get_text('sales_price') }}</th>
+                            <th>{{ get_text('usage') }}</th>
+                            <th>{{ get_text('remark') }}</th>
+                        </tr>
+                    </thead>
+                    <tbody id="itemTableBody">
+                        <!-- 데이터는 JavaScript로 동적 추가 -->
+                    </tbody>
+                </table>
+                
+                <!-- 페이지네이션 추가 -->
+                <div class="pagination" id="pagination">
+                    <!-- 페이지 버튼은 JavaScript로 동적 추가 -->
+                </div>
+            </div>
+        </div>
+    </main>
+
+
+    <footer>
+        <p>&copy; 2025 MES SYSTEM. BIGBOY All rights reserved.</p>
+    </footer>
+
+    <script>
+        // 페이지네이션 관련 변수
+        let currentPage = 1;
+        let itemsPerPage = 20;
+        let allItems = [];
+        let totalPages = 1;
+
+        document.addEventListener('DOMContentLoaded', function() {
+            // 초기 데이터 로드
+            loadItems();
+            
+            // 검색 폼 제출 이벤트
+            document.getElementById('searchForm').addEventListener('submit', function(e) {
+                e.preventDefault();
+                currentPage = 1; // 검색 시 첫 페이지로 이동
+                searchItems();
+            });
+
+            // 신규 버튼 클릭 이벤트
+            document.getElementById('newItem').addEventListener('click', function() {
+                window.location.href = '/item_code/new';
+            });
+
+            // 수정 버튼 클릭 이벤트
+            document.getElementById('editItem').addEventListener('click', function() {
+                const selectedRow = document.querySelector('input[type="checkbox"]:checked');
+                if (selectedRow) {
+                    const code = selectedRow.closest('tr').querySelector('td:nth-child(3)').textContent;
+                    window.location.href = `/item_code/edit/${code}`;
+                } else {
+                    alert("{{ get_text('select_item_to_edit') }}");
+                }
+            });
+
+            // 삭제 버튼 클릭 이벤트
+            document.getElementById('deleteItem').addEventListener('click', function() {
+                const selectedCheckboxes = document.querySelectorAll('input[type="checkbox"]:checked');
+                if (selectedCheckboxes.length === 0) {
+                    alert("{{ get_text('select_item_to_delete') }}");
+                    return;
+                }
+
+                if (confirm("{{ get_text('delete_confirm') }}")) {
+                    const codes = Array.from(selectedCheckboxes).map(checkbox => 
+                        checkbox.closest('tr').querySelector('td:nth-child(3)').textContent
+                    );
+                    
+                    deleteItems(codes);
+                }
+            });
+
+            document.getElementById('excelDownload').addEventListener('click', function() {
+                const lang = document.documentElement.lang || 'ko';
+                fetch(`/item/excel?lang=${lang}`)
+                    .then(response => response.blob())
+                    .then(blob => {
+                        const url = window.URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.download = 'item_code_list.xlsx';
+                        document.body.appendChild(a);
+                        a.click();
+                        window.URL.revokeObjectURL(url);
+                        a.remove();
+                    });
+            });
+        });
+
+        // 품목 목록 로드
+        function loadItems() {
+            fetch('/item/list')
+                .then(response => response.json())
+                .then(data => {
+                    allItems = data;
+                    totalPages = Math.ceil(allItems.length / itemsPerPage);
+                    renderItems();
+                    renderPagination();
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert("{{ get_text('item_load_failed') }}");
+                });
+        }
+
+        // 품목 검색
+        function searchItems() {
+            const code = document.getElementById('itemCode').value;
+            const name = document.getElementById('itemName').value;
+            
+            fetch(`/item/search?code=${encodeURIComponent(code)}&name=${encodeURIComponent(name)}`)
+                .then(response => response.json())
+                .then(data => {
+                    allItems = data;
+                    totalPages = Math.ceil(allItems.length / itemsPerPage);
+                    renderItems();
+                    renderPagination();
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert("{{ get_text('search_failed') }}");
+                });
+        }
+
+        // 품목 삭제
+        function deleteItems(codes) {
+            fetch('/item/delete', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ codes: codes })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert("{{ get_text('delete_success') }}");
+                    loadItems();
+                } else {
+                    alert(data.error || "{{ get_text('delete_failed') }}");
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert("{{ get_text('delete_failed') }}");
+            });
+        }
+
+        // 페이지네이션 렌더링
+        function renderPagination() {
+            const paginationContainer = document.getElementById('pagination');
+            paginationContainer.innerHTML = '';
+            
+            // 이전 페이지 버튼
+            const prevButton = document.createElement('button');
+            prevButton.textContent = '이전';
+            prevButton.disabled = currentPage === 1;
+            prevButton.addEventListener('click', () => {
+                if (currentPage > 1) {
+                    currentPage--;
+                    renderItems();
+                    renderPagination();
+                }
+            });
+            paginationContainer.appendChild(prevButton);
+            
+            // 페이지 번호 버튼
+            for (let i = 1; i <= totalPages; i++) {
+                const pageButton = document.createElement('button');
+                pageButton.textContent = i;
+                pageButton.classList.toggle('active', i === currentPage);
+                pageButton.addEventListener('click', () => {
+                    currentPage = i;
+                    renderItems();
+                    renderPagination();
+                });
+                paginationContainer.appendChild(pageButton);
+            }
+            
+            // 다음 페이지 버튼
+            const nextButton = document.createElement('button');
+            nextButton.textContent = '다음';
+            nextButton.disabled = currentPage === totalPages;
+            nextButton.addEventListener('click', () => {
+                if (currentPage < totalPages) {
+                    currentPage++;
+                    renderItems();
+                    renderPagination();
+                }
+            });
+            paginationContainer.appendChild(nextButton);
+        }
+
+        // 현재 페이지에 해당하는 항목만 렌더링
+        function renderItems() {
+            const tbody = document.getElementById('itemTableBody');
+            tbody.innerHTML = '';
+            
+            const startIndex = (currentPage - 1) * itemsPerPage;
+            const endIndex = Math.min(startIndex + itemsPerPage, allItems.length);
+            
+            for (let i = startIndex; i < endIndex; i++) {
+                const item = allItems[i];
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td><input type="checkbox"></td>
+                    <td>${i - startIndex + 1}</td>
+                    <td>${item.code}</td>
+                    <td>${item.name}</td>
+                    <td>${item.spec || ''}</td>
+                    <td>${item.unit || ''}</td>
+                    <td class="text-right">${item.purchasePrice?.toLocaleString() || '0'}</td>
+                    <td class="text-right">${item.salesPrice?.toLocaleString() || '0'}</td>
+                    <td>${item.usage || 'Y'}</td>
+                    <td>${item.remarks || ''}</td>
+                `;
+                tbody.appendChild(tr);
+            }
+        }
+    </script>
+
+<script>
+    document.querySelectorAll('.nav-item').forEach(item => {
+        item.addEventListener('mouseover', function() {
+            this.querySelector('.submenu').style.display = 'block';
+        });
+        
+        item.addEventListener('mouseout', function() {
+            this.querySelector('.submenu').style.display = 'none';
+        });
+    });
+</script>
+
+
+</body>
+</html> 

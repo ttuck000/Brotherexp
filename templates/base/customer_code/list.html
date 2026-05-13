@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ get_text('customer_code_management') }} - MES 시스템</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/product_code.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+    <style>
+        .form-container {
+            background-color: #fff;
+            border-radius: 8px;
+            padding: 30px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        h2 {
+            font-size: 22px;
+            margin-bottom: 25px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #007bff;
+            color: #2c3e50;
+        }
+
+        .search-section {
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            border: 1px solid #e9ecef;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+        }
+
+        .search-form {
+            display: flex;
+            align-items: flex-end;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+
+        .form-group {
+            margin-bottom: 0;
+            flex: 0 0 auto;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+            color: #333;
+            font-size: 14px;
+        }
+
+        .form-group input {
+            padding: 8px 12px;
+            border: 1px solid #ced4da;
+            border-radius: 4px;
+            font-size: 14px;
+            line-height: 1.5;
+            transition: all 0.2s ease-in-out;
+            width: 100%;
+        }
+
+        .form-group input:focus {
+            border-color: #86b7fe;
+            outline: 0;
+            box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+        }
+
+        #customerCode {
+            width: 180px;
+        }
+
+        #customerName {
+            width: 250px;
+        }
+
+        .button-section {
+            margin: 20px 0;
+            display: flex;
+            gap: 8px;
+        }
+
+        .btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 4px;
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease-in-out;
+            min-width: 80px;
+        }
+
+        .btn-add {
+            background-color: #28a745;
+            color: white;
+        }
+
+        .btn-edit {
+            background-color: #007bff;
+            color: white;
+        }
+
+        .btn-delete {
+            background-color: #dc3545;
+            color: white;
+        }
+
+        .search-btn {
+            background-color: #0d6efd;
+            color: white;
+            border: none;
+            padding: 8px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            min-width: 80px;
+            height: 38px;
+            transition: all 0.2s ease-in-out;
+            align-self: flex-end;
+        }
+
+        .product-grid {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+
+        .product-grid th,
+        .product-grid td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #dee2e6;
+            font-size: 13px;
+        }
+
+        .product-grid th {
+            background-color: #f8f9fa;
+            font-weight: 600;
+            color: #495057;
+        }
+
+        .product-grid tr:hover {
+            background-color: #f8f9fa;
+        }
+
+        .pagination {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin: 30px 0 10px 0;
+            gap: 6px;
+            font-size: 0;
+        }
+        .pagination button {
+            padding: 7px 16px;
+            border: 1px solid #dee2e6;
+            background-color: #fff;
+            color: #007bff;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 15px;
+            font-weight: 500;
+            margin: 0 2px;
+            transition: background 0.2s, color 0.2s, border 0.2s;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.03);
+        }
+        .pagination button.active {
+            background-color: #007bff;
+            color: #fff;
+            border-color: #007bff;
+            font-weight: 700;
+        }
+        .pagination button:disabled {
+            color: #b0b0b0;
+            background: #f8f9fa;
+            border-color: #dee2e6;
+            cursor: not-allowed;
+        }
+        .pagination button:hover:not(:disabled):not(.active) {
+            background: #e9ecef;
+            color: #0056b3;
+            border-color: #b0b0b0;
+        }
+    </style>
+</head>
+<body>
+    {% include 'nav.html' %}
+
+    <main class="content-area">
+        <div class="form-container">
+            <h2>{{ get_text('customer_code_management') }}</h2>
+            
+            <!-- 검색 영역 -->
+            <div class="search-section">
+                <form id="searchForm" class="search-form">
+                    <div class="form-group">
+                        <label for="customerCode">{{ get_text('customer_code') }}</label>
+                        <input type="text" id="customerCode" name="customerCode" placeholder="{{ get_text('enter_customer_code') }}">
+                    </div>
+                    <div class="form-group">
+                        <label for="customerName">{{ get_text('customer_name') }}</label>
+                        <input type="text" id="customerName" name="customerName" placeholder="{{ get_text('enter_customer_name') }}">
+                    </div>
+                    <button type="submit" class="search-btn">{{ get_text('search') }}</button>
+                </form>
+            </div>
+
+            <!-- 버튼 영역 -->
+            <div class="button-section">
+                <button id="newCustomer" class="btn btn-add">{{ get_text('new') }}</button>
+                <button id="editCustomer" class="btn btn-edit">{{ get_text('edit') }}</button>
+                <button id="deleteCustomer" class="btn btn-delete">{{ get_text('delete') }}</button>
+                <button id="viewFinancial" class="btn" style="background-color:#28a745; color:white;">재무정보</button>
+                <button id="excelDownload" class="btn" style="background-color:#17a2b8; color:white;">{{ get_text('excel_download') }}</button>
+            </div>
+
+            <!-- 그리드 영역 -->
+            <div class="grid-section">
+                <table class="product-grid">
+                    <thead>
+                        <tr>
+                            <th>{{ get_text('select') }}</th>
+                            <th>번호</th>
+                            <th>{{ get_text('customer_code') }}</th>
+                            <th>{{ get_text('customer_name') }}</th>
+                            <th>{{ get_text('business_number') }}</th>
+                            <th>{{ get_text('president') }}</th>
+                            <th>{{ get_text('kind') }}</th>
+                            <th>{{ get_text('item') }}</th>
+                            <th>{{ get_text('phone') }}</th>
+                            <th>{{ get_text('address') }}</th>
+                            <th>{{ get_text('charger') }}</th>
+                            <th>{{ get_text('charger_phone') }}</th>
+                            <th>{{ get_text('usage') }}</th>
+                            <th>{{ get_text('tax_id') }}</th>
+                        </tr>
+                    </thead>
+                    <tbody id="customerTableBody">
+                        <!-- 데이터는 JavaScript로 동적 추가 -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+
+    <footer>
+        <p>&copy; 2024 MES 시스템. All rights reserved.</p>
+    </footer>
+
+    <script>
+        let currentPage = 1;
+        let itemsPerPage = 20;
+        let allCustomers = [];
+        let totalPages = 1;
+
+        document.addEventListener('DOMContentLoaded', function() {
+            loadCustomerTypes();
+            document.getElementById('searchForm').addEventListener('submit', function(e) {
+                e.preventDefault();
+                currentPage = 1;
+                searchCustomerTypes();
+            });
+            document.getElementById('newCustomer').addEventListener('click', function() {
+                window.location.href = '/customer_code/add';
+            });
+            document.getElementById('editCustomer').addEventListener('click', function() {
+                const selectedRow = document.querySelector('input[type="checkbox"]:checked');
+                if (selectedRow) {
+                    const code = selectedRow.closest('tr').querySelector('td:nth-child(3)').textContent;
+                    window.location.href = `/customer_code/edit/${code}`;
+                } else {
+                    alert("{{ get_text('select_customer_to_edit') }}");
+                }
+            });
+            document.getElementById('deleteCustomer').addEventListener('click', function() {
+                const selectedCheckboxes = document.querySelectorAll('input[type="checkbox"]:checked');
+                if (selectedCheckboxes.length === 0) {
+                    alert("{{ get_text('select_customer_to_delete') }}");
+                    return;
+                }
+                if (confirm("{{ get_text('confirm_delete_customer') }}")) {
+                    const codes = Array.from(selectedCheckboxes).map(checkbox => 
+                        checkbox.closest('tr').querySelector('td:nth-child(3)').textContent
+                    );
+                    deleteCustomerTypes(codes);
+                }
+            });
+            document.getElementById('viewFinancial').addEventListener('click', function() {
+                const selectedRow = document.querySelector('input[type="checkbox"]:checked');
+                if (selectedRow) {
+                    const code = selectedRow.closest('tr').querySelector('td:nth-child(3)').textContent;
+                    window.location.href = `/customer_code/financial/${code}`;
+                } else {
+                    alert("{{ get_text('select_customer_for_financial') }}");
+                }
+            });
+            document.getElementById('excelDownload').addEventListener('click', function() {
+                window.location.href = '/customer_code/excel';
+            });
+        });
+
+        function loadCustomerTypes() {
+            fetch('/customer_code', { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+                .then(response => response.json())
+                .then(data => {
+                    allCustomers = data;
+                    totalPages = Math.ceil(allCustomers.length / itemsPerPage);
+                    renderCustomers();
+                    renderPagination();
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert("{{ get_text('failed_to_load_customer') }}");
+                });
+        }
+
+        function searchCustomerTypes() {
+            const code = document.getElementById('customerCode').value;
+            const name = document.getElementById('customerName').value;
+            fetch(`/customer_code?customerCode=${encodeURIComponent(code)}&customerName=${encodeURIComponent(name)}`, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+                .then(response => response.json())
+                .then(data => {
+                    allCustomers = data;
+                    totalPages = Math.ceil(allCustomers.length / itemsPerPage);
+                    renderCustomers();
+                    renderPagination();
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert("{{ get_text('search_failed') }}");
+                });
+        }
+
+        function renderCustomers() {
+            const tbody = document.getElementById('customerTableBody');
+            tbody.innerHTML = '';
+            const startIndex = (currentPage - 1) * itemsPerPage;
+            const endIndex = Math.min(startIndex + itemsPerPage, allCustomers.length);
+            for (let i = startIndex; i < endIndex; i++) {
+                const customer = allCustomers[i];
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td><input type="checkbox"></td>
+                    <td>${i - startIndex + 1}</td>
+                    <td>${customer.vd_code}</td>
+                    <td>${customer.vd_name}</td>
+                    <td>${customer.vd_biz_number || ''}</td>
+                    <td>${customer.vd_president || ''}</td>
+                    <td>${customer.vd_kind || ''}</td>
+                    <td>${customer.vd_item || ''}</td>
+                    <td>${customer.vd_phone || ''}</td>
+                    <td>${customer.vd_address || ''}</td>
+                    <td>${customer.vd_charger || ''}</td>
+                    <td>${customer.vd_charger_phone || ''}</td>
+                    <td>${customer.usage || 'Y'}</td>
+                    <td>${customer.vd_tax_id || ''}</td>
+                `;
+                tbody.appendChild(tr);
+            }
+        }
+
+        function renderPagination() {
+            let pagination = document.getElementById('pagination');
+            if (!pagination) {
+                pagination = document.createElement('div');
+                pagination.id = 'pagination';
+                pagination.className = 'pagination';
+                document.querySelector('.grid-section').appendChild(pagination);
+            }
+            pagination.innerHTML = '';
+            // 이전 버튼
+            const prevBtn = document.createElement('button');
+            prevBtn.textContent = '이전';
+            prevBtn.disabled = currentPage === 1;
+            prevBtn.addEventListener('click', () => {
+                if (currentPage > 1) {
+                    currentPage--;
+                    renderCustomers();
+                    renderPagination();
+                }
+            });
+            pagination.appendChild(prevBtn);
+            // 페이지 번호 버튼
+            for (let i = 1; i <= totalPages; i++) {
+                const pageBtn = document.createElement('button');
+                pageBtn.textContent = i;
+                pageBtn.classList.toggle('active', i === currentPage);
+                pageBtn.addEventListener('click', () => {
+                    currentPage = i;
+                    renderCustomers();
+                    renderPagination();
+                });
+                pagination.appendChild(pageBtn);
+            }
+            // 다음 버튼
+            const nextBtn = document.createElement('button');
+            nextBtn.textContent = '다음';
+            nextBtn.disabled = currentPage === totalPages;
+            nextBtn.addEventListener('click', () => {
+                if (currentPage < totalPages) {
+                    currentPage++;
+                    renderCustomers();
+                    renderPagination();
+                }
+            });
+            pagination.appendChild(nextBtn);
+        }
+
+        // 거래처 삭제
+        function deleteCustomerTypes(codes) {
+            fetch('/customer_code/delete', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ codes: codes })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert("{{ get_text('customer_deleted') }}");
+                    loadCustomerTypes();
+                } else {
+                    alert(data.error || "{{ get_text('delete_failed') }}");
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert("{{ get_text('delete_failed') }}");
+            });
+        }
+    </script>
+</body>
+</html> 

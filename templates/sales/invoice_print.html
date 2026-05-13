@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>INVOICE - {{ sales_no }}</title>
+    <style>
+        @page {
+            size: A4;
+            margin: 10mm;
+        }
+        body {
+            font-family: Arial, sans-serif;
+            font-size: 10px;
+            line-height: 1.2;
+            margin: 0;
+            padding: 0;
+        }
+        .invoice-container {
+            width: 100%;
+            max-width: 210mm;
+            margin: 0 auto;
+        }
+        .header-flex {
+            display: flex;
+            align-items: center;
+            margin-bottom: 5px;
+        }
+        .logo {
+            width: 60px;
+            height: 60px;
+            margin-right: 18px;
+            display: block;
+        }
+        .header-texts {
+            flex: 1;
+            text-align: left;
+        }
+        .company-title {
+            font-size: 14px;
+            font-weight: bold;
+            margin: 5px 0 0 0;
+        }
+        .company-subtitle {
+            font-size: 12px;
+            font-weight: bold;
+            margin: 2px 0 0 0;
+        }
+        .company-address {
+            font-size: 10px;
+            margin: 2px 0 0 0;
+        }
+        .company-info {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 15px;
+        }
+        .company-details {
+            flex: 1;
+        }
+        .customer-details {
+            flex: 1;
+            margin-left: 15px;
+        }
+        .invoice-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 15px;
+            font-size: 9px;
+            table-layout: fixed;
+            box-sizing: border-box;
+        }
+        .invoice-table th,
+        .invoice-table td {
+            border: 1px solid #000;
+            padding: 4px;
+            text-align: center;
+            box-sizing: border-box;
+            word-break: break-all;
+            overflow: hidden;
+        }
+        .invoice-table th {
+            background-color: #f0f0f0;
+            font-weight: bold;
+            font-size: 9px;
+        }
+        .invoice-table th:last-child, .invoice-table td:last-child {
+            border-right: 2px solid #000 !important;
+        }
+        .text-left {
+            text-align: left;
+        }
+        .text-right {
+            text-align: right;
+        }
+        .text-center {
+            text-align: center;
+        }
+        .total-row {
+            font-weight: bold;
+            background-color: #f9f9f9;
+        }
+        .signature-section {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 20px;
+        }
+        .signature-box {
+            width: 45%;
+            text-align: center;
+        }
+        .signature-line {
+            border-top: 1px solid #000;
+            margin-top: 30px;
+            padding-top: 8px;
+        }
+        .page-break {
+            page-break-before: always;
+        }
+        @media print {
+            .no-print {
+                display: none;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="no-print" style="text-align: center; padding: 20px;">
+        <button onclick="window.print()">인쇄</button>
+        <button onclick="window.close()">닫기</button>
+    </div>
+    
+    <div class="invoice-container">
+        <!-- 회사 정보 -->
+        <div class="header-flex">
+            <img src="/static/images/logo.png" alt="Company Logo" class="logo">
+            <div class="header-texts">
+                <div class="company-title">บริษัท บิ๊กบอย รีไซเคิล จำกัด</div>
+                <div class="company-subtitle">BIG BOY RECYCLE CO.,LTD.</div>
+                <div class="company-address">98/13 Moo 9, Khaokhangsong, Sriracha, Chonburi 20110 Thailand.</div>
+                <div class="company-address">Tel: 092-2590872, TAX ID: 0205563017387</div>
+            </div>
+        </div>
+
+        <!-- 거래처 정보 -->
+        <div class="company-info">
+            <div class="company-details">
+                <table style="width: 100%; border-collapse: collapse; font-size: 9px;">
+                    <tr>
+                        <td style="border: 1px solid #000; padding: 4px; font-weight: bold; width: 30%;">Customer:</td>
+                        <td style="border: 1px solid #000; padding: 4px;">{{ customer_name }}</td>
+                    </tr>
+                    <tr>
+                        <td style="border: 1px solid #000; padding: 4px; font-weight: bold;">Address:</td>
+                        <td style="border: 1px solid #000; padding: 4px;">{{ customer_address }}</td>
+                    </tr>
+                    <tr>
+                        <td style="border: 1px solid #000; padding: 4px; font-weight: bold;">Tel:</td>
+                        <td style="border: 1px solid #000; padding: 4px;">{{ customer_tel }}</td>
+                    </tr>
+                    <tr>
+                        <td style="border: 1px solid #000; padding: 4px; font-weight: bold;">TAX ID:</td>
+                        <td style="border: 1px solid #000; padding: 4px;">{{ customer_tax_id }}</td>
+                    </tr>
+                </table>
+            </div>
+            <div class="customer-details">
+                <table style="width: 100%; border-collapse: collapse; font-size: 9px;">
+                    <tr>
+                        <td style="border: 1px solid #000; padding: 4px; font-weight: bold; width: 40%;">PO.Number:</td>
+                        <td style="border: 1px solid #000; padding: 4px;">{{ sales_no }}</td>
+                    </tr>
+                    <tr>
+                        <td style="border: 1px solid #000; padding: 4px; font-weight: bold;">Date:</td>
+                        <td style="border: 1px solid #000; padding: 4px;">{{ sales_date }}</td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+
+        <!-- 품목 테이블 -->
+        {% for page_num, items in items_by_page %}
+        {% if page_num > 1 %}
+        <div class="page-break"></div>
+        {% endif %}
+        
+        <table class="invoice-table">
+            <thead>
+                <tr>
+                    <th style="width: 8%;">No.</th>
+                    <th style="width: 18%;">Item Code</th>
+                    <th style="width: 40%;">Description</th>
+                    <th style="width: 12%;">Quantity</th>
+                    <th style="width: 10%;">Unit</th>
+                    <th style="width: 15%;">Unit Price</th>
+                    <th style="width: 18%;">Amount</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in items %}
+                <tr>
+                    <td>{{ item.no }}</td>
+                    <td class="text-left">{{ item.item_code }}</td>
+                    <td class="text-left">{{ item.item_name }}</td>
+                    <td class="text-right">{{ "{:,.2f}".format(item.quantity) }}</td>
+                    <td class="text-center">{{ item.item_unit }}</td>
+                    <td class="text-right">{{ "{:,.2f}".format(item.unit_price) }}</td>
+                    <td class="text-right">{{ "{:,.2f}".format(item.amount) }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        <!-- 페이지 번호 -->
+        <div style="width:100%;text-align:right;font-size:9px;margin-bottom:5px;">
+            Page {{ page_num }} / {{ total_pages }}
+        </div>
+
+        <!-- 합계 (마지막 페이지에만 표시) -->
+        {% if page_num == total_pages %}
+        <table style="width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 9px;">
+            <tr class="total-row">
+                <td style="border: 1px solid #000; padding: 4px; text-align: right; font-weight: bold; width: 70%;">Sub Total:</td>
+                <td style="border: 1.5px solid #000; padding: 4px; text-align: right; font-weight: bold;">{{ "{:,.2f}".format(subtotal) }}</td>
+            </tr>
+            <tr class="total-row">
+                <td style="border: 1px solid #000; padding: 4px; text-align: right; font-weight: bold;">TAX 7%:</td>
+                <td style="border: 1.5px solid #000; padding: 4px; text-align: right; font-weight: bold;">{{ "{:,.2f}".format(tax) }}</td>
+            </tr>
+            <tr class="total-row">
+                <td style="border: 1px solid #000; padding: 4px; text-align: right; font-weight: bold;">Net Total:</td>
+                <td style="border: 1.5px solid #000; padding: 4px; text-align: right; font-weight: bold;">{{ "{:,.2f}".format(net_total) }}</td>
+            </tr>
+        </table>
+
+        <!-- 서명란 -->
+        <div class="signature-section">
+            <div class="signature-box">
+                <div class="signature-line">
+                    <strong>ผู้ขาย<br>Seller</strong>
+                </div>
+                <p style="font-size: 9px;">Date ______/______/______</p>
+            </div>
+            <div class="signature-box">
+                <div class="signature-line">
+                    <strong>ผู้รับของ<br>Receiver</strong>
+                </div>
+                <p style="font-size: 9px;">Date ______/______/______</p>
+            </div>
+        </div>
+        {% endif %}
+        {% endfor %}
+    </div>
+</body>
+</html> 

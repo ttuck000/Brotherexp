@@ -1,0 +1,427 @@
+{% extends "base.html" %}
+{% block title %}P&L Report - BIG BOY {{ year }}{% endblock %}
+
+{% block content %}
+{% macro n(val) -%}
+  {%- if val is none or val == 0 -%}-
+  {%- elif val < 0 -%}({{ "{:,.2f}".format(val | abs) }})
+  {%- else -%}{{ "{:,.2f}".format(val) }}
+  {%- endif -%}
+{%- endmacro %}
+
+<div class="pnl-dashboard">
+
+    <!-- 헤더 -->
+    <div class="pnl-header">
+        <div class="pnl-header-inner">
+            <div class="pnl-title-icon"><i class="fas fa-file-invoice"></i></div>
+            <div>
+                <h1 class="pnl-title">BIG BOY P&L Summary</h1>
+                <p class="pnl-subtitle">Profit &amp; Loss Report</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- 년도 필터 -->
+    <div class="pnl-filter-bar">
+        <div class="pnl-filter-inner">
+            <form method="GET" action="{{ url_for('financial.pnl_report') }}" class="pnl-filter-form">
+                <label for="year">Year</label>
+                <select name="year" id="year" class="pnl-select">
+                    {% for y in range(2020, 2031) %}
+                    <option value="{{ y }}" {% if y==year %}selected{% endif %}>{{ y }}</option>
+                    {% endfor %}
+                </select>
+                <button type="submit" class="pnl-btn-search">
+                    <i class="fas fa-search"></i> Search
+                </button>
+            </form>
+            <a href="{{ url_for('financial.pnl_excel', year=year) }}" class="pnl-btn-excel">
+                <i class="fas fa-file-excel"></i> Excel
+            </a>
+        </div>
+    </div>
+
+    <!-- 테이블 -->
+    <div class="pnl-table-wrap">
+        <table class="pnl-table">
+            <thead>
+                <tr>
+                    <th colspan="2" rowspan="2" style="text-align:left; padding-left:10px;">Item</th>
+                    <th colspan="14" style="text-align:center;">{{ year }}</th>
+                </tr>
+                <tr>
+                    {% for m in range(1, 13) %}
+                    <th class="th-month">{{ m }}</th>{% endfor %}
+                    <th class="th-sum">Sum</th>
+                    <th class="th-avg">Avg</th>
+                </tr>
+            </thead>
+            <tbody>
+
+                {# ── Sales (A) ── #}
+                <tr>
+                    <td class="td-item" colspan="2"><b>Sales (A)</b></td>
+                    {% for m in range(1,13) %}
+                    <td class="td-num">{{ n(sales[m]) }}</td>{% endfor %}
+                    <td class="td-num td-sum"><b>{{ n(sales_stats.total) }}</b></td>
+                    <td class="td-num td-avg">{{ n(sales_stats.avg) }}</td>
+                </tr>
+
+                {# ── Purchasing (B) ── #}
+                <tr>
+                    <td class="td-item" colspan="2"><b>Purchasing (B)</b></td>
+                    {% for m in range(1,13) %}
+                    <td class="td-num">{{ n(purchase[m]) }}</td>{% endfor %}
+                    <td class="td-num td-sum"><b>{{ n(purchase_stats.total) }}</b></td>
+                    <td class="td-num td-avg">{{ n(purchase_stats.avg) }}</td>
+                </tr>
+
+                {# ── C = A-B ── #}
+                <tr>
+                    <td class="td-item" colspan="2"><b>C = A-B</b></td>
+                    {% for m in range(1,13) %}
+                    <td class="td-num {% if c_monthly[m] < 0 %}neg{% endif %}">{{ n(c_monthly[m]) }}</td>
+                    {% endfor %}
+                    <td class="td-num td-sum {% if c_stats.total < 0 %}neg{% endif %}"><b>{{ n(c_stats.total) }}</b></td>
+                    <td></td>
+                </tr>
+
+                {# ── Labor Cost ── #}
+                {% set labor_codes = labor.keys() | list %}
+                {% if labor_codes | length > 0 %}
+                {% set labor_rs    = labor_codes | length + 1 %}
+                {% for code in labor_codes %}
+                {% set st = labor_stats[code] %}
+                <tr class="tr-labor">
+                    {% if loop.first %}
+                    <td class="td-section td-labor-section" rowspan="{{ labor_rs }}">Labor Cost</td>
+                    {% endif %}
+                    <td class="td-item">{{ code }}{% if code_names.get(code|string) %} - {{ code_names.get(code|string) }}{% endif %}{% if loop.index==1 %} (D){% elif loop.index==2 %} (E){% endif %}</td>
+                    {% for m in range(1,13) %}
+                    <td class="td-num">{{ n(labor[code][m]) }}</td>{% endfor %}
+                    <td class="td-num td-sum">{{ n(st.total) }}</td>
+                    <td class="td-num td-avg">{{ n(st.avg) }}</td>
+                </tr>
+                {% endfor %}
+                {# Labor Sum #}
+                <tr class="tr-labor tr-labor-sum">
+                    <td class="td-item"><b>sum (F = D + E)</b></td>
+                    {% for m in range(1,13) %}
+                    <td class="td-num"><b>{{ n(labor_sum[m]) }}</b></td>{% endfor %}
+                    <td class="td-num td-sum"><b>{{ n(labor_sum_stats.total) }}</b></td>
+                    <td class="td-num td-avg"><b>{{ n(labor_sum_stats.avg) }}</b></td>
+                </tr>
+                {% else %}
+                {# Labor가 없을 때도 섹션 표시 #}
+                <tr class="tr-labor tr-labor-sum">
+                    <td class="td-section td-labor-section" rowspan="1">Labor Cost</td>
+                    <td class="td-item"><b>sum (F = D + E)</b></td>
+                    {% for m in range(1,13) %}
+                    <td class="td-num"><b>{{ n(labor_sum[m]) }}</b></td>{% endfor %}
+                    <td class="td-num td-sum"><b>{{ n(labor_sum_stats.total) }}</b></td>
+                    <td class="td-num td-avg"><b>{{ n(labor_sum_stats.avg) }}</b></td>
+                </tr>
+                {% endif %}
+
+                {# ── C - Labor Cost Sum ── #}
+                <tr>
+                    <td class="td-item" colspan="2"><b>(C - Labor Cost Sum)</b></td>
+                    {% for m in range(1,13) %}
+                    <td class="td-num {% if c_minus_labor[m] < 0 %}neg{% endif %}">{{ n(c_minus_labor[m]) }}</td>
+                    {% endfor %}
+                    <td class="td-num td-sum {% if c_minus_labor_stats.total < 0 %}neg{% endif %}"><b>{{ n(c_minus_labor_stats.total) }}</b></td>
+                    <td></td>
+                </tr>
+
+                {# ── Expense ── #}
+                {% set exp_codes = expense.keys() | list %}
+                {% set exp_rs    = exp_codes | length + 1 %}
+                {% for code in exp_codes %}
+                {% set st     = expense_stats[code] %}
+                {% set is_red = code in ['CONSUMABLE', 'Transportation'] %}
+                <tr class="tr-expense">
+                    {% if loop.first %}
+                    <td class="td-section td-expense-section" rowspan="{{ exp_rs }}">Expense</td>
+                    {% endif %}
+                    <td class="td-item {% if is_red %}red{% endif %}">{{ code }}{% if code_names.get(code|string) %} - {{ code_names.get(code|string) }}{% endif %}</td>
+                    {% for m in range(1,13) %}
+                    <td class="td-num {% if is_red %}red{% endif %}">{{ n(expense[code][m]) }}</td>
+                    {% endfor %}
+                    <td class="td-num td-sum {% if is_red %}red{% endif %}">{{ n(st.total) }}</td>
+                    <td class="td-num td-avg {% if is_red %}red{% endif %}">{{ n(st.avg) }}</td>
+                </tr>
+                {% endfor %}
+                {# Expense Sum #}
+                <tr class="tr-expense tr-expense-sum">
+                    <td class="td-item"><b>Expense Sum</b></td>
+                    {% for m in range(1,13) %}
+                    <td class="td-num"><b>{{ n(expense_sum[m]) }}</b></td>{% endfor %}
+                    <td class="td-num td-sum"><b>{{ n(expense_sum_stats.total) }}</b></td>
+                    <td class="td-num td-avg"><b>{{ n(expense_sum_stats.avg) }}</b></td>
+                </tr>
+
+                {# ── Net1 = (C - Labor Cost Sum) - Expense Sum ── #}
+                <tr class="tr-net">
+                    <td class="td-item" colspan="2"><b>((C - Labor Cost Sum) - Expense Sum)</b></td>
+                    {% for m in range(1,13) %}
+                    <td class="td-num {% if net1[m] < 0 %}neg{% endif %}">{{ n(net1[m]) }}</td>
+                    {% endfor %}
+                    <td class="td-num td-sum {% if net1_stats.total < 0 %}neg{% endif %}"><b>{{ n(net1_stats.total) }}</b></td>
+                    <td></td>
+                </tr>
+
+                {# ── Final ── #}
+                <tr class="tr-final">
+                    <td class="td-item" colspan="2"><b>({{ year }} Net)</b></td>
+                    {% for m in range(1,13) %}
+                    <td class="td-num neg"><b>{{ n(final[m]) }}</b></td>
+                    {% endfor %}
+                    <td class="td-num td-sum neg"><b>{{ n(final_stats.total) }}</b></td>
+                    <td></td>
+                </tr>
+
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<style>
+    .pnl-dashboard {
+        padding: 16px;
+        background: linear-gradient(135deg,#667eea,#764ba2);
+        min-height: 100vh;
+    }
+
+    .pnl-header {
+        background: rgba(255,255,255,.95);
+        border-radius: 14px;
+        padding: 18px 24px;
+        margin-bottom: 14px;
+        box-shadow: 0 4px 16px rgba(0,0,0,.1);
+    }
+
+    .pnl-header-inner {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+    }
+
+    .pnl-title-icon {
+        width: 46px;
+        height: 46px;
+        background: linear-gradient(135deg,#667eea,#764ba2);
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #fff;
+        font-size: 20px;
+    }
+
+    .pnl-title {
+        margin: 0;
+        font-size: 22px;
+        font-weight: 700;
+        background: linear-gradient(135deg,#667eea,#764ba2);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+    }
+
+    .pnl-subtitle {
+        margin: 2px 0 0;
+        font-size: 13px;
+        color: #718096;
+    }
+
+    .pnl-filter-bar {
+        background: rgba(255,255,255,.95);
+        border-radius: 12px;
+        padding: 14px 20px;
+        margin-bottom: 14px;
+        box-shadow: 0 4px 16px rgba(0,0,0,.08);
+    }
+
+    .pnl-filter-inner {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+    }
+
+    .pnl-filter-form {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+
+        .pnl-filter-form label {
+            font-weight: 600;
+            color: #4a5568;
+            font-size: 14px;
+        }
+
+    .pnl-select {
+        padding: 8px 12px;
+        border: 2px solid #e2e8f0;
+        border-radius: 8px;
+        font-size: 14px;
+    }
+
+    .pnl-btn-search {
+        padding: 8px 20px;
+        background: linear-gradient(135deg,#667eea,#764ba2);
+        color: #fff;
+        border: none;
+        border-radius: 8px;
+        font-weight: 600;
+        cursor: pointer;
+    }
+
+    .pnl-btn-excel {
+        padding: 8px 20px;
+        background: #217346;
+        color: #fff;
+        border: none;
+        border-radius: 8px;
+        font-weight: 600;
+        text-decoration: none;
+        font-size: 14px;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+        .pnl-btn-excel:hover {
+            background: #1a5c38;
+            color: #fff;
+        }
+
+    .pnl-table-wrap {
+        background: rgba(255,255,255,.97);
+        border-radius: 14px;
+        padding: 16px;
+        box-shadow: 0 6px 24px rgba(0,0,0,.1);
+        overflow-x: auto;
+    }
+
+    .pnl-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 12px;
+        white-space: nowrap;
+    }
+
+        .pnl-table thead tr {
+            background: #2d3748;
+        }
+
+        .pnl-table th {
+            padding: 10px 8px;
+            color: #fff;
+            font-weight: 600;
+            text-align: center;
+            border: 1px solid #4a5568;
+        }
+
+    .th-month {
+        width: 90px;
+    }
+
+    .th-sum, .th-avg {
+        width: 110px;
+    }
+
+    .pnl-table td {
+        padding: 7px 8px;
+        border: 1px solid #e2e8f0;
+        vertical-align: middle;
+    }
+
+    .td-section {
+        text-align: center;
+        font-weight: 700;
+        font-size: 11px;
+        color: #fff;
+        width: 90px;
+    }
+
+    .td-item {
+        text-align: left;
+        padding-left: 10px;
+        color: #2d3748;
+        font-size: 12px;
+        width: 180px;
+    }
+
+    .td-num {
+        text-align: right;
+        color: #2d3748;
+    }
+
+    .td-sum {
+        background: #edf2f7;
+        font-weight: 700;
+    }
+
+    .td-avg {
+        background: #f7fafc;
+        color: #718096;
+    }
+
+    .tr-labor td {
+        background: #fffde7;
+    }
+
+    .td-labor-section {
+        background: #f9a825;
+        color: #1a202c; /* 흰색에서 진한 회색/검은색으로 변경 */
+        writing-mode: vertical-rl;
+        text-orientation: mixed;
+        padding: 12px 4px;
+    }
+
+    .tr-labor-sum td {
+        background: #fff9c4;
+        border-top: 2px solid #f9a825;
+    }
+
+    .td-expense-section {
+        background: #3182ce;
+        color: #fff;
+        writing-mode: vertical-rl;
+        text-orientation: mixed;
+        padding: 12px 4px;
+    }
+
+    .tr-expense-sum td {
+        background: #ebf8ff;
+        border-top: 2px solid #3182ce;
+    }
+
+    .tr-net td {
+        background: #f0fff4;
+    }
+
+    .tr-final td {
+        background: #2d3748 !important;
+        color: #fff !important;
+    }
+
+    .tr-final .td-item {
+        color: #fff !important;
+    }
+
+    .tr-final .td-num {
+        color: #ffd700 !important;
+    }
+
+    .neg {
+        color: #c53030;
+    }
+
+    .red {
+        color: #c53030;
+        font-weight: 600;
+    }
+</style>
+{% endblock %}

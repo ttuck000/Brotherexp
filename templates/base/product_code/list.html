@@ -1,0 +1,516 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Process Line Management - MES System</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <style>
+        .search-section {
+            background-color: #f9f9f9;
+            padding: 15px;
+            margin-bottom: 20px;
+            border-radius: 5px;
+            border: 1px solid #ddd;
+        }
+
+        .search-form {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+            .search-form .form-group {
+                margin-right: 15px;
+                margin-bottom: 10px;
+            }
+
+            .search-form label {
+                margin-right: 8px;
+                font-weight: bold;
+            }
+
+            .search-form input {
+                padding: 8px;
+                border: 1px solid #ccc;
+                border-radius: 4px;
+                width: 180px;
+            }
+
+            .search-form select {
+                padding: 8px;
+                border: 1px solid #ccc;
+                border-radius: 4px;
+                width: 200px;
+                background-color: white;
+                -moz-appearance: none;
+                -webkit-appearance: none;
+                appearance: none;
+                background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 10 10"><polygon points="0,0 10,0 5,5" style="fill:%23000;"/></svg>'), linear-gradient(to bottom, #ffffff 0%, #f2f2f2 100%);
+                background-repeat: no-repeat, repeat;
+                background-position: right 8px top 50%, 0 0;
+                background-size: 10px auto, 100%;
+            }
+
+        .button-group {
+            display: flex;
+        }
+
+        .search-btn {
+            padding: 8px 15px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-right: 5px;
+            background-color: #007bff;
+            color: white;
+        }
+
+        .reset-btn {
+            padding: 8px 15px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            background-color: #6c757d;
+            color: white;
+        }
+
+        .button-section {
+            margin-bottom: 10px;
+        }
+
+        .btn {
+            padding: 8px 14px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-right: 5px;
+            font-size: 14px;
+        }
+
+        .btn-add {
+            background-color: #28a745;
+            color: white;
+        }
+
+        .btn-edit {
+            background-color: #007bff;
+            color: white;
+        }
+
+        .btn-delete {
+            background-color: #dc3545;
+            color: white;
+        }
+
+        .process-grid {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+            .process-grid th {
+                text-align: center;
+                background-color: #f2f2f2;
+                padding: 10px;
+                border: 1px solid #ddd;
+                white-space: nowrap;
+            }
+
+            .process-grid td {
+                padding: 8px;
+                border: 1px solid #ddd;
+                white-space: nowrap;
+            }
+
+                .process-grid td:first-child {
+                    text-align: center;
+                }
+
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+
+            .modal-overlay.active {
+                display: flex;
+            }
+
+        .modal-box {
+            background: white;
+            border-radius: 8px;
+            padding: 30px;
+            width: 500px;
+            max-width: 95%;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+        }
+
+            .modal-box h3 {
+                margin-top: 0;
+                margin-bottom: 20px;
+                font-size: 18px;
+                border-bottom: 2px solid #007bff;
+                padding-bottom: 10px;
+            }
+
+        .modal-form-group {
+            display: flex;
+            align-items: center;
+            margin-bottom: 14px;
+        }
+
+            .modal-form-group label {
+                width: 140px;
+                font-weight: bold;
+                flex-shrink: 0;
+            }
+
+            .modal-form-group input {
+                flex: 1;
+                padding: 7px 10px;
+                border: 1px solid #ccc;
+                border-radius: 4px;
+                font-size: 14px;
+            }
+
+        .required {
+            color: red;
+        }
+
+        .modal-buttons {
+            text-align: right;
+            margin-top: 20px;
+        }
+
+            .modal-buttons button {
+                padding: 8px 18px;
+                border: none;
+                border-radius: 4px;
+                cursor: pointer;
+                margin-left: 8px;
+                font-size: 14px;
+            }
+
+        .btn-save {
+            background-color: #007bff;
+            color: white;
+        }
+
+        .btn-cancel {
+            background-color: #6c757d;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    {% include 'nav.html' %}
+
+    <main class="content-area">
+        <div class="product-code-container">
+            <h2>Process Line Management</h2>
+
+            <!-- Search Area -->
+            <div class="search-section">
+                <form class="search-form" id="searchForm">
+                    <div class="form-group">
+                        <label for="searchCompanyCode">Company Code</label>
+                        <select id="searchCompanyCode">
+                            <option value="">-- All --</option>
+                            <option value="RECYCLE">RECYCLE</option>
+                            <option value="INJECTION">INJECTION</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="searchProcess">Process</label>
+                        <select id="searchProcess">
+                            <option value="">-- All --</option>
+                            <option value="CRUSH">CRUSH</option>
+                            <option value="MOLD">MOLD</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="searchProductLine">Product Line</label>
+                        <input type="text" id="searchProductLine" placeholder="Enter line name">
+                    </div>
+                    <div class="button-group">
+                        <button type="submit" class="search-btn">Search</button>
+                        <button type="button" class="reset-btn" onclick="resetSearch()">Reset</button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="button-section">
+                <button class="btn btn-add" onclick="openAddModal()">New</button>
+                <button class="btn btn-edit" onclick="openEditModal()">Edit</button>
+                <button class="btn btn-delete" onclick="deleteSelected()">Delete</button>
+            </div>
+
+            <!-- Grid -->
+            <div class="grid-section">
+                <table class="process-grid">
+                    <thead>
+                        <tr>
+                            <th style="width:50px;">Select</th>
+                            <th>Company Code</th>
+                            <th>Process</th>
+                            <th>Product Line</th>
+                            <th>Setup Date</th>
+                            <th>Prod. Start Date</th>
+                            <th>Remark</th>
+                            <th>Created By</th>
+                            <th>Creation Date</th>
+                            <th>Updated By</th>
+                            <th>Update Date</th>
+                        </tr>
+                    </thead>
+                    <tbody id="gridBody">
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+
+    <footer>
+        <p>&copy; 2024 MES System. All rights reserved.</p>
+    </footer>
+
+    <!-- ── New / Edit Modal ── -->
+    <div class="modal-overlay" id="formModal">
+        <div class="modal-box">
+            <h3 id="modalTitle">New Process Line</h3>
+            <input type="hidden" id="modalId">
+
+            <div class="modal-form-group">
+                <label for="fCompanyCode">Company Code <span class="required">*</span></label>
+                <input type="text" id="fCompanyCode" placeholder="Enter company code">
+            </div>
+            <div class="modal-form-group">
+                <label for="fProcess">Process <span class="required">*</span></label>
+                <input type="text" id="fProcess" placeholder="Enter process name">
+            </div>
+            <div class="modal-form-group">
+                <label for="fProductLine">Product Line <span class="required">*</span></label>
+                <input type="text" id="fProductLine" placeholder="Enter line name">
+            </div>
+            <div class="modal-form-group">
+                <label for="fSetupDate">Setup Date</label>
+                <input type="date" id="fSetupDate">
+            </div>
+            <div class="modal-form-group">
+                <label for="fStartDate">Prod. Start Date</label>
+                <input type="date" id="fStartDate">
+            </div>
+            <div class="modal-form-group">
+                <label for="fRemark">Remark</label>
+                <input type="text" id="fRemark" placeholder="Enter remark">
+            </div>
+
+            <div class="modal-buttons">
+                <button class="btn-save" onclick="saveModal()">Save</button>
+                <button class="btn-cancel" onclick="closeModal()">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        /* ── 그리드 렌더링 ── */
+        function renderRows(data) {
+            const tbody = document.getElementById('gridBody');
+            tbody.innerHTML = '';
+
+            if (!data || data.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="11" style="text-align:center;padding:20px;">No data found.</td></tr>`;
+                return;
+            }
+
+            data.forEach(item => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                        <td><input type="checkbox" data-id="${item.id}"></td>
+                        <td>${item.company_code || ''}</td>
+                        <td>${item.process || ''}</td>
+                        <td>${item.product_line || ''}</td>
+                        <td>${item.setup_date || ''}</td>
+                        <td>${item.product_startdate || ''}</td>
+                        <td>${item.remark || ''}</td>
+                        <td>${item.created_by || ''}</td>
+                        <td>${item.creation_date || ''}</td>
+                        <td>${item.updated_by || ''}</td>
+                        <td>${item.update_date || ''}</td>
+                    `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        /* ── 목록 로드 ── */
+        function loadList(params) {
+            const qs = params ? '?' + new URLSearchParams(params).toString() : '';
+            fetch(`/process_line/list${qs}`)
+                .then(res => res.json())
+                .then(data => renderRows(data))
+                .catch(err => {
+                    console.error(err);
+                    alert('Failed to load data.');
+                });
+        }
+
+        /* ── 검색 ── */
+        document.getElementById('searchForm').addEventListener('submit', function (e) {
+            e.preventDefault();
+            const company_code = document.getElementById('searchCompanyCode').value.trim();
+            const process = document.getElementById('searchProcess').value.trim();
+            const product_line = document.getElementById('searchProductLine').value.trim();
+
+            const params = {};
+            if (company_code) params.company_code = company_code;
+            if (process) params.process = process;
+            if (product_line) params.product_line = product_line;
+
+            loadList(Object.keys(params).length ? params : null);
+        });
+
+        function resetSearch() {
+            document.getElementById('searchCompanyCode').value = '';
+            document.getElementById('searchProcess').value = '';
+            document.getElementById('searchProductLine').value = '';
+            loadList();
+        }
+
+        /* ── 모달 열기 ── */
+        function openAddModal() {
+            document.getElementById('modalTitle').textContent = 'New Process Line';
+            document.getElementById('modalId').value = '';
+            document.getElementById('fCompanyCode').value = '';
+            document.getElementById('fProcess').value = '';
+            document.getElementById('fProductLine').value = '';
+            document.getElementById('fSetupDate').value = '';
+            document.getElementById('fStartDate').value = '';
+            document.getElementById('fRemark').value = '';
+            document.getElementById('formModal').classList.add('active');
+        }
+
+        function openEditModal() {
+            const checked = document.querySelectorAll('#gridBody input[type="checkbox"]:checked');
+            if (checked.length !== 1) {
+                alert('Please select exactly one item to edit.');
+                return;
+            }
+
+            const id = checked[0].dataset.id;
+            fetch(`/process_line/detail/${id}`)
+                .then(res => res.json())
+                .then(item => {
+                    document.getElementById('modalTitle').textContent = 'Edit Process Line';
+                    document.getElementById('modalId').value = item.id;
+                    document.getElementById('fCompanyCode').value = item.company_code || '';
+                    document.getElementById('fProcess').value = item.process || '';
+                    document.getElementById('fProductLine').value = item.product_line || '';
+                    document.getElementById('fSetupDate').value = item.setup_date || '';
+                    document.getElementById('fStartDate').value = item.product_startdate || '';
+                    document.getElementById('fRemark').value = item.remark || '';
+                    document.getElementById('formModal').classList.add('active');
+                })
+                .catch(err => {
+                    console.error(err);
+                    alert('Failed to load item data.');
+                });
+        }
+
+        function closeModal() {
+            document.getElementById('formModal').classList.remove('active');
+        }
+
+        // 모달 외부 클릭 시 닫기
+        document.getElementById('formModal').addEventListener('click', function (e) {
+            if (e.target === this) closeModal();
+        });
+
+        /* ── 저장 (신규 / 수정 공통) ── */
+        function saveModal() {
+            const id = document.getElementById('modalId').value;
+            const company_code = document.getElementById('fCompanyCode').value.trim();
+            const process = document.getElementById('fProcess').value.trim();
+            const product_line = document.getElementById('fProductLine').value.trim();
+
+            if (!company_code || !process || !product_line) {
+                alert('Company Code, Process, and Product Line are required.');
+                return;
+            }
+
+            const payload = {
+                id,
+                company_code,
+                process,
+                product_line,
+                setup_date: document.getElementById('fSetupDate').value || null,
+                product_startdate: document.getElementById('fStartDate').value || null,
+                remark: document.getElementById('fRemark').value.trim()
+            };
+
+            const url = id ? '/process_line/update' : '/process_line/save';
+
+            fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) {
+                        alert(id ? 'Updated successfully.' : 'Saved successfully.');
+                        closeModal();
+                        loadList();
+                    } else {
+                        alert('Save failed: ' + (data.error || ''));
+                    }
+                })
+                .catch(err => {
+                    console.error(err);
+                    alert('An error occurred while saving.');
+                });
+        }
+
+        /* ── 삭제 ── */
+        function deleteSelected() {
+            const checked = document.querySelectorAll('#gridBody input[type="checkbox"]:checked');
+            if (checked.length === 0) {
+                alert('Please select at least one item to delete.');
+                return;
+            }
+            if (!confirm(`Delete ${checked.length} selected item(s)?`)) return;
+
+            const ids = Array.from(checked).map(cb => cb.dataset.id);
+
+            fetch('/process_line/delete', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ ids })
+            })
+                .then(res => res.json())
+                .then data => {
+                    if (data.success) {
+                        alert('Deleted successfully.');
+                        loadList();
+                    } else {
+                        alert('Delete failed: ' + (data.error || ''));
+                    }
+                })
+                .catch(err => {
+                    console.error(err);
+                    alert('An error occurred while deleting.');
+                });
+        }
+
+        /* ── 초기 로드 ── */
+        document.addEventListener('DOMContentLoaded', () => loadList());
+    </script>
+</body>
+</html>

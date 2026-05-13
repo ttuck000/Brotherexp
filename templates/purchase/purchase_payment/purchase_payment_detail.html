@@ -1,0 +1,137 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="purchase-payment-detail-container">
+    <h2>{{ get_text("purchase_payment_detail") }}</h2>
+    <div id="purchasePaymentDetailContent">
+        <!-- Detail content will be loaded here by JavaScript -->
+        Loading...
+    </div>
+</div>
+
+<style>
+    .purchase-payment-detail-container {
+        width: 100%;
+        max-width: 1200px;
+        margin: 20px auto;
+        padding: 20px;
+        background-color: #fff;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        border-radius: 8px;
+    }
+    .purchase-payment-detail-container h2 {
+        color: #1a237e;
+        border-bottom: 2px solid #e3e8f0;
+        padding-bottom: 10px;
+        margin-bottom: 20px;
+    }
+    /* Add more styles as needed for the detail layout */
+</style>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const purchaseNo = "{{ purchase_no }}"; // Get purchase_no from Flask context
+        loadPurchasePaymentDetail(purchaseNo);
+    });
+
+    function loadPurchasePaymentDetail(purchaseNo) {
+        fetch(`/purchase/purchase_payment/detail/${purchaseNo}`, {
+            method: 'GET',
+            credentials: 'same-origin' // 로그인 세션(쿠키) 포함
+        })
+        .then(async response => {
+            const text = await response.text();
+            const ct = response.headers.get('content-type') || '';
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${text.slice(0,300)}`);
+            }
+            if (!ct.includes('application/json')) {
+                throw new Error('Expected JSON but got HTML/other: ' + text.slice(0,300));
+            }
+            return JSON.parse(text);
+        })
+        .then(data => {
+            renderPurchasePaymentDetail(data);
+        })
+        .catch(error => {
+            console.error('Error loading purchase payment detail:', error);
+            document.getElementById('purchasePaymentDetailContent').innerHTML =
+                '<p style="color: red;">{{ get_text("load_data_fail") }}: ' + error.message + '</p>';
+        });
+    }
+
+    function renderPurchasePaymentDetail(data) {
+        const contentDiv = document.getElementById('purchasePaymentDetailContent');
+        let html = '';
+
+        if (data.purchase) {
+            const p = data.purchase;
+            html += `
+                <h3>{{ get_text("basic_info") }}</h3>
+                <table>
+                    <tr><th>{{ get_text("purchase_no") }}</th><td>${p.purchaseNo || ''}</td><th>{{ get_text("purchase_date") }}</th><td>${p.purchaseDate || ''}</td></tr>
+                    <tr><th>{{ get_text("vendor") }}</th><td>${p.vendorName || ''} (${p.vendorCode || ''})</td><th>{{ get_text("currency") }}</th><td>${p.currencyCode || ''}</td></tr>
+                    <tr><th>{{ get_text("total_amount") }}</th><td>${formatNumber(p.totalAmount)}</td><th>{{ get_text("paid_amount") }}</th><td>${formatNumber(p.paidAmount)}</td></tr>
+                    <tr><th>{{ get_text("unpaid_amount") }}</th><td>${formatNumber(p.remainingAmount)}</td><th>{{ get_text("purchase_payment_due_date") }}</th><td>${p.paymentDueDate || ''}</td></tr>
+                    <tr><th>{{ get_text("status") }}</th><td>${getStatusText(p.status)}</td><td colspan="2"></td></tr>
+                </table>
+                <br>
+            `;
+        }
+
+        if (data.payments && data.payments.length > 0) {
+            html += `
+                <h3>{{ get_text("payment_history") }}</h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>{{ get_text("payment_date") }}</th>
+                            <th>{{ get_text("payment_method") }}</th>
+                            <th>{{ get_text("amount") }}</th>
+                            <th>{{ get_text("vat") }}</th>
+                            <th>{{ get_text("remarks") }}</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+            data.payments.forEach(payment => {
+                html += `
+                    <tr>
+                        <td>${payment.paymentDate || ''}</td>
+                        <td>${payment.paymentMethod || ''}</td>
+                        <td>${formatNumber(payment.amount)}</td>
+                         <td>${formatNumber(payment.vat)}</td>
+                        <td>${payment.remarks || ''}</td>
+                    </tr>
+                `;
+            });
+            html += `
+                    </tbody>
+                </table>
+            `;
+        } else {
+            html += '<p>{{ get_text("no_payment_history") }}</p>';
+        }
+
+        contentDiv.innerHTML = html;
+    }
+
+    // Helper function for number formatting (copy from summary_list.html or base template)
+     function formatNumber(num) {
+         if (num == null || isNaN(num)) return '0.00';
+         return Number(num).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+     }
+
+     // Helper function for status text (copy from summary_list.html or base template)
+     function getStatusText(status) {
+        const statusMap = {
+            'UNPAID': "{{ get_text('unpaid') }}",
+            'PARTIAL': "{{ get_text('partial_paid') }}",
+            'COMPLETED': "{{ get_text('completed') }}",
+            'CONFIRMED': "{{ get_text('confirmed') }}" // Assuming CONFIRMED might appear here too
+        };
+        return statusMap[status] || status; // Fallback to original status if not mapped
+    }
+
+</script>
+{% endblock %}

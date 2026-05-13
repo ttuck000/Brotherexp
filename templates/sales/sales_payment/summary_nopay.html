@@ -1,0 +1,368 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+
+
+<div class="summary-nopay-container">
+    <div class="summary-nopay-card">
+        <div class="summary-nopay-header">
+            <h2>{{ get_text('sales_payment_summary_nopay') }}</h2>
+        </div>
+        <div class="summary-nopay-filters">
+            <div>
+                <label>{{ get_text('period') }}</label>
+                <input type="date" id="startDate">
+                <span class="tilde">{{ get_text('tilde') }}</span>
+                <input type="date" id="endDate">
+            </div>
+            <div>
+                <label>{{ get_text('customer') }}</label>
+                <select id="customerCode">
+                    <option value="">{{ get_text('all') }}</option>
+                </select>
+            </div>
+            <div class="summary-nopay-actions">
+                <button type="button" onclick="searchSummary(1)">{{ get_text('search') }}</button>
+                <button type="button" class="excel" onclick="downloadExcel()">{{ get_text('excel_download') }}</button>
+            </div>
+        </div>
+        <div class="summary-nopay-table-wrap">
+            <table class="summary-nopay-table">
+                <thead>
+                    <tr>
+                        <th>{{ get_text('customer') }}</th>
+                        <th>{{ get_text('currency') }}</th>
+                        <th>{{ get_text('exchange_rate') }}</th>
+                        <th>{{ get_text('total_amount') }}</th>
+                        <th>{{ get_text('vat') }}</th>
+                        <th>{{ get_text('sum_amount') }}</th>
+                        <th>{{ get_text('sales_paid_amount') }}</th>
+                        <th>{{ get_text('sales_unpaid_amount') }}</th>
+                        <th>{{ get_text('sales_status') }}</th>
+                    </tr>
+                </thead>
+                <tbody id="summaryTableBody"></tbody>
+                <tfoot>
+                    <tr id="totalRow" style="display: none;">
+                        <td colspan="3" class="center"><strong>{{ get_text('total') }}</strong></td>
+                        <td class="right"><strong id="totalAmount">0</strong></td>
+                        <td class="right"><strong id="totalVatAmount">0</strong></td>
+                        <td class="right"><strong id="totalSumAmount">0</strong></td>
+                        <td class="right"><strong id="totalPaidAmount">0</strong></td>
+                        <td class="right text-danger"><strong id="totalUnpaidAmount">0</strong></td>
+                        <td></td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+        <div class="summary-nopay-pagination" id="pagination"></div>
+    </div>
+</div>
+
+<style>
+.summary-nopay-container {
+    flex: 1;
+    width: 100%;
+    padding: 20px;
+    box-sizing: border-box;
+    background-color: #f8fafc;
+}
+.summary-nopay-card {
+    background: #fff;
+    border-radius: 14px;
+    box-shadow: 0 4px 24px rgba(26,35,126,0.08), 0 1.5px 6px rgba(0,0,0,0.03);
+    padding: 28px 24px 24px 24px;
+    width: 100%;
+    box-sizing: border-box;
+}
+.summary-nopay-header h2 {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: #1a237e;
+    margin-bottom: 18px;
+    letter-spacing: -0.5px;
+}
+.summary-nopay-filters {
+    display: flex;
+    gap: 18px;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    margin-bottom: 18px;
+    font-size: 0.9rem;
+}
+.summary-nopay-filters label {
+    font-size: 0.9rem;
+    color: #374151;
+    font-weight: 500;
+    margin-right: 4px;
+}
+.summary-nopay-filters input,
+.summary-nopay-filters select {
+    font-size: 0.9rem;
+    padding: 3px 8px;
+    border-radius: 5px;
+    border: 1px solid #d1d5db;
+    margin-right: 4px;
+}
+.summary-nopay-actions button {
+    font-size: 0.9rem;
+    padding: 4px 14px;
+    border-radius: 6px;
+    border: none;
+    background: #4f8cff;
+    color: #fff;
+    font-weight: 500;
+    margin-right: 6px;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+.summary-nopay-actions button.excel {
+    background: #43b97f;
+}
+.summary-nopay-actions button:hover {
+    background: #1a237e;
+}
+.summary-nopay-table-wrap {
+    overflow-x: auto;
+}
+.summary-nopay-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.9rem;
+    background: #f8fafc;
+    border-radius: 10px;
+    overflow: hidden;
+}
+.summary-nopay-table th, .summary-nopay-table td {
+    border: 1px solid #e5e7eb;
+    padding: 7px 8px;
+    text-align: right;
+}
+.summary-nopay-table th {
+    background: #e3e8f0;
+    color: #1a237e;
+    font-size: 0.9rem;
+    font-weight: 600;
+    text-align: center;
+}
+.summary-nopay-table td {
+    background: #fff;
+    color: #374151;
+    font-size: 0.9rem;
+}
+.summary-nopay-table .center {
+    text-align: center;
+}
+.summary-nopay-table .right {
+    text-align: right;
+}
+.summary-nopay-table .text-danger {
+    color: #e53935;
+}
+.summary-nopay-pagination {
+    display: flex;
+    justify-content: center;
+    gap: 6px;
+    margin: 18px 0 0 0;
+}
+.summary-nopay-pagination button {
+    background: #f0f4ff;
+    border: 1px solid #b3c6ff;
+    color: #1a237e;
+    border-radius: 5px;
+    padding: 3px 10px;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+.summary-nopay-pagination button.active,
+.summary-nopay-pagination button:hover {
+    background: #4f8cff;
+    color: #fff;
+    border-color: #4f8cff;
+}
+@media (max-width: 700px) {
+    .summary-nopay-filters {
+        flex-direction: column;
+        gap: 8px;
+    }
+    .summary-nopay-card {
+        padding: 16px 6px 12px 6px;
+    }
+    .summary-nopay-header h2 {
+        font-size: 1rem;
+    }
+    .summary-nopay-table th, .summary-nopay-table td {
+        font-size: 0.85rem;
+        padding: 5px 4px;
+    }
+}
+</style>
+
+<script>
+function loadCustomers() {
+    fetch('/sales/api/customer/options')
+        .then(response => response.json())
+        .then(data => {
+            const select = document.getElementById('customerCode');
+            data.forEach(customer => {
+                const option = document.createElement('option');
+                option.value = customer.code;
+                option.textContent = customer.name;
+                select.appendChild(option);
+            });
+        })
+        .catch(error => console.error('Error:', error));
+}
+
+function searchSummary(page = 1, pageSize = 20) {
+    const startDate = document.getElementById('startDate').value;
+    const endDate = document.getElementById('endDate').value;
+    const customerCode = document.getElementById('customerCode').value;
+
+    fetch('/sales/api/sales/payment/summary_nopay', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            startDate: startDate,
+            endDate: endDate,
+            customerCode: customerCode,
+            page: page,
+            pageSize: pageSize
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        const tbody = document.getElementById('summaryTableBody');
+        tbody.innerHTML = '';
+
+        let totalAmount = 0;
+        let totalVatAmount = 0;
+        let totalSumAmount = 0;
+        let totalPaidAmount = 0;
+        let totalUnpaidAmount = 0;
+
+        if (data.items && data.items.length > 0) {
+            data.items.forEach(item => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${item.customerName}</td>
+                    <td>${item.currency}</td>
+                    <td class="text-right">${item.exchangeRate.toLocaleString()}</td>
+                    <td class="text-right">${item.totalAmount.toLocaleString()}</td>
+                    <td class="text-right">${item.vatAmount.toLocaleString()}</td>
+                    <td class="text-right">${item.sumAmount.toLocaleString()}</td>
+                    <td class="text-right">${item.paidAmount.toLocaleString()}</td>
+                    <td class="text-right text-danger">${item.unpaidAmount.toLocaleString()}</td>
+                    <td class="center">${formatSalesStatus(item.salesStatus)}</td>
+                `;
+                tbody.appendChild(row);
+
+                totalAmount += item.totalAmount;
+                totalVatAmount += item.vatAmount;
+                totalSumAmount += item.sumAmount;
+                totalPaidAmount += item.paidAmount;
+                totalUnpaidAmount += item.unpaidAmount;
+            });
+
+            document.getElementById('totalRow').style.display = '';
+            document.getElementById('totalAmount').textContent = totalAmount.toLocaleString();
+            document.getElementById('totalVatAmount').textContent = totalVatAmount.toLocaleString();
+            document.getElementById('totalSumAmount').textContent = totalSumAmount.toLocaleString();
+            document.getElementById('totalPaidAmount').textContent = totalPaidAmount.toLocaleString();
+            document.getElementById('totalUnpaidAmount').textContent = totalUnpaidAmount.toLocaleString();
+        } else {
+            document.getElementById('totalRow').style.display = 'none';
+        }
+        renderPagination(data.totalCount || 0, page, pageSize);
+    })
+    .catch(error => console.error('Error:', error));
+}
+
+function renderPagination(totalCount, currentPage, pageSize) {
+    const totalPages = Math.ceil(totalCount / pageSize);
+    const pagination = document.getElementById('pagination');
+    pagination.innerHTML = '';
+    if (totalPages <= 1) return;
+
+    if (currentPage > 1) {
+        const prev = document.createElement('button');
+        prev.textContent = '이전';
+        prev.onclick = () => searchSummary(currentPage - 1, pageSize);
+        pagination.appendChild(prev);
+    }
+
+    for (let i = 1; i <= totalPages; i++) {
+        const btn = document.createElement('button');
+        btn.textContent = i;
+        if (i === currentPage) btn.className = 'active';
+        btn.onclick = () => searchSummary(i, pageSize);
+        pagination.appendChild(btn);
+    }
+
+    if (currentPage < totalPages) {
+        const next = document.createElement('button');
+        next.textContent = '다음';
+        next.onclick = () => searchSummary(currentPage + 1, pageSize);
+        pagination.appendChild(next);
+    }
+}
+
+function formatSalesStatus(status) {
+    const statuses = {
+        'PROCESS': "{{ get_text('sales_status_process') }}",
+        'COMPLETED': "{{ get_text('sales_status_completed') }}"
+    };
+    return statuses[status] || status;
+}
+
+function downloadExcel() {
+    const startDate = document.getElementById('startDate').value;
+    const endDate = document.getElementById('endDate').value;
+    const customerCode = document.getElementById('customerCode').value;
+
+    fetch('/sales/api/sales/payment/summary_nopay/excel', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            startDate: startDate,
+            endDate: endDate,
+            customerCode: customerCode
+        })
+    })
+    .then(response => response.blob())
+    .then(blob => {
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `{{ get_text('sales_payment_summary_nopay') }}_${startDate}_${endDate}.xlsx`;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        a.remove();
+    })
+    .catch(error => console.error('Error:', error));
+}
+
+function toKoreaDateString(date) {
+    // UTC+9로 보정
+    const korea = new Date(date.getTime() + 9 * 60 * 60 * 1000);
+    return korea.toISOString().slice(0, 10);
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    loadCustomers();
+    const today = new Date();
+    const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
+    const lastDay = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+    document.getElementById('startDate').value = toKoreaDateString(firstDay);
+    document.getElementById('endDate').value = toKoreaDateString(lastDay);
+    searchSummary(1, 20);
+});
+</script>
+{% endblock %} 

@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>기준정보 - MES 시스템</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1><a href="/" style="text-decoration: none; color: inherit;">BIGBOY MES SYSTEM</a></h1>
+        </header>
+        
+        <nav class="main-menu">
+            <ul>
+                <li><a href="{{ url_for('base_info') }}">기준정보</a></li>
+                <li><a href="{{ url_for('purchase_management') }}">매입관리</a></li>
+                <li><a href="{{ url_for('sales_management') }}">매출관리</a></li>
+                <li><a href="{{ url_for('inventory_management') }}">재고관리</a></li>
+                <li><a href="{{ url_for('financial_management') }}">결산관리</a></li>
+            </ul>
+        </nav>
+
+        <main>
+            <section class="content-section">
+                <h2>기준정보 관리</h2>
+                <div class="menu-grid">
+                    <div class="menu-item">
+                        <h3>거래처 관리</h3>
+                        <p>거래처 정보 등록 및 관리</p>
+                    </div>
+                    <div class="menu-item">
+                        <h3>품목 관리</h3>
+                        <p>품목 정보 등록 및 관리</p>
+                    </div>
+                    <div class="menu-item">
+                        <h3>사용자 관리</h3>
+                        <p>시스템 사용자 등록 및 권한 관리</p>
+                    </div>
+                    <div class="menu-item">
+                        <h3>코드 관리</h3>
+                        <p>시스템 코드 등록 및 관리</p>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <footer>
+            <p>&copy; 2024 MES 시스템. All rights reserved.</p>
+        </footer>
+    </div>
+</body>
+</html> 

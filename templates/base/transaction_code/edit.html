@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ get_text('transaction_code_edit') }} - MES 시스템</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/product_code.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+    <style>
+/* Content Area Styles- SMALL */
+.content-area {
+    max-width: 1200px;
+    margin: 20px auto;
+    padding: 20px;
+    background-color: white;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    border-radius: 4px;
+}
+
+
+        .form-container {
+            background-color: #fff;
+            border-radius: 4px;
+            padding: 20px;
+        }
+
+        h2 {
+            font-size: 24px;
+            margin-bottom: 30px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #007bff;
+        }
+
+        .input-form {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 20px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+            color: #333;
+        }
+
+        .required {
+            color: #ff0000;
+        }
+
+        .form-group input,
+        .form-group select,
+        .form-group textarea {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+
+        .form-group textarea {
+            height: 100px;
+            resize: vertical;
+        }
+
+        .button-group {
+            grid-column: 1 / -1;
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        .btn-save,
+        .btn-cancel {
+            padding: 8px 40px;
+            border: none;
+            border-radius: 4px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        .btn-save {
+            background-color: #007bff;
+            color: white;
+        }
+
+        .btn-save:hover {
+            background-color: #0056b3;
+        }
+
+        .btn-cancel {
+            background-color: #6c757d;
+            color: white;
+        }
+
+        .btn-cancel:hover {
+            background-color: #545b62;
+        }
+
+        .form-group input:focus,
+        .form-group select:focus,
+        .form-group textarea:focus {
+            outline: none;
+            border-color: #007bff;
+            box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
+        }
+    </style>
+</head>
+<body>
+    <nav class="main-nav">
+        {% include 'nav.html' %}
+    </nav>
+
+    <main class="content-area">
+        <div class="form-container">
+            <h2>{{ get_text('transaction_code_edit') }}</h2>
+            <form id="transactionForm" class="input-form">
+                <div class="form-group">
+                    <label for="code">{{ get_text('transaction_code') }}<span class="required"> *</span></label>
+                    <input type="text" id="code" name="code" required readonly>
+                </div>
+                <div class="form-group">
+                    <label for="name">{{ get_text('transaction_name') }}<span class="required"> *</span></label>
+                    <input type="text" id="name" name="name" required placeholder="{{ get_text('enter_transaction_name') }}">
+                </div>
+                <div class="form-group">
+                    <label for="division">{{ get_text('transaction_division') }}</label>
+                    <input type="text" id="division" name="division" placeholder="{{ get_text('enter_transaction_division') }}">
+                </div>
+                <div class="form-group">
+                    <label for="usage">{{ get_text('usage') }}</label>
+                    <select id="usage" name="usage">
+                        <option value="사용">{{ get_text('use') }}</option>
+                        <option value="미사용">{{ get_text('unuse') }}</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="remarks">{{ get_text('remarks') }}</label>
+                    <textarea id="remarks" name="remarks" placeholder="{{ get_text('enter_remarks') }}"></textarea>
+                </div>
+                <div class="button-group">
+                    <button type="submit" class="btn-save">{{ get_text('edit') }}</button>
+                    <button type="button" class="btn-cancel" onclick="history.back()">{{ get_text('cancel') }}</button>
+                </div>
+            </form>
+        </div>
+    </main>
+
+    <footer>
+        <p>&copy; 2024 MES 시스템. All rights reserved.</p>
+    </footer>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const code = '{{ transaction_code }}';
+            
+            // 수불유형 정보 조회
+            fetch(`/transaction_type/detail/${code}`)
+                .then(response => response.json())
+                .then(data => {
+                    document.getElementById('code').value = data.code;
+                    document.getElementById('name').value = data.name;
+                    document.getElementById('division').value = data.division;
+                    // Use JS variables for translated values
+                    const useText = "{{ get_text('use') }}";
+                    const unuseText = "{{ get_text('unuse') }}";
+                    document.getElementById('usage').value = data.usage === 'Y' ? useText : unuseText;
+                    document.getElementById('remarks').value = data.remarks || '';
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert("{{ get_text('failed_to_load_transaction') }}");
+                });
+        });
+
+        document.getElementById('transactionForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            // Use JS variables for translated values
+            const useText = "{{ get_text('use') }}";
+            const usageValue = document.getElementById('usage').value === useText ? 'Y' : 'N';
+            const formData = {
+                code: document.getElementById('code').value,
+                name: document.getElementById('name').value,
+                division: document.getElementById('division').value,
+                usage: usageValue,
+                remarks: document.getElementById('remarks').value
+            };
+
+            fetch('/transaction_type/update', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(formData)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert("{{ get_text('transaction_updated') }}");
+                    window.location.href = '/transaction_type';
+                } else {
+                    alert(data.error || "{{ get_text('update_failed') }}");
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert("{{ get_text('update_failed') }}");
+            });
+        });
+    </script>   
+
+    <script>
+        document.querySelectorAll('.nav-item').forEach(item => {
+            item.addEventListener('mouseover', function() {
+                this.querySelector('.submenu').style.display = 'block';
+            });
+            
+            item.addEventListener('mouseout', function() {
+                this.querySelector('.submenu').style.display = 'none';
+            });
+        });
+    </script>
+</body>
+</html> 

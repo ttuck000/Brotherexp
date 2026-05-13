@@ -1,0 +1,702 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container-fluid mt-4">
+    <div class="row justify-content-center">
+        <div class="col-12 col-xl-11">
+            <h2 class="mb-4" style="font-weight:700;color:#2a4365;font-size:1.5rem;"><i class="fas fa-file-invoice-dollar me-2"></i>{{ get_text('account_actual_management') or 'Account Actual Management' }}</h2>
+
+            <div class="card shadow-sm mb-4 rounded-4">
+                <div class="card-body bg-light rounded-4">
+                    <form class="row gx-0 align-items-end" id="searchForm" method="get" action="{{ url_for('accounting.account_actual_list') }}" style="font-size:0.875rem;">
+                        <div class="col-md-1">
+                            <label for="search_cost_center" class="form-label">{{ get_text('cost_center') or 'Cost Center' }}</label>
+                            <select id="search_cost_center" name="cost_center" class="form-select search-half">
+                                <option value="">{{ get_text('all') or '전체' }}</option>
+                                {% if cost_center_options %}
+                                {% for opt in cost_center_options %}
+                                <option value="{{ opt.value }}" {% if request_args.get('cost_center')==opt.value %}selected{% endif %}>{{ opt.label }}</option>
+                                {% endfor %}
+                                {% else %}
+                                <option value="RECYCLE" {% if request_args.get('cost_center')=='RECYCLE' %}selected{% endif %}>RECYCLE</option>
+                                <option value="INJECTION" {% if request_args.get('cost_center')=='INJECTION' %}selected{% endif %}>INJECTION</option>
+                                {% endif %}
+                            </select>
+                        </div>
+
+                        <div class="col-md-4 pe-0">
+                            <label for="search_actual_code" class="form-label">{{ get_text('actual_code') or 'Actual Code' }}</label>
+                            <div class="input-group">
+                                <input type="text" id="search_actual_code" name="actual_code" class="form-control search-half" value="{{ request_args.get('actual_code', '') }}" readonly>
+                                <button type="button" class="btn btn-success" id="btnActualCodeHierarchy">
+                                    {{ get_text('hierarchy') or 'Hierarchy' }}
+                                </button>
+                                <button type="button" class="btn btn-primary btn-sm ms-1" id="btnActualCodeReset" title="{{ get_text('reset') or 'Reset' }}" aria-label="{{ get_text('reset') or 'Reset' }}">
+                                    <i class="fas fa-undo"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="col-md-2 ps-1">
+                            <label class="form-label">{{ get_text('billing_date') or 'Billing Date' }}</label>
+                            <div class="d-flex gap-2">
+                                <input type="date" id="billing_start" name="billing_start" class="form-control search-half" value="{{ request_args.get('billing_start', billing_start_default) }}">
+                                <input type="date" id="billing_end" name="billing_end" class="form-control search-half" value="{{ request_args.get('billing_end', billing_end_default) }}">
+                            </div>
+                        </div>
+
+                        <div class="col-md-2">
+                            <label class="form-label">{{ get_text('key_date') or 'Key Date' }}</label>
+                            <div class="d-flex gap-2">
+                                <input type="date" id="key_start" name="key_start" class="form-control search-half" value="{{ request_args.get('key_start', key_start_default) }}">
+                                <input type="date" id="key_end" name="key_end" class="form-control search-half" value="{{ request_args.get('key_end', key_end_default) }}">
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-3 d-flex gap-2 justify-content-end">
+                            <button type="submit" class="btn btn-primary px-4" style="font-size:0.875rem;"><i class="fas fa-search me-1"></i>{{ get_text('search') or 'Search' }}</button>
+                            <a href="{{ url_for('accounting.account_actual_add') }}" class="btn btn-success px-4" style="font-size:0.875rem;"><i class="fas fa-plus me-1"></i>{{ get_text('new') or 'New' }}</a>
+                            <a href="#" id="excelDownload" class="btn btn-secondary px-4" style="font-size:0.875rem;"><i class="fas fa-file-excel me-1"></i>{{ get_text('excel_download') or 'Excel' }}</a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <div class="card shadow rounded-4">
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-bordered table-hover align-middle mb-0 rounded-4" style="font-size:0.875rem;">
+                            <thead class="table-primary text-center">
+                                <tr>
+                                    <th class="text-center"><input type="checkbox" id="selectAll"></th>
+                                    <th class="text-center numeric">{{ get_text('id') or 'ID' }}</th>
+                                    <th class="text-center">{{ get_text('cost_center') or 'Cost Center' }}</th>
+                                    <th class="text-center">{{ get_text('actual_type') or 'Actual Type' }}</th>
+                                    <th class="text-center">{{ get_text('actual_code') or 'Actual Code' }}</th>
+                                    <th class="text-center">{{ get_text('account_name') or 'Account Name' }}</th>
+                                    <th class="text-center">{{ get_text('billing_date') or 'Billing Date' }}</th>
+                                    <th class="text-center">{{ get_text('key_date') or 'Key Date' }}</th>
+
+                                    <th class="text-center numeric">{{ get_text('before_vat_amount') or 'Before VAT' }}</th>
+                                    <th class="text-center numeric">{{ get_text('vat_amount') or 'Vat Amount' }}</th>
+                                    <th class="text-center numeric">{{ get_text('wht_amount') or 'WHT Amount' }}</th>
+                                    <th class="text-center numeric">{{ get_text('payment') or 'Payment' }}</th>
+
+                                    <th class="text-center">{{ get_text('vat_type') or 'VAT Type' }}</th>
+                                    <!-- VAT Rate와 WHT Rate 컬럼 숨김 -->
+                                    <th class="text-center numeric" style="display:none;">{{ get_text('vat_rate') or 'VAT Rate' }}</th>
+                                    <th class="text-center numeric" style="display:none;">{{ get_text('wht_rate') or 'WHT Rate' }}</th>
+                                    <th class="text-center">{{ get_text('payer') or 'Payer' }}</th>
+                                    <th class="text-center">{{ get_text('payment_method') or 'Payment Method' }}</th>
+                                    <th class="text-center">{{ get_text('partner') or 'Partner' }}</th>
+                                    <th class="text-center">{{ get_text('partner_account') or 'Partner Account' }}</th>
+                                    <th class="text-center">{{ get_text('remark') or 'Remark' }}</th>
+                                    <th class="text-center">{{ get_text('created_by') or 'Created By' }}</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% if items %}
+                                {% for item in items %}
+                                <tr>
+                                    <td class="text-center"><input type="checkbox" class="row-checkbox" value="{{ item.ID }}"></td>
+
+                                    <td class="text-center numeric">{{ fmt_int(item.ID) }}</td>
+
+                                    <td class="text-center">{{ item.COST_CENTER }}</td>
+                                    <td class="text-center">{{ item.Actual_TYPE }}</td>
+                                    <td class="text-center">{{ item.Actual_Code }}</td>
+                                    <td class="text-start">{{ item.account_name or '' }}</td>
+                                    <td class="text-center">{{ item.BILLING_DATE }}</td>
+                                    <td class="text-center">{{ item.KEY_DATE }}</td>
+
+                                    <td class="text-end numeric">{{ fmt_money(item.BEFORE_VAT_AMT) }}</td>
+                                    <td class="text-end numeric">{{ fmt_money(item.VAT_AMOUNT) }}</td>
+                                    <td class="text-end numeric">{{ fmt_money(item.WHT_AMOUNT) }}</td>
+                                    <td class="text-end numeric">{{ fmt_money(item.PAYMENT) }}</td>
+
+                                    <td class="text-center">{{ item.VAT_TYPE }}</td>
+                                    <!-- VAT Rate와 WHT Rate 값 숨김 -->
+                                    <td class="text-end numeric" style="display:none;">{{ fmt_pct(item.VAT_RATE) }}</td>
+                                    <td class="text-end numeric" style="display:none;">{{ fmt_pct(item.WHT_RATE) }}</td>
+                                    <td class="text-start">{{ item.payer }}</td>
+                                    <td class="text-center">{{ item.PAYMENT_METHOD or item.payment_method or '' }}</td>
+                                    <!-- show vendor NAME if available client-side; keep code as data attribute for mapping -->
+                                    <td class="text-start" data-partner-code="{{ item.partner }}">
+                                        {{ item.partner_name or item.PARTNER_NAME or item.partner }}
+                                    </td>
+                                    <td class="text-start">{{ item.PARTNER_ACCOUNT or item.partner_account }}</td>
+                                    <td class="text-start">{{ item.REMARK }}</td>
+                                    <td class="text-center">{{ item.created_by }}</td>
+
+                                </tr>
+                                {% endfor %}
+                                {% else %}
+                                <tr><td colspan="21" class="text-center py-3">{{ get_text('no_records') or 'No records found.' }}</td></tr>
+                                {% endif %}
+                            </tbody>
+                            <tfoot>
+                                <tr style="background-color: #f0f0f0; font-weight: bold;">
+                                    <td colspan="8" class="text-end">{{ get_text('total') or '합계' }}</td>
+                                    <td class="text-end numeric">{{ fmt_money(total_before_vat) }}</td>
+                                    <td class="text-end numeric">{{ fmt_money(total_vat) }}</td>
+                                    <td class="text-end numeric">{{ fmt_money(total_wht) }}</td>
+                                    <td class="text-end numeric">{{ fmt_money(total_payment) }}</td>
+                                    <td colspan="9"></td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <div id="pagination" class="mt-3 text-center">
+                {% if pagination %}
+                {% set filtered_args = request_args.to_dict(flat=False) %}
+                {% if filtered_args.pop('page', None) %}{% endif %}
+                <nav aria-label="Page navigation">
+                    <ul class="pagination justify-content-center">
+                        {% if pagination.has_prev %}
+                        <li class="page-item">
+                            <a class="page-link" href="{{ url_for('accounting.account_actual_list', page=pagination.prev_num, **filtered_args) }}">
+                                {{ get_text('prev') or '이전' }}
+                            </a>
+                        </li>
+                        {% endif %}
+
+                        {% for page_num in pagination.iter_pages() %}
+                        {% if page_num %}
+                        {% if page_num != pagination.page %}
+                        <li class="page-item">
+                            <a class="page-link" href="{{ url_for('accounting.account_actual_list', page=page_num, **filtered_args) }}">{{ page_num }}</a>
+                        </li>
+                        {% else %}
+                        <li class="page-item active">
+                            <span class="page-link">{{ page_num }}</span>
+                        </li>
+                        {% endif %}
+                        {% else %}
+                        <li class="page-item disabled">
+                            <span class="page-link">…</span>
+                        </li>
+                        {% endif %}
+                        {% endfor %}
+
+                        {% if pagination.has_next %}
+                        <li class="page-item">
+                            <a class="page-link" href="{{ url_for('accounting.account_actual_list', page=pagination.next_num, **filtered_args) }}">
+                                {{ get_text('next') or '다음' }}
+                            </a>
+                        </li>
+                        {% endif %}
+                    </ul>
+                </nav>
+                {% endif %}
+            </div>
+
+            <!-- Flash Messages Modal -->
+            {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+            <!-- Modal -->
+            <div class="modal fade" id="flashModal" tabindex="-1" aria-hidden="true">
+                <div class="modal-dialog modal-dialog-centered">
+                    <div class="modal-content">
+                        {% set category = messages[0][0] if messages else 'success' %}
+                        <div class="modal-header text-white" style="background-color: #2a4365;">
+                            <h5 class="modal-title">
+                                {% if category == 'info' %}
+                                <i class="fas fa-info-circle me-2"></i>
+                                {% elif category == 'primary' %}
+                                <i class="fas fa-check-circle me-2"></i>
+                                {% else %}
+                                <i class="fas fa-check-circle me-2"></i>
+                                {% endif %}
+                                {{ get_text('notification') or '알림' }}
+                            </h5>
+                            <button type="button" class="btn-close btn-close-B" data-bs-dismiss="modal"></button>
+                        </div>
+                        <div class="modal-body">
+                            {% for category, message in messages %}
+                            <div class="alert alert-{{ category }} mb-0">{{ message }}</div>
+                            {% endfor %}
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn text-white" style="background-color: #2a4365;" data-bs-dismiss="modal">{{ get_text('confirm') or '확인' }}</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <script>
+                document.addEventListener('DOMContentLoaded', function () {
+                    var flashModal = new bootstrap.Modal(document.getElementById('flashModal'));
+                    flashModal.show();
+
+                    // 5초 후 모달 자동 닫기
+                    setTimeout(function () {
+                        flashModal.hide();
+                    }, 5000);
+                });
+
+            </script>
+            {% endif %}
+            {% endwith %}
+        </div>
+    </div>
+</div>
+
+<script>
+const translations = {
+    all: "{{ get_text('all') }}",
+    prev: "{{ get_text('prev') }}",
+    next: "{{ get_text('next') }}",
+    edit: "{{ get_text('edit') }}",
+    delete: "{{ get_text('delete') }}",
+    no_records: "{{ get_text('no_records') }}",
+    delete_confirm: "{{ get_text('delete_confirm') or 'Delete this record?' }}",
+    list_load_error: "{{ get_text('list_load_error') }}"
+};
+
+document.addEventListener('DOMContentLoaded', function() {
+    // If server didn't provide defaults, keep UI friendly (set to current month)
+    const today = new Date();
+    const yyyy = today.getFullYear();
+    const mm = String(today.getMonth() + 1).padStart(2, '0');
+    const firstDay = `${yyyy}-${mm}-01`;
+    const lastDay = new Date(yyyy, today.getMonth() + 1, 0).getDate();
+    const lastDayStr = `${yyyy}-${mm}-${String(lastDay).padStart(2, '0')}`;
+
+    const billingStart = document.getElementById('billing_start');
+    const billingEnd = document.getElementById('billing_end');
+    const keyStart = document.getElementById('key_start');
+    const keyEnd = document.getElementById('key_end');
+
+    if (billingStart && !billingStart.value) billingStart.value = "{{ billing_start_default }}" || firstDay;
+    if (billingEnd && !billingEnd.value) billingEnd.value = "{{ billing_end_default }}" || lastDayStr;
+
+
+    // select all
+    document.getElementById('selectAll')?.addEventListener('change', function() {
+        const checked = this.checked;
+        document.querySelectorAll('.row-checkbox').forEach(cb => cb.checked = checked);
+    });
+
+    // excel download
+    document.getElementById('excelDownload')?.addEventListener('click', function(e){
+        e.preventDefault();
+        const params = new URLSearchParams();
+        const cost_center = document.getElementById('search_cost_center')?.value;
+        const billing_start = billingStart?.value;
+        const billing_end = billingEnd?.value;
+        const key_start = keyStart?.value;
+        const key_end = keyEnd?.value;
+
+        if (cost_center) params.append('cost_center', cost_center);
+        if (billing_start) params.append('billing_start', billing_start);
+        if (billing_end) params.append('billing_end', billing_end);
+        if (key_start) params.append('key_start', key_start);
+        if (key_end) params.append('key_end', key_end);
+
+        const url = '{{ url_for("accounting.account_actual_excel") }}' + (params.toString() ? ('?' + params.toString()) : '');
+        window.location.href = url;
+    });
+
+    // --- Replace vendor CODEs with vendor names by fetching vendor list ---
+    (async function replaceVendorCodesWithNames(){
+        const vendorsUrl = '{{ url_for("base.customer_code") }}';
+        try {
+            const res = await fetch(vendorsUrl, { credentials: 'same-origin', headers: {'X-Requested-With':'XMLHttpRequest'} });
+            if (!res.ok) throw new Error('status ' + res.status);
+            let payload;
+            try { payload = await res.json(); }
+            catch(e) { payload = await res.text().then(t => { try { return JSON.parse(t); } catch(_) { return null; } }); }
+            const list = Array.isArray(payload) ? payload : (Array.isArray(payload.rows) ? payload.rows : (Array.isArray(payload.data) ? payload.data : []));
+            if (!Array.isArray(list) || list.length === 0) return;
+            const map = {};
+            list.forEach(r => {
+                // use vd_code -> vd_name
+                if (r.vd_code) map[String(r.vd_code)] = r.vd_name || r.NAME_KO || r.NAME_EN || r.NAME_TH || r.name || r.display_name || '';
+            });
+            document.querySelectorAll('td[data-partner-code]').forEach(td => {
+                const code = td.getAttribute('data-partner-code');
+                if (code && map[code]) td.textContent = map[code];
+            });
+        } catch (err) {
+            console.warn('Vendor name mapping failed:', err);
+            // debug: show raw in vendor_debug pre if present
+            const dbg = document.getElementById('vendor_debug');
+            if (dbg) { dbg.style.display='block'; dbg.textContent = 'Vendor mapping error: ' + (err && err.message ? err.message : err); }
+        }
+    })();
+
+    // The actual-code picker will use the same DOM-based tree used by new.html (no jstree)
+    (function(){
+        const btn = document.getElementById('btnActualCodeHierarchy');
+        const modalEl = document.getElementById('actualCodeModal');
+        const treeContainer = document.getElementById('actualCodeTree');
+        const searchInputId = 'actualCodeSearchInput';
+        const confirmBtnId = 'actualCodeConfirm';
+        let treeData = null;
+        let selectedNode = null;
+
+        // create search input inside modal header if not present
+        function ensureSearchInput() {
+            if (!document.getElementById(searchInputId)) {
+                const modalHeader = modalEl.querySelector('.modal-header');
+                if (modalHeader) {
+                    const wrapper = document.createElement('div');
+                    wrapper.style.marginLeft = '8px';
+                    wrapper.style.display = 'flex';
+                    wrapper.style.gap = '8px';
+                    wrapper.style.alignItems = 'center';
+                    const input = document.createElement('input');
+                    input.type = 'search';
+                    input.id = searchInputId;
+                    input.placeholder = '{{ get_text("account_search_placeholder") or "Search (code or name)" }}';
+                    input.className = 'form-control';
+                    input.style.maxWidth = '360px';
+                    wrapper.appendChild(input);
+                    // append into header
+                    modalHeader.appendChild(wrapper);
+                }
+            }
+        }
+
+        function createNodeElement(node) {
+            const li = document.createElement('li');
+            li.className = 'acct-node';
+            const row = document.createElement('div');
+            row.className = 'node-row';
+
+            const toggle = document.createElement('button');
+            toggle.type = 'button';
+            toggle.className = 'node-toggle';
+            toggle.setAttribute('aria-expanded','false');
+
+            const label = document.createElement('span');
+            label.className = 'node-label';
+            label.textContent = (node.code || '') ;
+            const sub = document.createElement('span');
+            sub.className = 'node-sub';
+            sub.textContent = node.name ? (' - ' + node.name) : '';
+
+            label.style.cursor = 'pointer';
+            label.addEventListener('click', () => {
+              treeContainer.querySelectorAll('.node-row.selected').forEach(el => el.classList.remove('selected'));
+              row.classList.add('selected');
+              selectedNode = node;
+            });
+            sub.addEventListener('click', () => { label.click(); });
+
+            row.appendChild(toggle);
+            row.appendChild(label);
+            row.appendChild(sub);
+            li.appendChild(row);
+
+            if (node.children && node.children.length) {
+              const ul = document.createElement('ul');
+              ul.className = 'node-children expanded';
+              node.children.forEach(ch => ul.appendChild(createNodeElement(ch)));
+              li.appendChild(ul);
+              toggle.setAttribute('aria-expanded', 'true');
+              toggle.addEventListener('click', () => {
+                const collapsed = ul.classList.contains('collapsed');
+                ul.classList.toggle('collapsed', !collapsed);
+                ul.classList.toggle('expanded', collapsed);
+                toggle.setAttribute('aria-expanded', String(collapsed));
+              });
+            } else {
+              toggle.classList.add('node-toggle-empty');
+              toggle.setAttribute('aria-hidden','true');
+              row.classList.add('leaf');
+            }
+            return li;
+        }
+
+        function renderTree(data) {
+            treeContainer.innerHTML = '';
+            selectedNode = null;
+            if (!Array.isArray(data) || data.length === 0) {
+                treeContainer.innerHTML = '<div class="text-muted py-3 text-center">{{ get_text("no_records") or "No account codes available." }}</div>';
+                return;
+            }
+            const ul = document.createElement('ul');
+            ul.className = 'acct-tree-root';
+            data.forEach(root => ul.appendChild(createNodeElement(root)));
+            treeContainer.appendChild(ul);
+
+            // expanded by default
+            treeContainer.querySelectorAll('.node-children').forEach(ul => {
+                ul.classList.remove('collapsed');
+                ul.classList.add('expanded');
+                const toggle = ul.previousElementSibling?.querySelector('.node-toggle');
+                if (toggle) toggle.setAttribute('aria-expanded', 'true');
+            });
+        }
+
+        async function loadTree() {
+            treeContainer.innerHTML = '<div class="text-muted py-3 text-center">{{ get_text("loading") or "Loading..." }}</div>';
+            try {
+                const res = await fetch('{{ url_for("base.account_hierarchy_api") }}', { credentials:'same-origin', headers:{'X-Requested-With':'XMLHttpRequest'} });
+                if (!res.ok) throw new Error('status ' + res.status);
+                const contentType = res.headers.get('content-type') || '';
+                const text = await res.text();
+                if (!contentType.includes('application/json')) {
+                    console.error('account_hierarchy_api returned non-json:', text.slice(0,1000));
+                    throw new Error('non-json response');
+                }
+                treeData = JSON.parse(text);
+                renderTree(treeData);
+            } catch (err) {
+                console.error('Account hierarchy load failed:', err);
+                treeContainer.innerHTML = '<div class="text-danger py-3 text-center">{{ get_text("list_load_error") or "Failed to load account codes." }}</div>';
+            }
+        }
+
+        function openModal() {
+            ensureSearchInput();
+            const modal = new bootstrap.Modal(modalEl);
+            modal.show();
+            // load if not loaded
+            if (!treeData) loadTree();
+            // wire search events
+            const si = document.getElementById(searchInputId);
+            if (si) {
+                si.value = '';
+                si.oninput = function(e){
+                    const q = (e.target.value||'').trim().toLowerCase();
+                    if (!treeData) return;
+                    if (!q) { renderTree(treeData); return; }
+                    const matches = new Set();
+                    function walk(node, ancestors=[]) {
+                        const text = ((node.code||'') + ' ' + (node.name||'')).toLowerCase();
+                        if (text.includes(q)) { ancestors.forEach(a=>matches.add(a.code)); matches.add(node.code); }
+                        (node.children||[]).forEach(ch => walk(ch, ancestors.concat(node)));
+                    }
+                    treeData.forEach(r => walk(r, []));
+                    function prune(node) {
+                        if (!node) return null;
+                        if (matches.has(node.code)) {
+                            return { code: node.code, name: node.name, children: (node.children||[]).map(prune).filter(Boolean) };
+                        }
+                        const child = (node.children||[]).map(prune).filter(Boolean);
+                        if (child.length) return { code: node.code, name: node.name, children: child };
+                        return null;
+                    }
+                    const pruned = treeData.map(prune).filter(Boolean);
+                    renderTree(pruned);
+                };
+            }
+        }
+
+        // bootstrap modal confirm button handling: confirm id will be present in modal footer
+        function confirmSelection() {
+            if (!selectedNode) {
+                // fallback: try to find selected list item
+                const sel = treeContainer.querySelector('.node-row.selected');
+                if (sel) {
+                    // reconstruct selectedNode minimally
+                    const code = sel.querySelector('.node-label')?.textContent?.trim() || '';
+                    document.getElementById('search_actual_code').value = code;
+                }
+            } else {
+                const codeVal = selectedNode.code || '';
+                document.getElementById('search_actual_code').value = codeVal;
+            }
+            // close modal
+            try { bootstrap.Modal.getInstance(modalEl).hide(); } catch(e){ /* ignore */ }
+        }
+
+        // install handlers
+        btn?.addEventListener('click', openModal);
+
+        // add confirm button handler (modal footer button has id actualCodeConfirm)
+        document.getElementById('actualCodeConfirm')?.addEventListener('click', confirmSelection);
+        // in case confirm is not yet available when script runs, observe modal footer for button
+        const observer = new MutationObserver(() => {
+            const btnC = document.getElementById('actualCodeConfirm');
+            if (btnC) {
+                btnC.removeEventListener('click', confirmSelection);
+                btnC.addEventListener('click', confirmSelection);
+            }
+        });
+        observer.observe(modalEl, { childList:true, subtree:true });
+    })();
+
+    // 초기화 버튼: actual_code 값 비우기
+    document.getElementById('btnActualCodeReset')?.addEventListener('click', function(e){
+        e.preventDefault();
+        const input = document.getElementById('search_actual_code');
+        if (input) {
+            input.value = '';
+        }
+        // 모달이 열려 있으면 닫기 (안정성용)
+        try {
+            const m = bootstrap.Modal.getInstance(document.getElementById('actualCodeModal'));
+            if (m) m.hide();
+        } catch (err) { /* ignore */ }
+    });
+});
+</script>
+
+<style>
+    /* status and small UI tweaks */
+    .form-control, .form-select {
+        font-size: 0.875rem !important;
+    }
+
+    .form-label {
+        font-size: 0.875rem !important;
+        font-weight: 500;
+    }
+
+    .btn-sm {
+        font-size: 0.75rem !important;
+        padding: 0.375rem 0.75rem;
+    }
+
+    .table th {
+        font-size: 0.875rem !important;
+        font-weight: 600;
+        padding: 0.75rem 0.5rem;
+    }
+
+    .table td {
+        font-size: 0.875rem !important;
+        padding: 0.5rem;
+    }
+
+    .pagination .btn {
+        font-size: 0.875rem !important;
+    }
+
+    .card {
+        border-radius: 0.75rem;
+        box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+    }
+
+    .card-body {
+        padding: 1.25rem;
+    }
+    /* numeric helper similar to previous behavior */
+    .numeric {
+        font-variant-numeric: tabular-nums;
+        direction: ltr;
+    }
+
+    .text-end.numeric {
+        text-align: right;
+    }
+
+    /* DOM-based account tree styles (same look/behavior as new.html) */
+    .acct-tree-root, .acct-tree-root ul {
+        list-style: none;
+        margin: 0;
+        padding-left: 12px;
+    }
+
+    .node-row {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 6px 8px;
+        border-radius: 6px;
+    }
+
+    .node-row:hover { background: #f6f9ff; }
+
+    .node-toggle {
+        width: 22px;
+        height: 22px;
+        border-radius: 4px;
+        background: transparent;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 700;
+        color: #0950d6;
+        border: 1px solid transparent;
+    }
+    .node-toggle::after { content: '+'; transform: scale(0.9); }
+    .node-toggle[aria-expanded="true"]::after { content: '−'; }
+    .node-toggle.node-toggle-empty { visibility: hidden; }
+
+    .node-label { font-weight: 700; color: #0b3b78; margin-right: 6px; cursor: pointer; }
+    .node-row.leaf .node-label { color: #d9534f; }
+    .node-sub { color: #3b556f; font-size: 13px; margin-left: 6px; }
+    .node-row.selected { background: #e6f0ff; }
+    .node-children.collapsed { display: none; }
+    .node-children.expanded { display: block; }
+
+    /* jsTree container compatibility space */
+    #actualCodeTree { margin-top: 1rem; max-height: 420px; overflow:auto; }
+
+    /* compact search inputs: 검색폼의 특정 필드 너비를 절반으로 줄임 */
+#searchForm .search-half {
+    width: 50% !important;
+    display: block;           /* 라벨 아래에 배치되도록 block으로 설정 */
+    box-sizing: border-box;
+}
+
+/* input-group 내부의 actual_code input은 input-group이 flex이므로 flex-basis로 제어 */
+#searchForm .input-group .search-half {
+    flex: 0 0 50% !important;
+    max-width: 50% !important;
+}
+
+/* 버튼과 함께 있을 때 버튼 너비가 차지하므로 input 오른쪽 여유 확보(선택적) */
+#searchForm .input-group .btn {
+    flex: 0 0 auto;
+}
+
+/* 검색폼 간격/정렬 개선 */
+#searchForm .col-md-3 {
+    padding-left: 0.25rem;
+    padding-right: 0.25rem;
+    min-width: 0; /* flex overflow 방지 */
+}
+
+#searchForm .form-label {
+    margin-bottom: 0.25rem;
+    font-size: 0.875rem;
+}
+
+/* actual_code input이 버튼과 함께 한 줄에서 붙도록 처리 */
+#searchForm .input-group {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+#searchForm .input-group .form-control.search-half {
+    flex: 1 1 auto;
+    min-width: 0;
+    width: auto !important;
+}
+
+/* date inputs 절반 크기 유지(기존 의도) */
+#searchForm .search-half {
+    width: 100% !important; /* col 크기에 맞춤 */
+}
+</style>
+
+<!-- 계정코드 계층(Actual Code Hierarchy) 모달 (Bootstrap modal but DOM-based tree inside) -->
+<div class="modal fade" id="actualCodeModal" tabindex="-1" aria-labelledby="actualCodeModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-content">
+      <div class="modal-header" style="background:#2a4365;color:white; display:flex; align-items:center; gap:12px;">
+        <h5 class="modal-title" id="actualCodeModalLabel">
+          <i class="fas fa-sitemap me-2"></i>{{ get_text('actual_code_hierarchy') or 'Actual Code Hierarchy' }}
+        </h5>
+        <!-- search input is injected dynamically by script for consistent placement -->
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="{{ get_text('close') or 'Close' }}"></button>
+      </div>
+      <div class="modal-body">
+        <div id="actualCodeTree" class="jstree-container"></div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" id="actualCodeConfirm" class="btn btn-success">{{ get_text('select') or 'Select' }}</button>
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">{{ get_text('close') or 'Close' }}</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}

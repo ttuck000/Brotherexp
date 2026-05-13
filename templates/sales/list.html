@@ -1,0 +1,542 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="sales-list-container">
+    <div class="sales-list-card">
+        <div class="sales-list-header">
+            <h2>{{ get_text('sales_management') }}</h2>
+        </div>
+        <div class="sales-list-filters">
+            <div>
+                <label>{{ get_text('period') }}</label>
+                <input type="date" id="startDate">
+                <span class="tilde">{{ get_text('tilde') }}</span>
+                <input type="date" id="endDate">
+            </div>
+            <div>
+                <label>{{ get_text('customer') }}</label>
+                <select id="customerCode">
+                    <option value="">{{ get_text('all') }}</option>
+                </select>
+            </div>
+            <div>
+                <label>PO.Number</label>
+                <input type="text" id="poNo" placeholder="PO.Number">
+            </div>
+            <div>
+                <label>{{ get_text('remark') }}</label>
+                <input type="text" id="remarks" placeholder="{{ get_text('remark') }}">
+            </div>
+            <div class="sales-list-actions">
+                <button type="button" class="search" onclick="searchSales(1)">{{ get_text('search') }}</button>
+                <button type="button" class="excel" onclick="downloadExcel()">{{ get_text('excel_download') }}</button>
+                <button type="button" class="new" onclick="location.href='/sales/new'">{{ get_text('new_register') }}</button>
+            </div>
+        </div>
+        <div class="sales-list-table-wrap">
+            <table class="sales-list-table">
+                <thead>
+                    <tr>
+                        <th>{{ get_text('sequence') }}</th>
+                        <th>{{ get_text('sales_date') }}</th>
+                        <th>{{ get_text('sales_no') }}</th>
+                        <th>{{ get_text('customer') }}</th>
+                        <th>PO.Number</th>
+                        <th>{{ get_text('currency') }}</th>
+                        <th>{{ get_text('exchange_rate') }}</th>
+                        <th>{{ get_text('total_quantity') }}</th>
+                        <th>{{ get_text('total_amount') }}</th>
+                        <th>{{ get_text('vat') }}</th>
+                        <th>{{ get_text('total_sum_amount') }}</th>
+                        <th>{{ get_text('payment_method') }}</th>
+                        <th>{{ get_text('payment_due_date') }}</th>
+                        <th>{{ get_text('sales_status') }}</th>
+                        <th>{{ get_text('action') }}</th>
+                    </tr>
+                </thead>
+                <tbody id="salesList"></tbody>
+                <tfoot>
+                    <tr class="sales-list-summary">
+                        <td colspan="7" class="center"><strong>{{ get_text('total') }}</strong></td>
+                        <td class="right"><strong id="totalQuantitySum">0</strong></td>
+                        <td class="right"><strong id="totalAmountSum">0</strong></td>
+                        <td class="right"><strong id="totalVatSum">0</strong></td>
+                        <td class="right"><strong id="totalSumAmountSum">0</strong></td>
+                        <td colspan="4"></td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+        <div class="sales-list-pagination" id="pagination"></div>
+    </div>
+</div>
+
+<style>
+.sales-list-container {
+    flex: 1;
+    width: 100%;
+    padding: 20px;
+    box-sizing: border-box;
+    background-color: #f8fafc;
+}
+.sales-list-card {
+    background: #fff;
+    border-radius: 14px;
+    box-shadow: 0 4px 24px rgba(26,35,126,0.08), 0 1.5px 6px rgba(0,0,0,0.03);
+    padding: 28px 24px 24px 24px;
+    width: 100%;
+    box-sizing: border-box;
+}
+.sales-list-header h2 {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: #1a237e;
+    margin-bottom: 18px;
+    letter-spacing: -0.5px;
+}
+.sales-list-filters {
+    display: flex;
+    gap: 18px;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    margin-bottom: 18px;
+    font-size: 0.9rem;
+}
+.sales-list-filters label {
+    font-size: 0.9rem;
+    color: #374151;
+    font-weight: 500;
+    margin-right: 4px;
+}
+.sales-list-filters input,
+.sales-list-filters select {
+    font-size: 0.9rem;
+    padding: 3px 8px;
+    border-radius: 5px;
+    border: 1px solid #d1d5db;
+    margin-right: 4px;
+}
+.sales-list-actions button {
+    font-size: 0.9rem;
+    padding: 4px 14px;
+    border-radius: 6px;
+    border: none;
+    color: #fff;
+    font-weight: 500;
+    margin-right: 6px;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+.sales-list-actions button.excel {
+    background: #43b97f;
+}
+.sales-list-actions button.new {
+    background: #4f8cff;
+}
+.sales-list-actions button.search {
+    background: #43b97f;
+}
+.sales-list-actions button:hover {
+    opacity: 0.9;
+}
+.sales-list-table-wrap {
+    overflow-x: auto;
+}
+.sales-list-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.9rem;
+    background: #f8fafc;
+    border-radius: 10px;
+    overflow: hidden;
+}
+.sales-list-table th, .sales-list-table td {
+    border: 1px solid #e5e7eb;
+    padding: 7px 8px;
+    text-align: center;
+}
+.sales-list-table th {
+    background: #e3e8f0;
+    color: #1a237e;
+    font-size: 0.9rem;
+    font-weight: 600;
+}
+.sales-list-table td {
+    background: #fff;
+    color: #374151;
+    font-size: 0.9rem;
+}
+.sales-list-table .center {
+    text-align: center;
+}
+.sales-list-table .right {
+    text-align: right;
+}
+.sales-list-table .text-danger {
+    color: #e53935;
+}
+.sales-list-table .text-success {
+    color: #43b97f;
+}
+.sales-list-summary {
+    background: #f0f4ff;
+    border-top: 2px solid #1a237e;
+}
+.sales-list-summary td {
+    font-weight: 600;
+    color: #1a237e;
+    font-size: 0.9rem;
+}
+.sales-list-pagination {
+    display: flex;
+    justify-content: center;
+    gap: 6px;
+    margin: 18px 0 0 0;
+}
+.sales-list-pagination button {
+    background: #f0f4ff;
+    border: 1px solid #b3c6ff;
+    color: #1a237e;
+    border-radius: 5px;
+    padding: 3px 10px;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+.sales-list-pagination button.active,
+.sales-list-pagination button:hover {
+    background: #4f8cff;
+    color: #fff;
+    border-color: #4f8cff;
+}
+@media (max-width: 700px) {
+    .sales-list-filters {
+        flex-direction: column;
+        gap: 8px;
+    }
+    .sales-list-card {
+        padding: 16px 6px 12px 6px;
+    }
+    .sales-list-header h2 {
+        font-size: 1rem;
+    }
+    .sales-list-table th, .sales-list-table td {
+        font-size: 0.85rem;
+        padding: 5px 4px;
+    }
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // 초기 데이터 로드
+    loadCustomers();
+    initializeDateRange();
+    searchSales();
+});
+
+
+// 거래처 목록 로드
+function loadCustomers() {
+    fetch('/sales/api/vendor/options')
+        .then(response => response.json())
+        .then(data => {
+            const select = document.getElementById('customerCode');
+            select.innerHTML = "<option value=\"\">{{ get_text('all') }}</option>";
+            data.forEach(customer => {
+                const option = document.createElement('option');
+                option.value = customer.code;
+                option.textContent = `${customer.code} - ${customer.name}`;
+                select.appendChild(option);
+            });
+        })
+        .catch(error => console.error('Error:', error));
+}
+
+// 날짜 범위 초기화
+function toKoreaDateString(date) {
+    // UTC+9로 보정
+    const korea = new Date(date.getTime() + 9 * 60 * 60 * 1000);
+    return korea.toISOString().slice(0, 10);
+}
+
+function initializeDateRange() {
+    const today = new Date();
+    const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+    const lastDayOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+    document.getElementById('startDate').value = toKoreaDateString(firstDayOfMonth);
+    document.getElementById('endDate').value = toKoreaDateString(lastDayOfMonth);
+}
+
+// 출고 현황 검색
+function searchSales(page = 1) {
+    const params = {
+        startDate: document.getElementById('startDate').value,
+        endDate: document.getElementById('endDate').value,
+        customerCode: document.getElementById('customerCode').value,
+        poNo: document.getElementById('poNo').value,
+        remarks: document.getElementById('remarks').value,
+        page: page,
+        per_page: 20
+    };
+
+    // 빈 값은 제외하고 URL 파라미터 생성
+    const queryString = Object.entries(params)
+        .filter(([_, value]) => value !== '')
+        .map(([key, value]) => `${encodeURIComponent(key)}=${encodeURIComponent(value)}`)
+        .join('&');
+
+    fetch(`/sales/api/sales/search?${queryString}`)
+        .then(response => response.json())
+        .then(data => {
+            renderSalesList(data.items, data.pagination, page);
+            renderPagination(data.pagination);
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert("{{ get_text('search_error') }}");
+        });
+}
+
+// 검색 조건 초기화
+function resetSearch() {
+    initializeDateRange();
+    document.getElementById('customerCode').value = '';
+    document.getElementById('poNo').value = '';
+    document.getElementById('remarks').value = '';
+    searchSales();
+}
+
+// 출고 현황 목록 렌더링
+function renderSalesList(data, pagination, currentPage) {
+    const tbody = document.getElementById('salesList');
+    tbody.innerHTML = '';
+    
+    let totalQuantitySum = 0;
+    let totalAmountSum = 0;
+    let totalVatSum = 0;
+    let totalSumAmountSum = 0;
+    
+    // 순번 계산 (전체 행 기준)
+    const startSequence = (currentPage - 1) * pagination.per_page + 1;
+    
+    data.forEach((sales, index) => {
+        const sequence = startSequence + index;
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td class="center">${sequence}</td>
+            <td>${formatDate(sales.salesDate)}</td>
+            <td>${sales.salesNo}</td>
+            <td>${sales.customerName}</td>
+            <td>${sales.poNo || ''}</td>
+            <td>${sales.currency}</td>
+            <td class="text-end">${formatNumber(sales.exchangeRate)}</td>
+            <td class="text-end">${formatNumber(sales.totalQuantity)}</td>
+            <td class="text-end">${formatNumber(sales.totalAmount)}</td>
+            <td class="text-end">${formatNumber(sales.totalVat)}</td>
+            <td class="text-end">${formatNumber(sales.totalSumAmount)}</td>
+            <td>${formatPaymentMethod(sales.paymentMethod)}</td>
+            <td>${formatDate(sales.paymentDueDate)}</td>
+            <td>${formatSalesStatus(sales.salesStatus)}</td>
+            <td>
+                <button type="button" class="btn btn-info btn-sm me-1" onclick="viewDetail('${sales.salesNo}')">
+                    <i class="fas fa-eye"></i>
+                </button>
+                <button type="button" class="btn btn-primary btn-sm" onclick="viewInvoice('${sales.salesNo}')">
+                    <i class="fas fa-file-invoice"></i>
+                </button>
+                <button type="button" class="btn btn-danger btn-sm" onclick="deleteSales('${sales.salesNo}')">
+                    <i class="fas fa-trash-alt"></i>
+                </button>
+            </td>
+        `;
+        tbody.appendChild(tr);
+
+        // 합계 계산
+        totalQuantitySum += parseFloat(sales.totalQuantity || 0);
+        totalAmountSum += parseFloat(sales.totalAmount || 0);
+        totalVatSum += parseFloat(sales.totalVat || 0);
+        totalSumAmountSum += parseFloat(sales.totalSumAmount || 0);
+    });
+
+    // 합계 표시
+    document.getElementById('totalQuantitySum').textContent = formatNumber(totalQuantitySum);
+    document.getElementById('totalAmountSum').textContent = formatNumber(totalAmountSum);
+    document.getElementById('totalVatSum').textContent = formatNumber(totalVatSum);
+    document.getElementById('totalSumAmountSum').textContent = formatNumber(totalSumAmountSum);
+}
+
+// 날짜 포맷팅
+function formatDate(dateString) {
+    if (!dateString) return '';
+    const date = new Date(dateString);
+    return date.toLocaleDateString('ko-KR');
+}
+
+// 숫자 포맷팅
+function formatNumber(number) {
+    if (number === null || number === undefined) return '';
+    return new Intl.NumberFormat('ko-KR', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+    }).format(number);
+}
+
+// 결제방법 포맷팅
+function formatPaymentMethod(method) {
+    const methods = {
+        'CASH': "{{ get_text('cash') }}",
+        'BANK_TRANSFER': "{{ get_text('bank_transfer') }}",
+        'CREDIT_CARD': "{{ get_text('credit_card') }}",
+        'CHECK': "{{ get_text('check') }}"
+    };
+    return methods[method] || method;
+}
+
+// 매출상태 포맷팅
+function formatSalesStatus(status) {
+    const statuses = {
+        'PROCESS': "{{ get_text('sales_status_process') }}",
+        'COMPLETED': "{{ get_text('sales_status_completed') }}"
+    };
+    return statuses[status] || status;
+}
+
+// 페이지네이션 렌더링
+function renderPagination(pagination) {
+    const ul = document.getElementById('pagination');
+    ul.innerHTML = '';
+
+    // 처음 페이지로 이동
+    if (pagination.current_page > 1) {
+        addPageLink(ul, 1, "{{ get_text('first') }}");
+    }
+
+    // 이전 페이지로 이동
+    if (pagination.current_page > 1) {
+        addPageLink(ul, pagination.current_page - 1, "{{ get_text('previous') }}");
+    }
+
+    // 페이지 번호
+    for (let i = pagination.start_page; i <= pagination.end_page; i++) {
+        addPageLink(ul, i, i.toString(), i === pagination.current_page);
+    }
+
+    // 다음 페이지로 이동
+    if (pagination.current_page < pagination.total_pages) {
+        addPageLink(ul, pagination.current_page + 1, "{{ get_text('next') }}");
+    }
+
+    // 마지막 페이지로 이동
+    if (pagination.current_page < pagination.total_pages) {
+        addPageLink(ul, pagination.total_pages, "{{ get_text('last') }}");
+    }
+}
+
+// 페이지 링크 생성
+function addPageLink(container, page, text, isActive = false) {
+    const li = document.createElement('li');
+    li.className = `page-item${isActive ? ' active' : ''}`;
+    
+    const a = document.createElement('a');
+    a.className = 'page-link';
+    a.href = '#';
+    a.textContent = text;
+    a.onclick = (e) => {
+        e.preventDefault();
+        searchSales(page);
+    };
+    
+    li.appendChild(a);
+    container.appendChild(li);
+}
+
+// 상세보기
+function viewDetail(salesNo) {
+    window.location.href = `/sales/edit/${salesNo}`;
+}
+
+// 거래명세서 보기
+function viewInvoice(salesNo) {
+    window.open(`/sales/invoice?sales_no=${salesNo}`, '_blank');
+}
+
+// 엑셀 다운로드
+function downloadExcel() {
+    const params = {
+        startDate: document.getElementById('startDate').value,
+        endDate: document.getElementById('endDate').value,
+        customerCode: document.getElementById('customerCode').value
+    };
+
+    // 빈 값은 제외하고 URL 파라미터 생성
+    const queryString = Object.entries(params)
+        .filter(([_, value]) => value !== '')
+        .map(([key, value]) => `${encodeURIComponent(key)}=${encodeURIComponent(value)}`)
+        .join('&');
+
+    // 엑셀 다운로드 요청
+    fetch(`/sales/api/sales/excel?${queryString}`)
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Network response was not ok');
+            }
+            return response.blob();
+        })
+        .then(blob => {
+            // 파일 다운로드
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `sales_list_${formatDateForFilename(new Date())}.xlsx`;
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+            a.remove();
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert("{{ get_text('excel_download_error') }}");
+        });
+}
+
+// 파일명용 날짜 포맷팅
+function formatDateForFilename(date) {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}${month}${day}`
+}
+
+const deleteConfirmMsg = {
+    'ko': '정말로 삭제 하시겠습니까?',
+    'th': 'คุณต้องการลบข้อมูลนี้จริงหรือไม่?'
+};
+const deleteSuccessMsg = {
+    'ko': '삭제되었습니다.',
+    'th': 'ลบข้อมูลเรียบร้อยแล้ว'
+};
+function getCurrentLanguage() {
+    return "{{ session.get('language', 'ko') }}";
+}
+function deleteSales(salesNo) {
+    const lang = getCurrentLanguage();
+    const msg = deleteConfirmMsg[lang] || deleteConfirmMsg['ko'];
+    if (!confirm(msg)) return;
+    fetch(`/sales/api/sales/delete/${salesNo}`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert(deleteSuccessMsg[lang] || deleteSuccessMsg['ko']);
+            searchSales();
+        } else {
+            alert('삭제 실패: ' + (data.message || ''));
+        }
+    })
+    .catch(() => alert('삭제 중 오류가 발생했습니다.'));
+}
+</script>
+{% endblock %}

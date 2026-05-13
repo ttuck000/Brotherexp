@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ get_text('transaction_code_management') }} - MES 시스템</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/product_code.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+    <style>
+   
+
+        .form-container {
+            background-color: #fff;
+            border-radius: 8px;
+            padding: 30px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        h2 {
+            font-size: 22px;
+            margin-bottom: 25px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #007bff;
+            color: #2c3e50;
+        }
+
+        .search-section {
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            border: 1px solid #e9ecef;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+        }
+
+        .search-form {
+            display: flex;
+            align-items: flex-end;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+
+        .form-group {
+            margin-bottom: 0;
+            flex: 0 0 auto;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+            color: #333;
+            font-size: 14px;
+        }
+
+        .form-group input {
+            padding: 8px 12px;
+            border: 1px solid #ced4da;
+            border-radius: 4px;
+            font-size: 14px;
+            line-height: 1.5;
+            transition: all 0.2s ease-in-out;
+            width: 100%;
+        }
+
+        .form-group input:focus {
+            border-color: #86b7fe;
+            outline: 0;
+            box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+        }
+
+        #transactionCode {
+            width: 180px;
+        }
+
+        #transactionName {
+            width: 250px;
+        }
+
+        .button-section {
+            margin: 20px 0;
+            display: flex;
+            gap: 8px;
+        }
+
+        .btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 4px;
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease-in-out;
+            min-width: 80px;
+        }
+
+        .btn-add {
+            background-color: #28a745;
+            color: white;
+        }
+
+        .btn-edit {
+            background-color: #007bff;
+            color: white;
+        }
+
+        .btn-delete {
+            background-color: #dc3545;
+            color: white;
+        }
+
+        .btn:hover {
+            transform: translateY(-1px);
+        }
+
+        .btn-add:hover {
+            background-color: #218838;
+        }
+
+        .btn-edit:hover {
+            background-color: #0056b3;
+        }
+
+        .btn-delete:hover {
+            background-color: #c82333;
+        }
+
+        .search-btn {
+            background-color: #0d6efd;
+            color: white;
+            border: none;
+            padding: 8px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            min-width: 80px;
+            height: 38px;
+            transition: all 0.2s ease-in-out;
+            align-self: flex-end;
+        }
+
+        .search-btn:hover {
+            background-color: #0b5ed7;
+            transform: translateY(-1px);
+        }
+
+        .item-grid {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+
+        .item-grid th,
+        .item-grid td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #dee2e6;
+            font-size: 13px;
+        }
+
+        .item-grid th {
+            background-color: #f8f9fa;
+            font-weight: 600;
+            color: #495057;
+        }
+
+        .item-grid tr:hover {
+            background-color: #f8f9fa;
+        }
+
+        .item-grid input[type="checkbox"] {
+            margin: 0;
+        }
+
+        .text-right {
+            text-align: right;
+        }
+
+        /* 페이지네이션 스타일 */
+        .pagination {
+            display: flex;
+            justify-content: center;
+            margin-top: 20px;
+            gap: 5px;
+        }
+
+        .pagination button {
+            padding: 6px 12px;
+            border: 1px solid #dee2e6;
+            background-color: #fff;
+            color: #007bff;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.2s ease-in-out;
+        }
+
+        .pagination button:hover {
+            background-color: #e9ecef;
+            border-color: #dee2e6;
+            color: #0056b3;
+        }
+
+        .pagination button.active {
+            background-color: #007bff;
+            border-color: #007bff;
+            color: #fff;
+        }
+
+        .pagination button:disabled {
+            color: #6c757d;
+            pointer-events: none;
+            background-color: #fff;
+            border-color: #dee2e6;
+        }
+    </style>
+</head>
+<body>
+        {% include 'nav.html' %}
+
+
+    <main class="content-area">
+        <div class="form-container">
+            <h2>{{ get_text('transaction_code_management') }}</h2>
+            
+            <!-- 검색 영역 -->
+            <div class="search-section">
+                <form id="searchForm" class="search-form">
+                    <div class="form-group">
+                        <label for="transactionCode">{{ get_text('transaction_code') }}</label>
+                        <input type="text" id="transactionCode" name="transactionCode" placeholder="{{ get_text('enter_transaction_code') }}">
+                    </div>
+                    <div class="form-group">
+                        <label for="transactionName">{{ get_text('transaction_name') }}</label>
+                        <input type="text" id="transactionName" name="transactionName" placeholder="{{ get_text('enter_transaction_name') }}">
+                    </div>
+                    <button type="submit" class="search-btn">{{ get_text('search') }}</button>
+                </form>
+            </div>
+
+            <!-- 버튼 영역 -->
+            <div class="button-section">
+                <button id="newTransaction" class="btn btn-add">{{ get_text('new') }}</button>
+                <button id="editTransaction" class="btn btn-edit">{{ get_text('edit') }}</button>
+                <button id="deleteTransaction" class="btn btn-delete">{{ get_text('delete') }}</button>
+                <button id="excelDownload" class="btn btn-edit"><i class="fas fa-file-excel"></i> {{ get_text('excel_download') }}</button>
+            </div>
+
+            <!-- 그리드 영역 -->
+            <div class="grid-section">
+                <table class="product-grid">
+                    <thead>
+                        <tr>
+                            <th>{{ get_text('select') }}</th>
+                            <th>{{ get_text('transaction_code') }}</th>
+                            <th>{{ get_text('transaction_name') }}</th>
+                            <th>{{ get_text('transaction_division') }}</th>
+                            <th>{{ get_text('usage') }}</th>
+                            <th>{{ get_text('remarks') }}</th>
+                        </tr>
+                    </thead>
+                    <tbody id="transactionTableBody">
+                        <!-- 데이터는 JavaScript로 동적 추가 -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+
+    <footer>
+        <p>&copy; 2024 MES 시스템. All rights reserved.</p>
+    </footer>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // 초기 데이터 로드
+            loadTransactionTypes();
+            
+            // 검색 폼 제출 이벤트
+            document.getElementById('searchForm').addEventListener('submit', function(e) {
+                e.preventDefault();
+                searchTransactionTypes();
+            });
+
+            // 신규 버튼 클릭 이벤트
+            document.getElementById('newTransaction').addEventListener('click', function() {
+                window.location.href = '/transaction_type/add';
+            });
+
+            // 수정 버튼 클릭 이벤트
+            document.getElementById('editTransaction').addEventListener('click', function() {
+                const selectedRow = document.querySelector('input[type="checkbox"]:checked');
+                if (selectedRow) {
+                    const code = selectedRow.closest('tr').querySelector('td:nth-child(2)').textContent;
+                    window.location.href = `/transaction_type/edit/${code}`;
+                } else {
+                    alert("{{ get_text('select_transaction_to_edit') }}");
+                }
+            });
+
+            // 삭제 버튼 클릭 이벤트
+            document.getElementById('deleteTransaction').addEventListener('click', function() {
+                const selectedCheckboxes = document.querySelectorAll('input[type="checkbox"]:checked');
+                if (selectedCheckboxes.length === 0) {
+                    alert("{{ get_text('select_transaction_to_delete') }}");
+                    return;
+                }
+
+                if (confirm("{{ get_text('confirm_delete_transaction') }}")) {
+                    const codes = Array.from(selectedCheckboxes).map(checkbox => 
+                        checkbox.closest('tr').querySelector('td:nth-child(2)').textContent
+                    );
+                    
+                    deleteTransactionTypes(codes);
+                }
+            });
+
+            document.getElementById('excelDownload').addEventListener('click', function() {
+                fetch('/transaction_type/excel')
+                    .then(response => response.blob())
+                    .then(blob => {
+                        const url = window.URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.download = 'transaction_code_list.xlsx';
+                        document.body.appendChild(a);
+                        a.click();
+                        window.URL.revokeObjectURL(url);
+                        a.remove();
+                    });
+            });
+        });
+
+        // 수불유형 목록 로드
+        function loadTransactionTypes() {
+            fetch('/transaction_type', {
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            })
+                .then(response => response.json())
+                .then(data => {
+                    const tbody = document.getElementById('transactionTableBody');
+                    tbody.innerHTML = '';
+                    
+                    data.forEach(type => {
+                        const tr = document.createElement('tr');
+                        tr.innerHTML = `
+                            <td><input type="checkbox"></td>
+                            <td>${type.TR_CODE}</td>
+                            <td>${type.TR_NAME}</td>
+                            <td>${type.TR_DIV || ''}</td>
+                            <td>${type.USAGE || 'Y'}</td>
+                            <td>${type.REMARKS || ''}</td>
+                        `;
+                        tbody.appendChild(tr);
+                    });
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert("{{ get_text('failed_to_load_transaction') }}");
+                });
+        }
+
+        // 수불유형 검색
+        function searchTransactionTypes() {
+            const code = document.getElementById('transactionCode').value;
+            const name = document.getElementById('transactionName').value;
+            
+            fetch(`/transaction_type?transactionCode=${encodeURIComponent(code)}&transactionName=${encodeURIComponent(name)}`, {
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            })
+                .then(response => response.json())
+                .then(data => {
+                    const tbody = document.getElementById('transactionTableBody');
+                    tbody.innerHTML = '';
+                    
+                    data.forEach(type => {
+                        const tr = document.createElement('tr');
+                        tr.innerHTML = `
+                            <td><input type="checkbox"></td>
+                            <td>${type.TR_CODE}</td>
+                            <td>${type.TR_NAME}</td>
+                            <td>${type.TR_DIV || ''}</td>
+                            <td>${type.USAGE || 'Y'}</td>
+                            <td>${type.REMARKS || ''}</td>
+                        `;
+                        tbody.appendChild(tr);
+                    });
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert("{{ get_text('search_failed') }}");
+                });
+        }
+
+        // 수불유형 삭제
+        function deleteTransactionTypes(codes) {
+            fetch('/transaction_type/delete', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ codes: codes })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert("{{ get_text('transaction_deleted') }}");
+                    loadTransactionTypes();
+                } else {
+                    alert(data.error || "{{ get_text('delete_failed') }}");
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert("{{ get_text('delete_failed') }}");
+            });
+        }
+    </script>
+
+    <script>
+        document.querySelectorAll('.nav-item').forEach(item => {
+            item.addEventListener('mouseover', function() {
+                this.querySelector('.submenu').style.display = 'block';
+            });
+            
+            item.addEventListener('mouseout', function() {
+                this.querySelector('.submenu').style.display = 'none';
+            });
+        });
+    </script>
+</body>
+</html> 

@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ get_text('transaction_code_new') }} - MES 시스템</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/product_code.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+    <style>
+    /* Content Area Styles- SMALL */
+.content-area {
+    max-width: 1200px;
+    margin: 20px auto;
+    padding: 20px;
+    background-color: white;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    border-radius: 4px;
+}
+
+
+        .form-container {
+            background-color: #fff;
+            border-radius: 4px;
+            padding: 20px;
+        }
+
+        h2 {
+            font-size: 24px;
+            margin-bottom: 30px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #007bff;
+        }
+
+        .input-form {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 20px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+            color: #333;
+        }
+
+        .required {
+            color: #ff0000;
+        }
+
+        .form-group input,
+        .form-group select,
+        .form-group textarea {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+
+        .form-group textarea {
+            height: 100px;
+            resize: vertical;
+        }
+
+        .button-group {
+            grid-column: 1 / -1;
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        .btn-save,
+        .btn-cancel {
+            padding: 8px 40px;
+            border: none;
+            border-radius: 4px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        .btn-save {
+            background-color: #007bff;
+            color: white;
+        }
+
+        .btn-save:hover {
+            background-color: #0056b3;
+        }
+
+        .btn-cancel {
+            background-color: #6c757d;
+            color: white;
+        }
+
+        .btn-cancel:hover {
+            background-color: #545b62;
+        }
+
+        .form-group input:focus,
+        .form-group select:focus,
+        .form-group textarea:focus {
+            outline: none;
+            border-color: #007bff;
+            box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
+        }
+    </style>
+</head>
+<body>
+    <nav class="main-nav">
+        {% include 'nav.html' %}
+    </nav>
+
+    <main class="content-area">
+        <div class="form-container">
+            <h2>{{ get_text('transaction_code_new') }}</h2>
+            <form id="transactionForm" class="input-form">
+                <div class="form-group">
+                    <label for="transactionCode" class="required">{{ get_text('transaction_code') }}</label>
+                    <input type="text" id="transactionCode" name="transactionCode" required maxlength="10">
+                    <small id="codeMessage" style="display: none; margin-top: 4px; font-size: 12px;"></small>
+                </div>
+                <div class="form-group">
+                    <label for="name">{{ get_text('transaction_name') }}<span class="required"> *</span></label>
+                    <input type="text" id="name" name="name" required placeholder="{{ get_text('enter_transaction_name') }}">
+                </div>
+                <div class="form-group">
+                    <label for="division">{{ get_text('transaction_division') }}</label>
+                    <input type="text" id="division" name="division" placeholder="{{ get_text('enter_transaction_division') }}">
+                </div>
+                <div class="form-group">
+                    <label for="usage">{{ get_text('usage') }}</label>
+                    <select id="usage" name="usage">
+                        <option value="사용">{{ get_text('use') }}</option>
+                        <option value="미사용">{{ get_text('unuse') }}</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="remarks">{{ get_text('remarks') }}</label>
+                    <textarea id="remarks" name="remarks" placeholder="{{ get_text('enter_remarks') }}"></textarea>
+                </div>
+                <div class="button-group">
+                    <button type="submit" class="btn-save">{{ get_text('save') }}</button>
+                    <button type="button" class="btn-cancel" onclick="history.back()">{{ get_text('cancel') }}</button>
+                </div>
+            </form>
+        </div>
+    </main>
+
+    <footer>
+        <p>&copy; 2024 MES 시스템. All rights reserved.</p>
+    </footer>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            let isCodeValid = false;
+            const codeInput = document.getElementById('transactionCode');
+            const codeMessage = document.getElementById('codeMessage');
+            let checkTimeout;
+
+            // 코드 입력값 변경 시 자동 중복 체크
+            codeInput.addEventListener('input', function() {
+                isCodeValid = false;
+                codeMessage.style.display = 'none';
+                
+                clearTimeout(checkTimeout);
+                const code = this.value.trim();
+                
+                if (code) {
+                    checkTimeout = setTimeout(() => {
+                        fetch(`/check_transaction_type_code/${code}`, {
+                            headers: {
+                                'X-Requested-With': 'XMLHttpRequest'
+                            }
+                        })
+                        .then(response => response.json())
+                        .then(data => {
+                            if (!data.available) {
+                                showMessage("{{ get_text('code_already_exists') }}", 'error');
+                                isCodeValid = false;
+                            } else {
+                                showMessage("{{ get_text('code_available') }}", 'success');
+                                isCodeValid = true;
+                            }
+                        })
+                        .catch(error => {
+                            console.error('Error:', error);
+                            showMessage("{{ get_text('check_failed') }}", 'error');
+                            isCodeValid = false;
+                        });
+                    }, 500); // 0.5초 딜레이로 서버 부하 방지
+                }
+            });
+
+            // 메시지 표시 함수
+            function showMessage(message, type) {
+                codeMessage.textContent = message;
+                codeMessage.style.display = 'block';
+                codeMessage.style.color = type === 'error' ? '#dc3545' : '#28a745';
+            }
+
+            // 폼 유효성 검사
+            function validateForm() {
+                if (!isCodeValid) {
+                    alert("{{ get_text('please_check_code_duplicate') }}");
+                    return false;
+                }
+
+                const requiredFields = ['transactionCode', 'name'];
+                for (const field of requiredFields) {
+                    const input = document.getElementById(field);
+                    if (!input.value.trim()) {
+                        alert(`${input.previousElementSibling.textContent.replace(' *', '')} {{ get_text('is_required') }}`);
+                        input.focus();
+                        return false;
+                    }
+                }
+                return true;
+            }
+
+            // 폼 제출
+            document.getElementById('transactionForm').addEventListener('submit', function(e) {
+                e.preventDefault();
+                
+                if (!validateForm()) {
+                    return;
+                }
+
+                const formData = {
+                    tr_code: document.getElementById('transactionCode').value.trim(),
+                    tr_name: document.getElementById('name').value.trim(),
+                    tr_div: document.getElementById('division').value.trim(),
+                    usage: document.getElementById('usage').value === '{{ get_text("use") }}' ? 'Y' : 'N',
+                    remarks: document.getElementById('remarks').value.trim()
+                };
+
+                fetch('/transaction_type/add', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(formData)
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        alert("{{ get_text('transaction_saved') }}");
+                        window.location.href = '/transaction_type';
+                    } else {
+                        alert(data.error || "{{ get_text('save_failed') }}");
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert("{{ get_text('save_failed') }}");
+                });
+            });
+        });
+    </script>   
+
+    <script>
+        document.querySelectorAll('.nav-item').forEach(item => {
+            item.addEventListener('mouseover', function() {
+                this.querySelector('.submenu').style.display = 'block';
+            });
+            
+            item.addEventListener('mouseout', function() {
+                this.querySelector('.submenu').style.display = 'none';
+            });
+        });
+    </script>
+</body>
+</html>

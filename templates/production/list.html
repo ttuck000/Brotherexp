@@ -1,0 +1,715 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ get_text('production_log') }} - MES System</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <style>
+        .search-section {
+            background-color: #f9f9f9;
+            padding: 15px;
+            margin-bottom: 20px;
+            border-radius: 5px;
+            border: 1px solid #ddd;
+        }
+
+        .search-form {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .search-form .form-group {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .search-form label {
+            font-weight: bold;
+            white-space: nowrap;
+        }
+
+        .search-form input,
+        .search-form select {
+            padding: 7px 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 6px;
+        }
+
+        .search-btn {
+            padding: 8px 15px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            background-color: #007bff;
+            color: white;
+        }
+
+        .reset-btn {
+            padding: 8px 15px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            background-color: #6c757d;
+            color: white;
+        }
+
+        .button-section {
+            margin-bottom: 10px;
+        }
+
+        .btn {
+            padding: 8px 14px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-right: 5px;
+            font-size: 14px;
+        }
+
+        .btn-add {
+            background-color: #28a745;
+            color: white;
+        }
+
+        .btn-edit {
+            background-color: #007bff;
+            color: white;
+        }
+
+        .btn-delete {
+            background-color: #dc3545;
+            color: white;
+        }
+
+        .prod-grid {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 14px;
+        }
+
+        .prod-grid th {
+            text-align: center;
+            background-color: #f2f2f2;
+            padding: 10px;
+            border: 1px solid #ddd;
+            white-space: nowrap;
+        }
+
+        .prod-grid td {
+            padding: 8px 10px;
+            border: 1px solid #ddd;
+            white-space: nowrap;
+        }
+
+        .prod-grid td:first-child {
+            text-align: center;
+        }
+
+        .prod-grid td.num {
+            text-align: right;
+        }
+
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal-overlay.active {
+            display: flex;
+        }
+
+        .modal-box {
+            background: white;
+            border-radius: 8px;
+            padding: 30px;
+            width: 700px;
+            max-width: 95%;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+
+        .modal-box h3 {
+            margin-top: 0;
+            margin-bottom: 20px;
+            font-size: 18px;
+            border-bottom: 2px solid #007bff;
+            padding-bottom: 10px;
+        }
+
+        .modal-form-group {
+            display: flex;
+            align-items: center;
+            margin-bottom: 14px;
+        }
+
+        .modal-form-group label {
+            width: 140px;
+            font-weight: bold;
+            flex-shrink: 0;
+            font-size: 14px;
+        }
+
+        .modal-form-group input,
+        .modal-form-group select {
+            flex: 1;
+            padding: 7px 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+
+        .required {
+            color: red;
+        }
+
+        .modal-buttons {
+            text-align: right;
+            margin-top: 20px;
+        }
+
+        .modal-buttons button {
+            padding: 8px 18px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-left: 8px;
+            font-size: 14px;
+        }
+
+        .btn-save {
+            background-color: #007bff;
+            color: white;
+        }
+
+        .btn-cancel {
+            background-color: #6c757d;
+            color: white;
+        }
+    </style>
+</head>
+
+<body>
+    {% include 'nav.html' %}
+
+    <main class="content-area">
+        <div class="product-code-container">
+            <h2>{{ get_text('production_log') }}</h2>
+
+            <div class="search-section">
+                <form class="search-form" id="searchForm">
+                    <div class="form-group">
+                        <label>{{ get_text('date_from') }}</label>
+                        <input type="date" id="searchDateFrom">
+                    </div>
+                    <div class="form-group">
+                        <label>{{ get_text('date_to') }}</label>
+                        <input type="date" id="searchDateTo">
+                    </div>
+                    <div class="form-group">
+                        <label>{{ get_text('company_code') }}</label>
+                        <select id="searchCompanyCode">
+                            <option value="">-- {{ get_text('all') }} --</option>
+                            <option value="RECYCLE">RECYCLE</option>
+                            <option value="INJECTION">INJECTION</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>{{ get_text('process') }}</label>
+                        <select id="searchProcess">
+                            <option value="">-- {{ get_text('all') }} --</option>
+                            <option value="CRUSH">CRUSH</option>
+                            <option value="MOLD">MOLD</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>{{ get_text('product_line') }}</label>
+                        <select id="searchProductLine" style="width:150px;">
+                            <option value="">-- {{ get_text('all') }} --</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>{{ get_text('item_code') }}</label>
+                        <select id="searchItemCode" style="width:180px;">
+                            <option value="">-- {{ get_text('all') }} --</option>
+                        </select>
+                    </div>
+                    <div class="button-group">
+                        <button type="submit" class="search-btn">{{ get_text('search') }}</button>
+                        <button type="button" class="reset-btn" onclick="resetSearch()">{{ get_text('reset') }}</button>
+                    </div>
+                </form>
+            </div>
+
+            <div class="button-section">
+                <button class="btn btn-add" onclick="openAddModal()">{{ get_text('new') }}</button>
+                <!-- <button class="btn btn-edit" onclick="openEditModal()">{{ get_text('edit') }}</button> -->
+                <button class="btn btn-delete" onclick="deleteSelected()">{{ get_text('delete') }}</button>
+            </div>
+
+            <div class="grid-section" style="overflow-x:auto;">
+                <table class="prod-grid">
+                    <thead>
+                        <tr>
+                            <th style="width:45px;">{{ get_text('select') }}</th>
+                            <th>{{ get_text('production_date') }}</th>
+                            <th>{{ get_text('start_time') }}</th>
+                            <th>{{ get_text('end_time') }}</th>
+                            <th>{{ get_text('company_code') }}</th>
+                            <th>{{ get_text('process') }}</th>
+                            <th>{{ get_text('product_line') }}</th>
+                            <th>{{ get_text('item_code') }}</th>
+                            <th>{{ get_text('planned_qty') }}</th>
+                            <th>{{ get_text('produced_qty') }}</th>
+                            <th>{{ get_text('defect_qty') }}</th>
+                            <th>{{ get_text('input_item') }}</th>
+                            <th>{{ get_text('worker') }}</th>
+                            <th>{{ get_text('remark') }}</th>
+                        </tr>
+                    </thead>
+                    <tbody id="gridBody"></tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+
+    <footer>
+        <p style="text-align:center;padding:16px;color:#888;font-size:13px;">&copy; 2024 MES System. All rights reserved.
+        </p>
+    </footer>
+
+    <!-- Modal -->
+    <div class="modal-overlay" id="formModal">
+        <div class="modal-box">
+            <h3 id="modalTitle">{{ get_text('new_production_log') }}</h3>
+            <input type="hidden" id="modalId">
+
+            <div class="modal-form-group">
+                <label>{{ get_text('production_date') }} <span class="required">*</span></label>
+                <input type="date" id="fProductionDate">
+            </div>
+            <div class="modal-form-group">
+                <label>{{ get_text('start_time') }} <span class="required">*</span></label>
+                <input type="time" id="fProductionstart">
+            </div>
+            <div class="modal-form-group">
+                <label>{{ get_text('end_time') }} <span class="required">*</span></label>
+                <input type="time" id="fProductionto">
+            </div>
+            <div class="modal-form-group">
+                <label>{{ get_text('company_code') }} <span class="required">*</span></label>
+                <select id="fCompanyCode" onchange="loadModalProductLines()">
+                    <option value="">-- {{ get_text('select') }} --</option>
+                    <option value="RECYCLE">RECYCLE</option>
+                    <option value="INJECTION">INJECTION</option>
+                </select>
+            </div>
+            <div class="modal-form-group">
+                <label>{{ get_text('process') }} <span class="required">*</span></label>
+                <select id="fProcess" onchange="loadModalProductLines()">
+                    <option value="">-- {{ get_text('select') }} --</option>
+                    <option value="CRUSH">CRUSH</option>
+                    <option value="MOLD">MOLD</option>
+                </select>
+            </div>
+            <div class="modal-form-group">
+                <label>{{ get_text('product_line') }} <span class="required">*</span></label>
+                <select id="fProductLine">
+                    <option value="">-- {{ get_text('select_company_process_first') }} --</option>
+                </select>
+            </div>
+            <div class="modal-form-group">
+                <label>{{ get_text('item_code') }} <span class="required">*</span></label>
+                <select id="fItemCode">
+                    <option value="">-- {{ get_text('select') }} --</option>
+                </select>
+            </div>
+            <div class="modal-form-group">
+                <label>{{ get_text('planned_qty') }}</label>
+                <input type="number" id="fPlannedQty" min="0" placeholder="{{ get_text('optional') }}">
+            </div>
+            <div class="modal-form-group">
+                <label>{{ get_text('produced_qty') }} <span class="required">*</span></label>
+                <input type="number" id="fProducedQty" min="0" value="0">
+            </div>
+            <div class="modal-form-group">
+                <label>{{ get_text('defect_qty') }}</label>
+                <input type="number" id="fDefectQty" min="0" placeholder="{{ get_text('optional') }}">
+            </div>
+            <div class="modal-form-group">
+                <label>{{ get_text('input_item') }}</label>
+                <select id="fInputItem">
+                    <option value="">-- {{ get_text('select') }} --</option>
+                </select>
+            </div>
+            <div class="modal-form-group">
+                <label>{{ get_text('worker') }} <span class="required">*</span></label>
+                <input type="text" id="fWorker" placeholder="{{ get_text('enter_worker_name') }}">
+            </div>
+            <div class="modal-form-group">
+                <label>{{ get_text('remark') }}</label>
+                <input type="text" id="fRemark" placeholder="{{ get_text('enter_remark') }}">
+            </div>
+            <div class="modal-buttons">
+                <button class="btn-save" onclick="saveModal()">{{ get_text('save') }}</button>
+                <button class="btn-cancel" onclick="closeModal()">{{ get_text('cancel') }}</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let itemMap = {};
+
+        // 다국어 텍스트
+        const i18n = {
+            all: "{{ get_text('all') }}",
+            select: "{{ get_text('select') }}",
+            select_company_process_first: "{{ get_text('select_company_process_first') }}",
+            no_data_found: "{{ get_text('no_data_found') }}",
+            new_production_log: "{{ get_text('new_production_log') }}",
+            edit_production_log: "{{ get_text('edit_production_log') }}",
+            select_one_edit: "{{ get_text('select_one_edit') }}",
+            select_at_least_one: "{{ get_text('select_at_least_one') }}",
+            confirm_delete: "{{ get_text('confirm_delete') }}",
+            production_date_required: "{{ get_text('production_date_required') }}",
+            start_time_required: "{{ get_text('start_time_required') }}",
+            end_time_required: "{{ get_text('end_time_required') }}",
+            company_code_required: "{{ get_text('company_code_required') }}",
+            process_required: "{{ get_text('process_required') }}",
+            product_line_required: "{{ get_text('product_line_required') }}",
+            item_code_required: "{{ get_text('item_code_required') }}",
+            worker_required: "{{ get_text('worker_required') }}",
+            updated: "{{ get_text('updated') }}",
+            saved: "{{ get_text('saved') }}",
+            save_failed: "{{ get_text('save_failed') }}",
+            deleted: "{{ get_text('deleted') }}",
+            delete_failed: "{{ get_text('delete_failed') }}",
+            failed_load_data: "{{ get_text('failed_load_data') }}",
+            failed_load_item: "{{ get_text('failed_load_item') }}",
+            error_saving: "{{ get_text('error_saving') }}",
+            error_deleting: "{{ get_text('error_deleting') }}",
+            items: "{{ get_text('items') }}"
+        };
+
+        function toDateStr(d) {
+            return d.getFullYear() + '-'
+                + String(d.getMonth() + 1).padStart(2, '0') + '-'
+                + String(d.getDate()).padStart(2, '0');
+        }
+
+        /* ── 검색 Product Line 로드 ── */
+        function loadSearchProductLines() {
+            fetch('/process_line/list')
+                .then(res => res.json())
+                .then(rows => {
+                    const sel = document.getElementById('searchProductLine');
+                    const unique = [...new Set(rows.map(r => r.product_line).filter(v => v))].sort();
+                    sel.innerHTML = `<option value="">-- ${i18n.all} --</option>`;
+                    unique.forEach(line => {
+                        const opt = document.createElement('option');
+                        opt.value = line;
+                        opt.textContent = line;
+                        sel.appendChild(opt);
+                    });
+                });
+        }
+
+        /* ── 검색 Item Code 로드 + itemMap 구축 ── */
+        function loadSearchItemCodes() {
+            fetch('/item/options')
+                .then(res => res.json())
+                .then(rows => {
+                    itemMap = {};
+                    rows.forEach(r => { itemMap[r.code] = r.name; });
+                    const sel = document.getElementById('searchItemCode');
+                    sel.innerHTML = `<option value="">-- ${i18n.all} --</option>`;
+                    rows.forEach(r => {
+                        const opt = document.createElement('option');
+                        opt.value = r.code;
+                        opt.textContent = `${r.code} - ${r.name}`;
+                        sel.appendChild(opt);
+                    });
+                });
+        }
+
+        /* ── 모달 Product Line 로드 ── */
+        function loadModalProductLines(selectedLine = '') {
+            const company = document.getElementById('fCompanyCode').value;
+            const process = document.getElementById('fProcess').value;
+            const sel = document.getElementById('fProductLine');
+            sel.innerHTML = `<option value="">-- ${i18n.select} --</option>`;
+            if (!company || !process) return;
+            fetch(`/process_line/list?company_code=${encodeURIComponent(company)}&process=${encodeURIComponent(process)}`)
+                .then(res => res.json())
+                .then(rows => {
+                    rows.forEach(r => {
+                        const opt = document.createElement('option');
+                        opt.value = r.product_line;
+                        opt.textContent = r.product_line;
+                        if (r.product_line === selectedLine) opt.selected = true;
+                        sel.appendChild(opt);
+                    });
+                });
+        }
+
+        /* ── 모달 Item Code 로드 ── */
+        function loadModalItemCodes(selectedCode = '') {
+            fetch('/item/list')
+                .then(res => res.json())
+                .then(rows => {
+                    const sel = document.getElementById('fItemCode');
+                    sel.innerHTML = `<option value="">-- ${i18n.select} --</option>`;
+                    rows.forEach(r => {
+                        const opt = document.createElement('option');
+                        opt.value = r.code;
+                        opt.textContent = `${r.code} - ${r.name}`;
+                        if (r.code === selectedCode) opt.selected = true;
+                        sel.appendChild(opt);
+                    });
+                });
+        }
+
+        /* ── 모달 Input Item 로드 ── */
+        function loadModalInputItems(selectedCode = '') {
+            fetch('/item/list')
+                .then(res => res.json())
+                .then(rows => {
+                    const sel = document.getElementById('fInputItem');
+                    sel.innerHTML = `<option value="">-- ${i18n.select} --</option>`;
+                    rows.forEach(r => {
+                        const opt = document.createElement('option');
+                        opt.value = r.code;
+                        opt.textContent = `${r.code} - ${r.name}`;
+                        if (r.code === selectedCode) opt.selected = true;
+                        sel.appendChild(opt);
+                    });
+                });
+        }
+
+        /* ── 그리드 렌더링 ── */
+        function renderRows(data) {
+            const tbody = document.getElementById('gridBody');
+            tbody.innerHTML = '';
+            if (!data || data.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="14" style="text-align:center;padding:20px;">${i18n.no_data_found}</td></tr>`;
+                return;
+            }
+            data.forEach(item => {
+                const inputItemLabel = item.InputItem
+                    ? (itemMap[item.InputItem] ? `${item.InputItem} - ${itemMap[item.InputItem]}` : item.InputItem)
+                    : '';
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                        <td><input type="checkbox" data-id="${item.ProductionID}"></td>
+                        <td>${item.ProductionDate || ''}</td>
+                        <td>${item.Productionstart || ''}</td>
+                        <td>${item.Productionto || ''}</td>
+                        <td>${item.CompanyCode || ''}</td>
+                        <td>${item.Process || ''}</td>
+                        <td>${item.ProductLine || ''}</td>
+                        <td>${item.ItemCode || ''}</td>
+                        <td class="num">${item.PlannedQty ?? ''}</td>
+                        <td class="num">${item.ProducedQty ?? ''}</td>
+                        <td class="num">${item.DefectQty ?? ''}</td>
+                        <td>${inputItemLabel}</td>
+                        <td>${item.Worker || ''}</td>
+                        <td>${item.Remark || ''}</td>
+                    `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        /* ── 목록 로드 ── */
+        function loadList(params) {
+            const qs = params ? '?' + new URLSearchParams(params).toString() : '';
+            fetch('/production/list' + qs)
+                .then(res => res.json())
+                .then(data => renderRows(data))
+                .catch(err => { console.error(err); alert(i18n.failed_load_data); });
+        }
+
+        /* ── 검색 ── */
+        document.getElementById('searchForm').addEventListener('submit', function (e) {
+            e.preventDefault();
+            const params = {};
+            const df = document.getElementById('searchDateFrom').value;
+            const dt = document.getElementById('searchDateTo').value;
+            const cc = document.getElementById('searchCompanyCode').value;
+            const pr = document.getElementById('searchProcess').value;
+            const pl = document.getElementById('searchProductLine').value;
+            const ic = document.getElementById('searchItemCode').value;
+            if (df) params.date_from = df;
+            if (dt) params.date_to = dt;
+            if (cc) params.company_code = cc;
+            if (pr) params.process = pr;
+            if (pl) params.product_line = pl;
+            if (ic) params.item_code = ic;
+            loadList(Object.keys(params).length ? params : null);
+        });
+
+        function resetSearch() {
+            const today = new Date();
+            document.getElementById('searchDateFrom').value = toDateStr(new Date(today.getFullYear(), today.getMonth(), 1));
+            document.getElementById('searchDateTo').value = toDateStr(today);
+            document.getElementById('searchCompanyCode').value = '';
+            document.getElementById('searchProcess').value = '';
+            document.getElementById('searchProductLine').value = '';
+            document.getElementById('searchItemCode').value = '';
+            loadList();
+        }
+
+        /* ── 모달 초기화 ── */
+        function clearModal() {
+            document.getElementById('modalId').value = '';
+            document.getElementById('fProductionDate').value = toDateStr(new Date());
+            document.getElementById('fProductionstart').value = '';
+            document.getElementById('fProductionto').value = '';
+            document.getElementById('fCompanyCode').value = '';
+            document.getElementById('fProcess').value = '';
+            document.getElementById('fProductLine').innerHTML = `<option value="">-- ${i18n.select_company_process_first} --</option>`;
+            document.getElementById('fPlannedQty').value = '';
+            document.getElementById('fProducedQty').value = 0;
+            document.getElementById('fDefectQty').value = '';
+            document.getElementById('fInputItem').value = '';
+            document.getElementById('fWorker').value = '';
+            document.getElementById('fRemark').value = '';
+        }
+
+        /* ── 신규 모달 ── */
+        function openAddModal() {
+            clearModal();
+            loadModalItemCodes();
+            loadModalInputItems();
+            document.getElementById('modalTitle').textContent = i18n.new_production_log;
+            document.getElementById('formModal').classList.add('active');
+        }
+
+        /* ── 수정 모달 ── */
+        function openEditModal() {
+            const checked = document.querySelectorAll('#gridBody input[type="checkbox"]:checked');
+            if (checked.length !== 1) { alert(i18n.select_one_edit); return; }
+            fetch(`/production/detail/${checked[0].dataset.id}`)
+                .then(res => res.json())
+                .then(item => {
+                    document.getElementById('modalTitle').textContent = i18n.edit_production_log;
+                    document.getElementById('modalId').value = item.ProductionID;
+                    document.getElementById('fProductionDate').value = item.ProductionDate || '';
+                    document.getElementById('fProductionstart').value = item.Productionstart || '';
+                    document.getElementById('fProductionto').value = item.Productionto || '';
+                    document.getElementById('fCompanyCode').value = item.CompanyCode || '';
+                    document.getElementById('fProcess').value = item.Process || '';
+                    document.getElementById('fPlannedQty').value = item.PlannedQty ?? '';
+                    document.getElementById('fProducedQty').value = item.ProducedQty ?? 0;
+                    document.getElementById('fDefectQty').value = item.DefectQty ?? '';
+                    document.getElementById('fWorker').value = item.Worker || '';
+                    document.getElementById('fRemark').value = item.Remark || '';
+                    loadModalProductLines(item.ProductLine || '');
+                    loadModalItemCodes(item.ItemCode || '');
+                    loadModalInputItems(item.InputItem || '');
+                    document.getElementById('formModal').classList.add('active');
+                })
+                .catch(() => alert(i18n.failed_load_item));
+        }
+
+        function closeModal() { document.getElementById('formModal').classList.remove('active'); }
+        document.getElementById('formModal').addEventListener('click', function (e) {
+            if (e.target === this) closeModal();
+        });
+
+        /* ── 저장 ── */
+        function saveModal() {
+            const id = document.getElementById('modalId').value;
+            const ProductionDate = document.getElementById('fProductionDate').value;
+            const Productionstart = document.getElementById('fProductionstart').value;
+            const Productionto = document.getElementById('fProductionto').value;
+            const CompanyCode = document.getElementById('fCompanyCode').value;
+            const Process = document.getElementById('fProcess').value;
+            const ProductLine = document.getElementById('fProductLine').value;
+            const ItemCode = document.getElementById('fItemCode').value;
+            const PlannedQty = document.getElementById('fPlannedQty').value !== ''
+                ? parseInt(document.getElementById('fPlannedQty').value) : null;
+            const ProducedQty = parseInt(document.getElementById('fProducedQty').value) || 0;
+            const DefectQty = document.getElementById('fDefectQty').value !== ''
+                ? parseInt(document.getElementById('fDefectQty').value) : null;
+            const InputItem = document.getElementById('fInputItem').value || null;
+            const Worker = document.getElementById('fWorker').value.trim();
+            const Remark = document.getElementById('fRemark').value.trim();
+
+            // 필수값 검증
+            if (!ProductionDate) { alert(i18n.production_date_required); return; }
+            if (!Productionstart) { alert(i18n.start_time_required); return; }
+            if (!Productionto) { alert(i18n.end_time_required); return; }
+            if (!CompanyCode) { alert(i18n.company_code_required); return; }
+            if (!Process) { alert(i18n.process_required); return; }
+            if (!ProductLine) { alert(i18n.product_line_required); return; }
+            if (!ItemCode) { alert(i18n.item_code_required); return; }
+            if (!Worker) { alert(i18n.worker_required); return; }
+
+            fetch(id ? '/production/update' : '/production/save', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    id, ProductionDate, Productionstart, Productionto,
+                    CompanyCode, Process, ProductLine, ItemCode,
+                    PlannedQty, ProducedQty, DefectQty,
+                    InputItem, Worker, Remark
+                })
+            })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) { alert(id ? i18n.updated : i18n.saved); closeModal(); loadList(); }
+                    else alert(i18n.save_failed + ': ' + (data.error || ''));
+                })
+                .catch(() => alert(i18n.error_saving));
+        }
+
+        /* ── 삭제 ── */
+        function deleteSelected() {
+            const checked = document.querySelectorAll('#gridBody input[type="checkbox"]:checked');
+            if (checked.length === 0) { alert(i18n.select_at_least_one); return; }
+            if (!confirm(`${i18n.confirm_delete} ${checked.length} ${i18n.items}?`)) return;
+            fetch('/production/delete', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ ids: Array.from(checked).map(cb => cb.dataset.id) })
+            })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) { alert(i18n.deleted); loadList(); }
+                    else alert(i18n.delete_failed + ': ' + (data.error || ''));
+                })
+                .catch(() => alert(i18n.error_deleting));
+        }
+
+        /* ── 초기화 ── */
+        document.addEventListener('DOMContentLoaded', function () {
+            const today = new Date();
+            document.getElementById('searchDateFrom').value = toDateStr(new Date(today.getFullYear(), today.getMonth(), 1));
+            document.getElementById('searchDateTo').value = toDateStr(today);
+            loadSearchProductLines();
+            loadSearchItemCodes();
+            loadList();
+        });
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,80 @@
+# Korean translations for PROJECT.
+# Copyright (C) 2024 ORGANIZATION
+# This file is distributed under the same license as the PROJECT project.
+msgid ""
+msgstr ""
+"Project-Id-Version: PROJECT VERSION\n"
+"Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
+"POT-Creation-Date: 2024-05-28 22:11+0900\n"
+"PO-Revision-Date: 2024-05-28 22:11+0900\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language: ko\n"
+"Language-Team: ko <LL@li.org>\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.9.1\n"
+
+msgid "sequence"
+msgstr "순번"
+
+msgid "cash"
+msgstr "현금"
+
+msgid "bank_transfer"
+msgstr "계좌이체"
+
+msgid "credit_card"
+msgstr "신용카드"
+
+msgid "check"
+msgstr "수표"
+
+msgid "confirmed"
+msgstr "확인"
+
+msgid "vendor_list_load_error"
+msgstr "거래처 목록을 불러오는 중 오류가 발생했습니다"
+
+msgid "warehouse_list_load_error"
+msgstr "창고 목록을 불러오는 중 오류가 발생했습니다"
+
+msgid "currency_list_load_error"
+msgstr "통화 목록을 불러오는 중 오류가 발생했습니다"
+
+msgid "search_item"
+msgstr "품목 검색"
+
+msgid "min_item_required"
+msgstr "최소 1개 이상의 품목을 입력해주세요"
+
+msgid "item_list_empty"
+msgstr "품목 목록이 비어있습니다"
+
+msgid "enter_item_code"
+msgstr "품목 코드를 입력하세요"
+
+msgid "item_not_found"
+msgstr "품목을 찾을 수 없습니다"
+
+msgid "enter"
+msgstr "입력"
+
+msgid "saving"
+msgstr "저장 중..."
+
+msgid "server_response_error"
+msgstr "서버 응답 오류가 발생했습니다"
+
+msgid "purchase_info_saved"
+msgstr "매입 정보가 저장되었습니다"
+
+msgid "save_failed"
+msgstr "저장에 실패했습니다"
+
+msgid "cancel_purchase"
+msgstr "매입 취소"
+
+msgid "input_data_not_saved"
+msgstr "입력한 데이터가 저장되지 않았습니다" 

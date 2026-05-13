@@ -1,0 +1,241 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container-fluid mt-4">
+    <div class="row justify-content-center">
+        <div class="col-12 col-xl-11">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2 class="mb-0" style="font-weight:700;color:#2a4365;font-size:1.5rem;">
+                    <i class="fas fa-list-alt me-2"></i>{{ get_text('inventory_audit_detail') }}
+                </h2>
+                <button class="btn btn-success" id="excelExportBtn" style="font-size:0.875rem;"><i class="fas fa-file-excel me-1"></i>{{ get_text('excel_download') }}</button>
+            </div>
+            <form class="row g-2 mb-3" id="searchForm" style="font-size:0.875rem;">
+                <div class="col-md-3">
+                    <input type="text" class="form-control" id="searchItemCode" placeholder="{{ get_text('item_code') }}">
+                </div>
+                <div class="col-md-3">
+                    <input type="text" class="form-control" id="searchItemName" placeholder="{{ get_text('item_name') }}">
+                </div>
+                <div class="col-md-3">
+                    <select class="form-select" id="searchWarehouse">
+                        <option value="">{{ get_text('all') }}</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <button type="submit" class="btn btn-primary w-100"><i class="fas fa-search me-1"></i>{{ get_text('search') }}</button>
+                </div>
+            </form>
+            <div class="card shadow rounded-4">
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-bordered table-hover align-middle mb-0 rounded-4 overflow-hidden" id="detailListTable" style="font-size:0.875rem;">
+                            <thead class="table-primary text-center">
+                                <tr>
+                                    <th>{{ get_text('sequence') }}</th>
+                                    <th>{{ get_text('audit_id') }}</th>
+                                    <th>{{ get_text('audit_date') }}</th>
+                                    <th>{{ get_text('warehouse') }}</th>
+                                    <th>{{ get_text('remark') }}</th>
+                                    <th>{{ get_text('item_code') }}</th>
+                                    <th>{{ get_text('item_name') }}</th>
+                                    <th>{{ get_text('specification') }}</th>
+                                    <th>{{ get_text('unit') }}</th>
+                                    <th>{{ get_text('system_stock') }}</th>
+                                    <th>{{ get_text('audit_quantity') }}</th>
+                                    <th>{{ get_text('difference_quantity') }}</th>
+                                    <th>{{ get_text('registration_date') }}</th>
+                                    <th>{{ get_text('registrant') }}</th>
+                                </tr>
+                            </thead>
+                            <tbody id="detailListBody">
+                                <!-- JS로 행 추가 -->
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="mt-3 d-flex justify-content-center" id="pagination"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<script>
+let allData = [];
+let currentPage = 1;
+const pageSize = 20;
+
+document.addEventListener('DOMContentLoaded', function() {
+    loadWarehouses();
+    loadDetailList();
+    document.getElementById('excelExportBtn').addEventListener('click', exportToExcel);
+    document.getElementById('searchForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        currentPage = 1;
+        loadDetailList();
+    });
+});
+
+// 번역 데이터를 JavaScript에서 사용할 수 있도록 전달
+const translations = {
+    all: "{{ get_text('all') }}",
+    prev: "{{ get_text('prev') }}",
+    next: "{{ get_text('next') }}"
+};
+
+function loadWarehouses() {
+    fetch("{{ url_for('inventory.warehouse_options') }}")
+        .then(response => {
+            if (!response.ok) throw new Error('HTTP ' + response.status);
+            return response.json();
+        })
+        .then(data => {
+            const select = document.getElementById('searchWarehouse');
+            select.innerHTML = `<option value="">${translations.all}</option>`;
+            data.sort((a, b) => (a.code || '').localeCompare(b.code || ''));
+            data.forEach(wh => {
+                const option = document.createElement('option');
+                option.value = wh.code;
+                option.textContent = `${wh.code} - ${wh.name}`;
+                select.appendChild(option);
+            });
+        })
+        .catch(error => {
+            console.error('창고 옵션 로드 오류:', error);
+        });
+}
+
+function loadDetailList() {
+    const itemCode = document.getElementById('searchItemCode').value || '';
+    const itemName = document.getElementById('searchItemName').value || '';
+    const warehouse = document.getElementById('searchWarehouse').value || '';
+    const params = new URLSearchParams({
+        item_code: itemCode,
+        item_name: itemName,
+        warehouse_code: warehouse
+    }).toString();
+
+    fetch("{{ url_for('inventory.inventory_audit_detail_list_api') }}" + "?" + params)
+        .then(res => {
+            if (!res.ok) throw new Error('HTTP ' + res.status);
+            return res.json();
+        })
+        .then(result => {
+            // response may be { success: true, data: [...] } or { data: [...] } or array
+            let rows = [];
+            if (Array.isArray(result)) rows = result;
+            else if (result && Array.isArray(result.data)) rows = result.data;
+            else if (result && result.items && Array.isArray(result.items)) rows = result.items;
+            allData = rows || [];
+            currentPage = 1;
+            renderTable();
+            renderPagination();
+        })
+        .catch(err => {
+            console.error('detail_list load error:', err);
+            alert('{{ get_text("list_load_error") }}');
+        });
+}
+
+function renderTable() {
+    const tbody = document.getElementById('detailListBody');
+    tbody.innerHTML = '';
+    const startIdx = (currentPage - 1) * pageSize;
+    const endIdx = Math.min(startIdx + pageSize, allData.length);
+    for (let i = startIdx; i < endIdx; i++) {
+        const row = allData[i];
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td class="text-center">${i + 1}</td>
+            <td class="text-center">${row.audit_id || row.auditId || ''}</td>
+            <td class="text-center">${row.audit_date || row.auditDate || ''}</td>
+            <td class="text-center">${row.warehouse_name || row.warehouse_code || ''}</td>
+            <td class="text-center">${row.remarks || row.remark || ''}</td>
+            <td class="text-center">${row.item_code || row.itemCode || ''}</td>
+            <td class="text-center">${row.item_name || row.itemName || ''}</td>
+            <td class="text-center">${row.spec || row.specification || ''}</td>
+            <td class="text-center">${row.unit || ''}</td>
+            <td class="text-end">${row.system_qty !== undefined ? Number(row.system_qty).toLocaleString() : ''}</td>
+            <td class="text-end">${row.counted_qty !== undefined ? Number(row.counted_qty).toLocaleString() : ''}</td>
+            <td class="text-end">${row.diff_qty !== undefined ? Number(row.diff_qty).toLocaleString() : ''}</td>
+            <td class="text-center">${row.createdate || row.createDate || ''}</td>
+            <td class="text-center">${row.createuser || row.createUser || ''}</td>
+        `;
+        tbody.appendChild(tr);
+    }
+}
+
+function renderPagination() {
+    const totalPages = Math.ceil(allData.length / pageSize);
+    const paginationDiv = document.getElementById('pagination');
+    paginationDiv.innerHTML = '';
+    if (totalPages <= 1) return;
+    let html = '';
+    html += `<button class='btn btn-outline-secondary btn-sm' ${currentPage === 1 ? 'disabled' : ''} onclick='gotoPage(${currentPage - 1})'>${translations.prev}</button> `;
+    for (let i = 1; i <= totalPages; i++) {
+        html += `<button class='btn btn-${i === currentPage ? 'primary' : 'light'} btn-sm mx-1' onclick='gotoPage(${i})'>${i}</button>`;
+    }
+    html += `<button class='btn btn-outline-secondary btn-sm' ${currentPage === totalPages ? 'disabled' : ''} onclick='gotoPage(${currentPage + 1})'>${translations.next}</button>`;
+    paginationDiv.innerHTML = html;
+}
+
+function gotoPage(page) {
+    currentPage = page;
+    renderTable();
+    renderPagination();
+}
+
+function exportToExcel() {
+    const itemCode = document.getElementById('searchItemCode').value || '';
+    const itemName = document.getElementById('searchItemName').value || '';
+    const warehouse = document.getElementById('searchWarehouse').value || '';
+    const params = new URLSearchParams({
+        page: currentPage,
+        pageSize: pageSize,
+        item_code: itemCode,
+        item_name: itemName,
+        warehouse_code: warehouse
+    }).toString();
+    window.open("{{ url_for('inventory.inventory_audit_detail_list_excel') }}" + "?" + params, '_blank');
+}
+</script>
+
+<style>
+/* 재고관리 페이지 공통 스타일 */
+.form-control, .form-select {
+    font-size: 0.875rem !important;
+}
+
+.form-label {
+    font-size: 0.875rem !important;
+    font-weight: 500;
+}
+
+.btn-sm {
+    font-size: 0.75rem !important;
+    padding: 0.375rem 0.75rem;
+}
+
+.table th {
+    font-size: 0.875rem !important;
+    font-weight: 600;
+    padding: 0.75rem 0.5rem;
+}
+
+.table td {
+    font-size: 0.875rem !important;
+    padding: 0.5rem;
+}
+
+.pagination .btn {
+    font-size: 0.875rem !important;
+}
+
+.card {
+    border-radius: 0.75rem;
+    box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+}
+
+.card-body {
+    padding: 1.25rem;
+}
+</style>
+{% endblock %}

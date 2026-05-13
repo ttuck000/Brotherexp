@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ get_text('customer_code_edit') }} - MES 시스템</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/product_code.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+    <style>
+/* (원본 스타일 동일) */
+.content-area { max-width: 1200px; margin: 20px auto; padding: 20px; background-color: white; box-shadow: 0 2px 5px rgba(0,0,0,0.1); border-radius: 4px; }
+/* ... 생략 ... */
+    </style>
+</head>
+<body>
+    {% include 'nav.html' %}
+
+    <main class="content-area">
+        <div class="form-container">
+            <h2>{{ get_text('customer_code_edit') }}</h2>
+            
+            <form id="vendorForm" class="form-grid">
+                <!-- (폼 필드 동일, vendorCode readonly 등) -->
+            </form>
+
+            <div class="button-section">
+                <button type="button" id="updateVendor" class="btn btn-save">{{ get_text('edit') }}</button>
+                <button type="button" id="cancel" class="btn btn-cancel">{{ get_text('cancel') }}</button>
+            </div>
+        </div>
+    </main>
+
+    <footer>
+        <p>&copy; 2024 MES 시스템. All rights reserved.</p>
+    </footer>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const pathParts = window.location.pathname.split('/');
+            const vendorCode = pathParts[pathParts.length - 1];
+            loadVendorData(vendorCode);
+
+            function validateForm() {
+                const requiredFields = ['vendorName'];
+                for (const field of requiredFields) {
+                    const input = document.getElementById(field);
+                    if (!input.value.trim()) {
+                        alert(`${input.previousElementSibling.textContent.replace(' *', '')} {{ get_text('is_required') }}`);
+                        input.focus();
+                        return false;
+                    }
+                }
+                return true;
+            }
+
+            function loadVendorData(code) {
+                fetch(`/customer_code_expense/detail/${code}`, {
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data) {
+                        document.getElementById('vendorCode').value = data.vd_code;
+                        document.getElementById('vendorName').value = data.vd_name;
+                        document.getElementById('businessNumber').value = data.vd_biz_number || '';
+                        document.getElementById('taxId').value = data.vd_tax_id || '';
+                        document.getElementById('president').value = data.vd_president || '';
+                        document.getElementById('kind').value = data.vd_kind || '';
+                        document.getElementById('item').value = data.vd_item || '';
+                        document.getElementById('phone').value = data.vd_phone || '';
+                        document.getElementById('address').value = data.vd_address || '';
+                        document.getElementById('charger').value = data.vd_charger || '';
+                        document.getElementById('chargerPhone').value = data.vd_charger_phone || '';
+                        document.getElementById('usage').value = data.usage || 'Y';
+                        document.getElementById('division').value = data.vd_division || '';
+                        document.getElementById('website').value = data.vd_website || '';
+                        document.getElementById('remarks').value = data.vd_remarks || '';
+                    } else {
+                        alert("{{ get_text('failed_to_load_customer') }}");
+                        window.location.href = '/customer_code_expense';
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert("{{ get_text('failed_to_load_customer') }}");
+                    window.location.href = '/customer_code_expense';
+                });
+            }
+
+            document.getElementById('updateVendor').addEventListener('click', function() {
+                if (!validateForm()) return;
+
+                const formData = {
+                    vd_code: document.getElementById('vendorCode').value,
+                    vd_name: document.getElementById('vendorName').value,
+                    vd_biz_number: document.getElementById('businessNumber').value,
+                    vd_tax_id: document.getElementById('taxId').value,
+                    vd_president: document.getElementById('president').value,
+                    vd_kind: document.getElementById('kind').value,
+                    vd_item: document.getElementById('item').value,
+                    vd_phone: document.getElementById('phone').value,
+                    vd_address: document.getElementById('address').value,
+                    vd_charger: document.getElementById('charger').value,
+                    vd_charger_phone: document.getElementById('chargerPhone').value,
+                    usage: document.getElementById('usage').value,
+                    vd_division: document.getElementById('division').value,
+                    vd_website: document.getElementById('website').value,
+                    vd_remarks: document.getElementById('remarks').value
+                };
+
+                fetch('/customer_code_expense/update', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(formData)
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        alert("{{ get_text('update_success') }}");
+                        window.location.href = '/customer_code_expense';
+                    } else {
+                        alert(data.error || "{{ get_text('update_failed') }}");
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert("{{ get_text('update_failed') }}");
+                });
+            });
+
+            document.getElementById('cancel').addEventListener('click', function() {
+                if (confirm("{{ get_text('confirm_cancel') }}")) {
+                    window.location.href = '/customer_code_expense';
+                }
+            });
+        });
+    </script>
+
+    <script>
+        document.querySelectorAll('.nav-item').forEach(item => {
+            item.addEventListener('mouseover', function() {
+                this.querySelector('.submenu').style.display = 'block'; 
+            });
+            
+            item.addEventListener('mouseout', function() {
+                this.querySelector('.submenu').style.display = 'none';
+            });
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,441 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="summary-nopay-list-container">
+    <div class="summary-nopay-list-card">
+        <div class="summary-nopay-list-header">
+            <h2>{{ get_text('purchase_unpaid_summary') }}</h2>
+        </div>
+        <div class="summary-nopay-list-filters">
+            <div>
+                <label>{{ get_text('period') }}</label>
+                <input type="date" id="startDate">
+                <span class="tilde">~</span>
+                <input type="date" id="endDate">
+            </div>
+            <div>
+                <label>{{ get_text('vendor') }}</label>
+                <select id="vendorCode">
+                    <option value="">{{ get_text('all') }}</option>
+                </select>
+            </div>
+            <div>
+                <label>{{ get_text('purchase_status') }}</label>
+                <select id="purchaseStatus">
+                    <option value="">{{ get_text('all') }}</option>
+                    <option value="PROCESS">{{ get_text('in_process') }}</option>
+                    <option value="COMPLETED">{{ get_text('confirmed') }}</option>
+                </select>
+            </div>
+            <div class="summary-nopay-list-actions">
+                <button type="button" onclick="searchSummary(1)">{{ get_text('search') }}</button>
+                <button type="button" class="excel" onclick="downloadExcel()">{{ get_text('excel_download') }}</button>
+            </div>
+        </div>
+        <div class="summary-nopay-list-table-wrap">
+            <table class="summary-nopay-list-table">
+                <thead>
+                    <tr>
+                        <th class="center">{{ get_text('no') }}</th>
+                        <th class="center">{{ get_text('vendor') }}</th>
+                        <th>{{ get_text('currency') }}</th>
+                        <th>{{ get_text('exchange_rate') }}</th>
+                        <th>{{ get_text('total_amount') }}</th>
+                        <th>{{ get_text('vat') }}</th>
+                        <th>{{ get_text('sum_amount') }}</th>
+                        <th>{{ get_text('paid_amount') }}</th>
+                        <th>{{ get_text('unpaid_amount') }}</th>
+                        <th class="center">{{ get_text('purchase_status') }}</th>
+                    </tr>
+                </thead>
+                <tbody id="summaryTableBody"></tbody>
+                <tfoot>
+                    <tr id="totalRow" style="display: none;">
+                        <td colspan="4" class="center"><strong>{{ get_text('net_total') }}</strong></td>
+                        <td class="right"><strong id="totalAmount">0</strong></td>
+                        <td class="right"><strong id="totalVatAmount">0</strong></td>
+                        <td class="right"><strong id="totalSumAmount">0</strong></td>
+                        <td class="right"><strong id="totalPaidAmount">0</strong></td>
+                        <td class="right text-danger"><strong id="totalUnpaidAmount">0</strong></td>
+                        <td></td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+        <div class="summary-nopay-list-pagination" id="pagination"></div>
+    </div>
+</div>
+
+<style>
+.summary-nopay-list-container {
+    flex: 1;
+    padding: 40px 0 40px 0;
+    width: 100%;
+    box-sizing: border-box;
+}
+.summary-nopay-list-card {
+    background: #fff;
+    border-radius: 14px;
+    box-shadow: 0 4px 24px rgba(26,35,126,0.08), 0 1.5px 6px rgba(0,0,0,0.03);
+    padding: 28px 24px 24px 24px;
+}
+.summary-nopay-list-header h2 {
+    font-size: 1.15rem;
+    font-weight: 700;
+    color: #1a237e;
+    margin-bottom: 18px;
+    letter-spacing: -0.5px;
+}
+.summary-nopay-list-filters {
+    display: flex;
+    gap: 18px;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    margin-bottom: 18px;
+    font-size: 0.95rem;
+}
+.summary-nopay-list-filters label {
+    font-size: 0.92rem;
+    color: #374151;
+    font-weight: 500;
+    margin-right: 4px;
+}
+.summary-nopay-list-filters input,
+.summary-nopay-list-filters select {
+    font-size: 0.95rem;
+    padding: 3px 8px;
+    border-radius: 5px;
+    border: 1px solid #d1d5db;
+    margin-right: 4px;
+}
+.summary-nopay-list-actions button {
+    font-size: 0.92rem;
+    padding: 4px 14px;
+    border-radius: 6px;
+    border: none;
+    background: #4f8cff;
+    color: #fff;
+    font-weight: 500;
+    margin-right: 6px;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+.summary-nopay-list-actions button.excel {
+    background: #43b97f;
+}
+.summary-nopay-list-actions button:hover {
+    background: #1a237e;
+}
+.summary-nopay-list-table-wrap {
+    overflow-x: auto;
+}
+.summary-nopay-list-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.93rem;
+    background: #f8fafc;
+    border-radius: 10px;
+    overflow: hidden;
+}
+.summary-nopay-list-table th, .summary-nopay-list-table td {
+    border: 1px solid #e5e7eb;
+    padding: 7px 8px;
+    text-align: right;
+}
+.summary-nopay-list-table th {
+    background: #e3e8f0;
+    color: #1a237e;
+    font-size: 0.95rem;
+    font-weight: 600;
+    text-align: center;
+}
+.summary-nopay-list-table td {
+    background: #fff;
+    color: #374151;
+    font-size: 0.93rem;
+}
+.summary-nopay-list-table .center {
+    text-align: center;
+}
+.summary-nopay-list-table .right {
+    text-align: right;
+}
+.summary-nopay-list-table .text-danger {
+    color: #e53935;
+}
+.summary-nopay-list-table td:first-child {
+    text-align: center;
+}
+.summary-nopay-list-pagination {
+    display: flex;
+    justify-content: center;
+    gap: 6px;
+    margin: 18px 0 0 0;
+}
+.summary-nopay-list-pagination button {
+    background: #f0f4ff;
+    border: 1px solid #b3c6ff;
+    color: #1a237e;
+    border-radius: 5px;
+    padding: 3px 10px;
+    font-size: 0.92rem;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+.summary-nopay-list-pagination button.active,
+.summary-nopay-list-pagination button:hover {
+    background: #4f8cff;
+    color: #fff;
+    border-color: #4f8cff;
+}
+
+/* Purchase Status Badge styles */
+.status-badge {
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: 500;
+    color: white;
+}
+.status-pending {
+    background-color: #6c757d; /* Gray */
+}
+.status-process {
+    background-color: #ffc107; /* Yellow */
+    color: #212529;
+}
+.status-received {
+    background-color: #28a745; /* Green */
+}
+.status-cancelled {
+    background-color: #dc3545; /* Red */
+}
+.status-completed {
+    background-color: #17a2b8; /* Blue */
+}
+@media (max-width: 700px) {
+    .summary-nopay-list-filters {
+        flex-direction: column;
+        gap: 8px;
+    }
+    .summary-nopay-list-card {
+        padding: 16px 6px 12px 6px;
+    }
+    .summary-nopay-list-header h2 {
+        font-size: 1rem;
+    }
+    .summary-nopay-list-table th, .summary-nopay-list-table td {
+        font-size: 0.85rem;
+        padding: 5px 4px;
+    }
+}
+</style>
+
+<script>
+function loadVendors() {
+    fetch('/purchase/api/vendor/options', { credentials: 'same-origin' })
+        .then(async res => {
+            const text = await res.text();
+            const ct = res.headers.get('content-type') || '';
+            if (!res.ok) throw new Error(`HTTP ${res.status}: ${text.slice(0,300)}`);
+            if (!ct.includes('application/json')) throw new Error('Expected JSON but got: ' + text.slice(0,300));
+            return JSON.parse(text);
+        })
+        .then(data => {
+            const select = document.getElementById('vendorCode');
+            data.forEach(vendor => {
+                const option = document.createElement('option');
+                option.value = vendor.code;
+                option.textContent = vendor.name;
+                select.appendChild(option);
+            });
+        })
+        .catch(error => console.error('Error:', error));
+}
+
+function searchSummary(page = 1, pageSize = 20) {
+    const startDate = document.getElementById('startDate').value;
+    const endDate = document.getElementById('endDate').value;
+    const vendorCode = document.getElementById('vendorCode').value;
+    const purchaseStatus = document.getElementById('purchaseStatus').value;
+
+    fetch('/purchase/api/payment/summary_nopay', {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            startDate: startDate,
+            endDate: endDate,
+            vendorCode: vendorCode,
+            purchaseStatus: purchaseStatus,
+            page: page,
+            pageSize: pageSize
+        })
+    })
+    .then(async res => {
+        const text = await res.text();
+        const ct = res.headers.get('content-type') || '';
+        if (!res.ok) throw new Error(`HTTP ${res.status}: ${text.slice(0,300)}`);
+        if (!ct.includes('application/json')) throw new Error('Expected JSON but got: ' + text.slice(0,300));
+        return JSON.parse(text);
+    })
+    .then(data => {
+        const tbody = document.getElementById('summaryTableBody');
+        tbody.innerHTML = '';
+
+        // 합계 계산을 위한 변수들
+        let totalAmount = 0;
+        let totalVatAmount = 0;
+        let totalSumAmount = 0;
+        let totalPaidAmount = 0;
+        let totalUnpaidAmount = 0;
+
+        if (data.items && data.items.length > 0) {
+            data.items.forEach((item, index) => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td class="center">${index + 1}</td>
+                    <td class="center">${item.vendorName}</td>
+                    <td>${item.currency}</td>
+                    <td class="text-right">${item.exchangeRate.toLocaleString()}</td>
+                    <td class="text-right">${item.totalAmount.toLocaleString()}</td>
+                    <td class="text-right">${item.vatAmount.toLocaleString()}</td>
+                    <td class="text-right">${item.sumAmount.toLocaleString()}</td>
+                    <td class="text-right">${item.paidAmount.toLocaleString()}</td>
+                    <td class="text-right text-danger">${item.unpaidAmount.toLocaleString()}</td>
+                    <td class="center"><span class="status-badge status-${(item.purchaseStatus || '').toLowerCase()}">${getPurchaseStatusText(item.purchaseStatus)}</span></td>
+                `;
+                tbody.appendChild(row);
+
+                // 합계 계산
+                totalAmount += item.totalAmount;
+                totalVatAmount += item.vatAmount;
+                totalSumAmount += item.sumAmount;
+                totalPaidAmount += item.paidAmount;
+                totalUnpaidAmount += item.unpaidAmount;
+            });
+
+            // 합계 행 표시
+            document.getElementById('totalRow').style.display = '';
+            document.getElementById('totalAmount').textContent = totalAmount.toLocaleString();
+            document.getElementById('totalVatAmount').textContent = totalVatAmount.toLocaleString();
+            document.getElementById('totalSumAmount').textContent = totalSumAmount.toLocaleString();
+            document.getElementById('totalPaidAmount').textContent = totalPaidAmount.toLocaleString();
+            document.getElementById('totalUnpaidAmount').textContent = totalUnpaidAmount.toLocaleString();
+        } else {
+            // 데이터가 없는 경우 합계 행 숨김
+            document.getElementById('totalRow').style.display = 'none';
+        }
+        renderPagination((data.pagination && data.pagination.totalCount) || data.totalCount || 0, page, pageSize);
+    })
+    .catch(error => {
+        alert('데이터를 불러오는 중 오류가 발생했습니다.');
+        console.error('Error:', error);
+    });
+}
+
+function renderPagination(totalCount, currentPage, pageSize) {
+    const totalPages = Math.ceil(totalCount / pageSize);
+    const pagination = document.getElementById('pagination');
+    pagination.innerHTML = '';
+    if (totalPages <= 1) return;
+
+    // 이전 버튼
+    if (currentPage > 1) {
+        const prev = document.createElement('button');
+        prev.textContent = '이전';
+        prev.onclick = () => searchSummary(currentPage - 1, pageSize);
+        pagination.appendChild(prev);
+    }
+
+    // 페이지 번호
+    for (let i = 1; i <= totalPages; i++) {
+        const btn = document.createElement('button');
+        btn.textContent = i;
+        if (i === currentPage) btn.className = 'active';
+        btn.onclick = () => searchSummary(i, pageSize);
+        pagination.appendChild(btn);
+    }
+
+    // 다음 버튼
+    if (currentPage < totalPages) {
+        const next = document.createElement('button');
+        next.textContent = '다음';
+        next.onclick = () => searchSummary(currentPage + 1, pageSize);
+        pagination.appendChild(next);
+    }
+}
+
+function downloadExcel() {
+    const startDate = document.getElementById('startDate').value;
+    const endDate = document.getElementById('endDate').value;
+    const vendorCode = document.getElementById('vendorCode').value;
+    const purchaseStatus = document.getElementById('purchaseStatus').value;
+
+    fetch('/purchase/api/payment/summary_nopay/excel', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            startDate: startDate,
+            endDate: endDate,
+            vendorCode: vendorCode,
+            purchaseStatus: purchaseStatus
+        })
+    })
+    .then(response => response.blob())
+    .then(blob => {
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `대금미지급_현황_${startDate}_${endDate}.xlsx`;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        a.remove();
+    })
+    .catch(error => {
+        alert('엑셀 다운로드 중 오류가 발생했습니다.');
+        console.error('Error:', error);
+    });
+}
+
+// 매입상태 텍스트 변환
+function getPurchaseStatusText(status) {
+    const statusMap = {
+        'PENDING': "{{ get_text('pending') }}",
+        'PROCESS': "{{ get_text('in_process') }}",
+        'RECEIVED': "{{ get_text('received') }}",
+        'CANCELLED': "{{ get_text('cancelled') }}",
+        'COMPLETED': "{{ get_text('confirmed') }}"
+    };
+    return statusMap[status] || status || "{{ get_text('pending') }}"; // Fallback to pending if status is empty or not mapped
+}
+
+// 날짜 초기화
+function toKoreaDateString(date) {
+    // UTC+9로 보정
+    const korea = new Date(date.getTime() + 9 * 60 * 60 * 1000);
+    return korea.toISOString().slice(0, 10);
+}
+
+function initializeDates() {
+    const today = new Date();
+    const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+    const lastDayOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+    document.getElementById('startDate').value = toKoreaDateString(firstDayOfMonth);
+    document.getElementById('endDate').value = toKoreaDateString(lastDayOfMonth);
+}
+
+// 페이지 로드 시 실행
+let defaultPageSize = 20;
+document.addEventListener('DOMContentLoaded', function() {
+    loadVendors();
+    initializeDates();
+    searchSummary(1, defaultPageSize);
+});
+</script>
+{% endblock %}

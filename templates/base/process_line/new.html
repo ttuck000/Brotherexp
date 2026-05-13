@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Process Line - New</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+    <style>
+        .content-area {
+            max-width: 700px;
+            margin: 30px auto;
+            padding: 20px;
+        }
+
+        .form-container {
+            background-color: #fff;
+            border-radius: 8px;
+            padding: 30px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .page-title {
+            font-size: 20px;
+            font-weight: bold;
+            color: #0d6efd;
+            margin-bottom: 24px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #0d6efd;
+        }
+
+        .form-group {
+            margin-bottom: 18px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 6px;
+            font-weight: 500;
+            font-size: 14px;
+            color: #333;
+        }
+
+        .form-group label .req {
+            color: #dc3545;
+            margin-left: 3px;
+        }
+
+        .form-group input,
+        .form-group select {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid #ced4da;
+            border-radius: 4px;
+            font-size: 14px;
+            box-sizing: border-box;
+        }
+
+        .form-group input:focus,
+        .form-group select:focus {
+            border-color: #86b7fe;
+            outline: 0;
+            box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+        }
+
+        .button-group {
+            margin-top: 28px;
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+        }
+
+        .btn {
+            padding: 9px 28px;
+            border: none;
+            border-radius: 4px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            min-width: 90px;
+        }
+
+        .btn-primary {
+            background-color: #0d6efd;
+            color: white;
+        }
+
+        .btn-secondary {
+            background-color: #6c757d;
+            color: white;
+        }
+
+        .btn:hover {
+            opacity: 0.88;
+        }
+    </style>
+</head>
+
+<body>
+    {% include 'nav.html' %}
+
+    <main class="content-area">
+        <div class="form-container">
+            <div class="page-title">{{ get_text('new_process_line') }}</div>
+            <form id="newForm">
+
+                <div class="form-group">
+                    <label>{{ get_text('company_code') }} <span class="req">*</span></label>
+                    <select id="fCompanyCode" required>
+                        <option value="">-- {{ get_text('select') }} --</option>
+                        <option value="RECYCLE">RECYCLE</option>
+                        <option value="INJECTION">INJECTION</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>{{ get_text('process') }} <span class="req">*</span></label>
+                    <select id="fProcess" required>
+                        <option value="">-- {{ get_text('select') }} --</option>
+                        <option value="CRUSH">CRUSH</option>
+                        <option value="MOLD">MOLD</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>{{ get_text('product_line') }} <span class="req">*</span></label>
+                    <input type="text" id="fProductLine" placeholder="{{ get_text('enter_product_line_name') }}" required>
+                </div>
+
+                <div class="form-group">
+                    <label>{{ get_text('setup_date') }}</label>
+                    <input type="date" id="fSetupDate">
+                </div>
+
+                <div class="form-group">
+                    <label>{{ get_text('prod_start_date') }}</label>
+                    <input type="date" id="fStartDate">
+                </div>
+
+                <div class="form-group">
+                    <label>{{ get_text('remark') }}</label>
+                    <input type="text" id="fRemark" placeholder="{{ get_text('enter_remark') }}">
+                </div>
+
+                <div class="button-group">
+                    <button type="submit" class="btn btn-primary">{{ get_text('save') }}</button>
+                    <button type="button" class="btn btn-secondary" onclick="history.back()">{{ get_text('cancel') }}</button>
+                </div>
+            </form>
+        </div>
+    </main>
+
+    <footer>
+        <p style="text-align:center;padding:16px;color:#888;font-size:13px;">&copy; 2024 MES System. All rights reserved.</p>
+    </footer>
+
+    <script>
+        // 번역 텍스트를 JavaScript 변수로 전달
+        const translations = {
+            pleaseSelectCompanyCode: "{{ get_text('please_select_company_code') }}",
+            pleaseSelectProcess: "{{ get_text('please_select_process') }}",
+            productLineRequired: "{{ get_text('product_line_required') }}",
+            savedSuccessfully: "{{ get_text('saved_successfully') }}",
+            saveFailed: "{{ get_text('save_failed') }}",
+            networkError: "{{ get_text('network_error') }}"
+        };
+
+        document.getElementById('newForm').addEventListener('submit', function (e) {
+            e.preventDefault();
+
+            const company_code = document.getElementById('fCompanyCode').value;
+            const process = document.getElementById('fProcess').value;
+            const product_line = document.getElementById('fProductLine').value.trim();
+
+            if (!company_code) {
+                alert(translations.pleaseSelectCompanyCode);
+                return;
+            }
+            if (!process) {
+                alert(translations.pleaseSelectProcess);
+                return;
+            }
+            if (!product_line) {
+                alert(translations.productLineRequired);
+                return;
+            }
+
+            const payload = {
+                company_code,
+                process,
+                product_line,
+                setup_date: document.getElementById('fSetupDate').value || null,
+                product_startdate: document.getElementById('fStartDate').value || null,
+                remark: document.getElementById('fRemark').value.trim() || null
+            };
+
+            fetch('/process_line/save', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) {
+                        alert(translations.savedSuccessfully);
+                        window.location.href = '/process_line';
+                    } else {
+                        alert(translations.saveFailed + ': ' + (data.error || ''));
+                    }
+                })
+                .catch(() => alert(translations.networkError));
+        });
+    </script>
+</body>
+
+</html>

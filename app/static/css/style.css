@@ -1,0 +1,116 @@
+/* Global Styles */
+body {
+    font-family: Arial, sans-serif;
+    margin: 0;
+    padding: 0;
+    background-color: #f5f5f5;
+}
+
+.container-fluid {
+    padding: 20px;
+}
+
+/* Navigation */
+.navbar {
+    background-color: #1a237e;
+    padding: 1rem;
+}
+
+.navbar-brand {
+    color: white;
+    font-size: 1.5rem;
+}
+
+/* Cards */
+.card {
+    margin-bottom: 20px;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.card-body {
+    padding: 20px;
+}
+
+/* Tables */
+.table {
+    background-color: white;
+}
+
+.table th {
+    background-color: #f8f9fa;
+}
+
+/* Forms */
+.form-label {
+    font-weight: 500;
+}
+
+.form-control {
+    border-radius: 4px;
+}
+
+/* Buttons */
+.btn-primary {
+    background-color: #1a237e;
+    border-color: #1a237e;
+}
+
+.btn-primary:hover {
+    background-color: #0d47a1;
+    border-color: #0d47a1;
+}
+
+/* Page Title */
+.page-title {
+    font-size: 1.5rem;
+    margin-bottom: 20px;
+    color: #333;
+    font-weight: 500;
+}
+
+/* Language Selector */
+.language-selector {
+    margin-right: 15px;
+}
+
+/* Alerts */
+.alert {
+    margin-bottom: 20px;
+    border-radius: 4px;
+}
+
+/* Custom Classes */
+.mb-3 {
+    margin-bottom: 1rem;
+}
+
+.table-responsive {
+    overflow-x: auto;
+}
+
+/* Action Buttons */
+.btn-sm {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.875rem;
+}
+
+/* Form Groups */
+.row {
+    margin-bottom: 1rem;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .container-fluid {
+        padding: 10px;
+    }
+    
+    .card {
+        margin-bottom: 15px;
+    }
+    
+    .table-responsive {
+        margin-bottom: 15px;
+    }
+} 

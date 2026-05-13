@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="{{ session.get('language', 'ko') }}">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ get_text('account_management') or 'Account Management' }} - MES 시스템</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/product_code.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+    <style>
+        .content-area {
+            flex: 1;
+            padding: 40px 0 40px 0;
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        .form-container {
+            background-color: #fff;
+            border-radius: 8px;
+            padding: 30px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        h2 {
+            font-size: 22px;
+            margin-bottom: 25px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #007bff;
+            color: #2c3e50;
+        }
+
+        .button-section {
+            margin: 20px 0;
+            display: flex;
+            gap: 8px;
+        }
+
+        .btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 4px;
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease-in-out;
+            min-width: 80px;
+        }
+
+        .btn-add {
+            background-color: #28a745;
+            color: white;
+        }
+
+        .btn-edit {
+            background-color: #007bff;
+            color: white;
+        }
+
+        .btn-delete {
+            background-color: #dc3545;
+            color: white;
+        }
+
+        .btn:hover {
+            transform: translateY(-1px);
+        }
+
+        .btn-add:hover {
+            background-color: #218838;
+        }
+
+        .btn-edit:hover {
+            background-color: #0056b3;
+        }
+
+        .btn-delete:hover {
+            background-color: #c82333;
+        }
+
+        .account-grid {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+
+            .account-grid th,
+            .account-grid td {
+                padding: 12px;
+                text-align: left;
+                border-bottom: 1px solid #dee2e6;
+                font-size: 13px;
+            }
+
+            .account-grid th {
+                background-color: #f8f9fa;
+                font-weight: 600;
+                color: #495057;
+                cursor: pointer;
+                user-select: none;
+                position: relative;
+            }
+
+                .account-grid th:hover {
+                    background-color: #e9ecef;
+                }
+
+                .account-grid th.sortable::after {
+                    content: ' ⇅';
+                    opacity: 0.3;
+                    font-size: 11px;
+                }
+
+                .account-grid th.sort-asc::after {
+                    content: ' ▲';
+                    opacity: 1;
+                    color: #007bff;
+                }
+
+                .account-grid th.sort-desc::after {
+                    content: ' ▼';
+                    opacity: 1;
+                    color: #007bff;
+                }
+
+            .account-grid tr:hover {
+                background-color: #f8f9fa;
+            }
+
+            .account-grid input[type="checkbox"] {
+                margin: 0;
+            }
+    </style>
+</head>
+
+<body>
+    {% include 'nav.html' %}
+
+    <main class="content-area">
+        <div class="form-container">
+            <h2>{{ get_text('account_list') or 'Account Code List' }}</h2>
+
+            <div class="button-section">
+                <button class="btn btn-add" onclick="location.href='{{ url_for('base.account_list') }}'">
+                    {{ get_text('add_account') or 'Add Account' }}
+                </button>
+                <button class="btn btn-edit" id="editBtn">{{ get_text('edit') or 'Edit' }}</button>
+                <button class="btn btn-delete" id="deleteBtn">{{ get_text('delete') or 'Delete' }}</button>
+                <button class="btn btn-edit" id="hierarchyBtn">{{ get_text('account_hierarchy') or 'Hierarchy' }}</button>
+            </div>
+
+            <table class="account-grid">
+                <thead>
+                    <tr>
+                        <th><input type="checkbox" id="selectAll"></th>
+                        <th class="sortable" data-column="0" data-type="number">{{ get_text('number') or 'ID' }}</th>
+                        <th class="sortable" data-column="1" data-type="number">{{ get_text('account_code') or 'Account Code' }}</th>
+                        <th class="sortable" data-column="2" data-type="text">{{ get_text('account_name_en') or 'Account Name (EN)' }}</th>
+                        <th class="sortable" data-column="3" data-type="text">{{ get_text('account_name_th') or 'Account Name (TH)' }}</th>
+                        <th class="sortable" data-column="4" data-type="text">{{ get_text('account_name_ko') or 'Account Name (KO)' }}</th>
+                        <th class="sortable" data-column="5" data-type="number">{{ get_text('parent_code') or 'Parent Code' }}</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for account in accounts %}
+                    <tr>
+                        <td><input type="checkbox" class="account-select" value="{{ account[0] }}"></td>
+                        <td>{{ account[0] }}</td>
+                        <td>{{ account[4] }}</td>
+                        <td>{{ account[1] }}</td>
+                        <td>{{ account[2] }}</td>
+                        <td>{{ account[3] }}</td>
+                        <td>{{ account[5] or '' }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </main>
+
+    <div id="accountHierarchyModal" style="display:none; position:fixed; inset:0; z-index:1600; align-items:center; justify-content:center;">
+        <div style="position:absolute; inset:0; background:rgba(0,0,0,0.45);" id="hierBackdrop"></div>
+        <div style="position:relative; width:90%; max-width:900px; max-height:80vh; overflow:auto; background:#fff; border-radius:8px; padding:16px; margin:auto;">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+                <h3 style="margin:0;">{{ get_text('account_hierarchy') or 'Account Hierarchy' }}</h3>
+                <button id="hierClose" class="btn btn-cancel">{{ get_text('close') or 'Close' }}</button>
+            </div>
+            <div style="margin-top:12px;">
+                <input id="hierSearch" type="search" placeholder="{{ get_text('account_search_placeholder') or 'Search (code or name)' }}" style="width:40%; padding:6px; border:1px solid #ddd; border-radius:4px;">
+            </div>
+            <div id="hierContainer" style="margin-top:12px; font-size:14px;">
+                <div class="loading">{{ get_text('loading') or 'Loading...' }}</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    (function(){
+      const openBtn = document.getElementById('hierarchyBtn');
+      const modal = document.getElementById('accountHierarchyModal');
+      const closeBtn = document.getElementById('hierClose');
+      const backdrop = document.getElementById('hierBackdrop');
+      const container = document.getElementById('hierContainer');
+      const search = document.getElementById('hierSearch');
+
+      function buildTree(nodes){
+        const ul = document.createElement('ul');
+        ul.style.listStyle = 'none';
+        ul.style.paddingLeft = '12px';
+        function makeNode(n){
+          const li = document.createElement('li');
+          li.style.margin = '6px 0';
+          const row = document.createElement('div');
+          row.style.display = 'flex';
+          row.style.gap = '8px';
+          row.style.alignItems = 'center';
+          const codeSpan = document.createElement('span');
+          codeSpan.style.fontWeight = '700';
+          codeSpan.textContent = n.code || '';
+          const nameSpan = document.createElement('span');
+          nameSpan.style.color = '#3b556f';
+          nameSpan.textContent = n.name ? (' - ' + n.name) : '';
+          row.appendChild(codeSpan);
+          row.appendChild(nameSpan);
+          li.appendChild(row);
+          if (n.children && n.children.length){
+            const sub = document.createElement('div');
+            sub.style.paddingLeft = '12px';
+            const childUl = document.createElement('ul');
+            childUl.style.listStyle = 'none';
+            n.children.forEach(c=> childUl.appendChild(makeNode(c)));
+            sub.appendChild(childUl);
+            li.appendChild(sub);
+          }
+          return li;
+        }
+        nodes.forEach(n=> ul.appendChild(makeNode(n)));
+        return ul;
+      }
+
+      async function loadHierarchy(){
+        container.innerHTML = '<div class="loading">{{ get_text("loading") or "Loading..." }}</div>';
+        try{
+          const res = await fetch('{{ url_for("base.account_hierarchy_api") }}', { headers: {'X-Requested-With':'XMLHttpRequest'} });
+          if (!res.ok) throw new Error('network');
+          const data = await res.json();
+          container.innerHTML = '';
+          container.appendChild(buildTree(data));
+        }catch(err){
+          container.innerHTML = '<div style="color:#c00;">{{ get_text("list_load_error") or "Failed to load list" }}</div>';
+          console.error(err);
+        }
+      }
+
+      function openModal(){
+        modal.style.display = 'flex';
+        loadHierarchy();
+      }
+      function closeModal(){ modal.style.display = 'none'; }
+
+      openBtn?.addEventListener('click', openModal);
+      closeBtn?.addEventListener('click', closeModal);
+      backdrop?.addEventListener('click', closeModal);
+
+      search?.addEventListener('input', function(e){
+        const q = (e.target.value||'').trim().toLowerCase();
+        const items = container.querySelectorAll('li');
+        if (!q){
+          items.forEach(it => it.style.display = '');
+          return;
+        }
+        items.forEach(it=>{
+          const text = (it.textContent||'').toLowerCase();
+          it.style.display = text.includes(q) ? '' : 'none';
+        });
+      });
+    })();
+    </script>
+
+    <script>
+        // 테이블 정렬
+        (function() {
+            const table = document.querySelector('.account-grid');
+            const headers = table.querySelectorAll('th.sortable');
+            const tbody = table.querySelector('tbody');
+            
+            function sortTable(header, order) {
+                const column = parseInt(header.getAttribute('data-column'));
+                const type = header.getAttribute('data-type');
+                
+                headers.forEach(h => h.classList.remove('sort-asc', 'sort-desc'));
+                header.classList.add(order === 'asc' ? 'sort-asc' : 'sort-desc');
+                
+                const rows = Array.from(tbody.querySelectorAll('tr'));
+                rows.sort((a, b) => {
+                    const aValue = a.cells[column + 1].textContent.trim();
+                    const bValue = b.cells[column + 1].textContent.trim();
+                    
+                    let comparison = 0;
+                    if (type === 'number') {
+                        const aNum = parseFloat(aValue) || 0;
+                        const bNum = parseFloat(bValue) || 0;
+                        comparison = aNum - bNum;
+                    } else {
+                        comparison = aValue.localeCompare(bValue);
+                    }
+                    
+                    return order === 'asc' ? comparison : -comparison;
+                });
+                
+                rows.forEach(row => tbody.appendChild(row));
+            }
+            
+            headers.forEach((header) => {
+                header.addEventListener('click', function() {
+                    const currentOrder = this.classList.contains('sort-asc') ? 'desc' : 'asc';
+                    sortTable(this, currentOrder);
+                });
+            });
+            
+            // 페이지 로드 시 Account Code(두 번째 sortable 컬럼) 기준 오름차순 정렬
+            window.addEventListener('DOMContentLoaded', function() {
+                const accountCodeHeader = headers[1]; // Account Code 컬럼
+                if (accountCodeHeader) {
+                    sortTable(accountCodeHeader, 'asc');
+                }
+            });
+        })();
+
+        // 전체 선택/해제
+        document.getElementById('selectAll').addEventListener('change', function() {
+            const checkboxes = document.getElementsByClassName('account-select');
+            for (let checkbox of checkboxes) {
+                checkbox.checked = this.checked;
+            }
+        });
+
+        // 수정 버튼
+        document.getElementById('editBtn').addEventListener('click', function() {
+            const selected = document.querySelector('.account-select:checked');
+            if (!selected) {
+                alert('{{ get_text("please_select_account") or "Please select an account" }}');
+                return;
+            }
+            alert('Edit functionality not yet implemented');
+        });
+
+        // 삭제 버튼
+        document.getElementById('deleteBtn').addEventListener('click', function() {
+            const selected = document.querySelectorAll('.account-select:checked');
+            if (selected.length === 0) {
+                alert('{{ get_text("please_select_account") or "Please select an account" }}');
+                return;
+            }
+            if (confirm('{{ get_text("confirm_delete") or "Are you sure you want to delete?" }}')) {
+                alert('Delete functionality not yet implemented');
+            }
+        });
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,848 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ get_text('sales_payment_management') }} - MES 시스템</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+
+    
+    <style>
+ 
+/* Content Area Styles- FULL */
+.content-area {
+            flex: 1;
+            padding: 40px 0 40px 0;
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        h2 {
+            font-size: 22px;
+            margin-bottom: 25px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #007bff;
+            color: #2c3e50;
+        }
+        .form-container {
+            background-color: #fff;
+            border-radius: 8px;
+            padding: 30px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+        .search-container {
+            background-color: #fff;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+        .search-form {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+        .search-group {
+            flex: 1;
+            min-width: 200px;
+        }
+        .search-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 500;
+            color: #333;
+            font-size: 14px;
+        }
+        .search-group input,
+        .search-group select {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid #ced4da;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        .button-group {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+        .btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .btn-primary {
+            background-color: #007bff;
+            color: white;
+        }
+        .btn-secondary {
+            background-color: #6c757d;
+            color: white;
+        }
+        .btn-success {
+            background-color: #28a745;
+            color: white;
+        }
+        .btn-danger {
+            background-color: #dc3545;
+            color: white;
+        }
+        .btn:hover {
+            opacity: 0.9;
+        }
+        .payment-list {
+            background-color: #fff;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+        .payment-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+        }
+        .payment-table th,
+        .payment-table td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #dee2e6;
+            font-size: 14px;
+        }
+        .payment-table th {
+            background-color: #f8f9fa;
+            font-weight: 600;
+            color: #495057;
+        }
+        .payment-table tbody tr:hover {
+            background-color: #f8f9fa;
+        }
+        .status-badge {
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+        .status-unpaid {
+            background-color: #dc3545;
+            color: white;
+        }
+        .status-partial {
+            background-color: #ffc107;
+            color: #000;
+        }
+        .status-completed {
+            background-color: #28a745;
+            color: white;
+        }
+        .text-right {
+            text-align: right;
+        }
+        .pagination {
+            display: flex;
+            justify-content: center;
+            gap: 5px;
+            margin-top: 20px;
+        }
+        .pagination button {
+            padding: 5px 10px;
+            border: 1px solid #dee2e6;
+            background-color: #fff;
+            cursor: pointer;
+        }
+        .pagination button.active {
+            background-color: #007bff;
+            color: white;
+            border-color: #007bff;
+        }
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+        }
+        .modal-content {
+            position: relative;
+            background-color: #fff;
+            margin: 10% auto;
+            padding: 20px;
+            width: 80%;
+            max-width: 600px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        .close {
+            position: absolute;
+            right: 20px;
+            top: 15px;
+            font-size: 24px;
+            cursor: pointer;
+        }
+        .modal-title {
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #007bff;
+        }
+        .modal-form-group {
+            margin-bottom: 15px;
+        }
+        .modal-form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 500;
+        }
+        .modal-form-group input,
+        .modal-form-group select,
+        .modal-form-group textarea {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ced4da;
+            border-radius: 4px;
+        }
+        .loading {
+            position: relative;
+            opacity: 0.7;
+            pointer-events: none;
+        }
+        .loading::after {
+            content: "";
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 20px;
+            height: 20px;
+            margin: -10px 0 0 -10px;
+            border: 2px solid #f3f3f3;
+            border-top: 2px solid #007bff;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .summary-row {
+            background-color: #f8f9fa;
+            border-top: 2px solid #007bff;
+        }
+        .summary-row td {
+            font-weight: bold;
+            color: #007bff;
+            font-size: 15px;
+            padding: 14px 8px;
+        }
+        .summary-row td:first-child {
+            color: #495057;
+            font-size: 16px;
+        }
+    </style>
+</head>
+<body>
+    {% include 'nav.html' %}
+
+    <main class="content-area">
+        <h2>{{ get_text('sales_payment_management') }}</h2>
+        <!-- 검색 영역 -->
+        <div class="search-container">
+            <form id="searchForm" class="search-form">
+                <div class="search-group">
+                    <label for="startDate">{{ get_text('start_date') }}</label>
+                    <input type="date" id="startDate" name="startDate">
+                </div>
+                <div class="search-group">
+                    <label for="endDate">{{ get_text('end_date') }}</label>
+                    <input type="date" id="endDate" name="endDate">
+                </div>
+                <div class="search-group">
+                    <label for="customerCode">{{ get_text('customer') }}</label>
+                    <select id="customerCode" name="customerCode">
+                        <option value="">{{ get_text('all') }}</option>
+                    </select>
+                </div>
+                <div class="search-group">
+                    <label for="paymentStatus">{{ get_text('payment_status') }}</label>
+                    <select id="paymentStatus" name="paymentStatus">
+                        <option value="">{{ get_text('all') }}</option>
+                        <option value="UNPAID">{{ get_text('unpaid') }}</option>
+                        <option value="PARTIAL">{{ get_text('partial_paid') }}</option>
+                        <option value="COMPLETED">{{ get_text('completed') }}</option>
+                    </select>
+                </div>
+                <div class="search-group">
+                    <label for="salesNo">{{ get_text('sales_no') }}</label>
+                    <input type="text" id="salesNo" name="salesNo" placeholder="{{ get_text('sales_no') }}">
+                </div>
+                <div class="search-group">
+                    <label for="poNo">PO.Number</label>
+                    <input type="text" id="poNo" name="poNo" placeholder="PO.Number">
+                </div>
+            </form>
+            <div class="button-group">
+                <button type="button" id="searchBtn" class="btn btn-primary">
+                    <i class="fas fa-search"></i> {{ get_text('search') }}
+                </button>
+                <button type="button" id="resetBtn" class="btn btn-secondary">
+                    <i class="fas fa-undo"></i> {{ get_text('reset') }}
+                </button>
+                <button type="button" id="processPaymentBtn" class="btn btn-success">
+                    <i class="fas fa-money-bill-wave"></i> {{ get_text('process_payment') }}
+                </button>
+                <button type="button" id="processBulkPaymentBtn" class="btn btn-success">
+                    <i class="fas fa-money-bill-wave"></i> {{ get_text('process_bulk_payment') }}
+                </button>
+                <button type="button" id="excelDownloadBtn" class="btn btn-secondary">
+                    <i class="fas fa-file-excel"></i> Excel
+                </button>
+                <button type="button" id="cancelPaymentBtn" class="btn btn-danger">
+                    <i class="fas fa-undo"></i> {{ get_text('cancel_payment') }}
+                </button>
+            </div>
+        </div>
+        <!-- 목록 영역 -->
+        <div class="payment-list">
+            <table class="payment-table">
+                <thead>
+                    <tr>
+                        <th><input type="checkbox" id="selectAll"></th>
+                        <th>{{ get_text('sequence') }}</th>
+                        <th>{{ get_text('sales_date') }}</th>
+                        <th>{{ get_text('sales_no') }}</th>
+                        <th>{{ get_text('customer') }}</th>
+                        <th>{{ get_text('po_number') }}</th>
+                        <th>{{ get_text('currency') }}</th>
+                        <th>{{ get_text('exchange_rate') }}</th>
+                        <th>{{ get_text('supply_amount') }}</th>
+                        <th>{{ get_text('vat') }}</th>
+                        <th>{{ get_text('net_total') }}</th>
+                        <th>{{ get_text('sales_paid') }}</th>
+                        <th>{{ get_text('sales_nopay') }}</th>
+                        <th>{{ get_text('payment_due_date') }}</th>
+                        <th>{{ get_text('payment_date') }}</th>
+                        <th>{{ get_text('sales_status') }}</th>
+                        <th>{{ get_text('status') }}</th>
+                    </tr>
+                </thead>
+                <tbody id="paymentTableBody">
+                    <!-- 데이터는 JavaScript로 동적 추가 -->
+                </tbody>
+                <tfoot>
+                    <tr class="summary-row">
+                        <td colspan="8" class="text-right"><strong>총 합 산</strong></td>
+                        <td class="text-right" id="sumAmount">0.00</td>
+                        <td class="text-right" id="sumVat">0.00</td>
+                        <td class="text-right" id="sumTotal">0.00</td>
+                        <td class="text-right" id="sumPaid">0.00</td>
+                        <td class="text-right" id="sumUnpaid">0.00</td>
+                        <td></td>
+                        <td></td>
+                        <td></td>
+                    </tr>
+                </tfoot>
+            </table>
+            <div class="pagination" id="pagination">
+                <!-- 페이지네이션은 JavaScript로 동적 추가 -->
+            </div>
+        </div>
+        <!-- 수금 처리 모달 -->
+        <div id="paymentModal" class="modal">
+            <div class="modal-content">
+                <span class="close">&times;</span>
+                <h3 class="modal-title">{{ get_text('process_payment') }}</h3>
+                <form id="paymentForm">
+                    <div class="modal-form-group">
+                        <label for="paymentDate">{{ get_text('payment_date') }}</label>
+                        <input type="date" id="paymentDate" name="paymentDate" required>
+                    </div>
+                    <div class="modal-form-group">
+                        <label for="paymentMethod">{{ get_text('payment_method') }}</label>
+                        <select id="paymentMethod" name="paymentMethod" required>
+                            <option value="CASH">{{ get_text('cash') }}</option>
+                            <option value="BANK_TRANSFER">{{ get_text('bank_transfer') }}</option>
+
+                        </select>
+                    </div>
+                    <div class="modal-form-group">
+                        <label for="totalAmount">{{ get_text('total_amount') }}</label>
+                        <input type="text" id="totalAmount" name="totalAmount" required readonly>
+                    </div>
+                    <div class="modal-form-group">
+                        <label for="vatAmount">{{ get_text('vat') }}</label>
+                        <input type="text" id="vatAmount" name="vatAmount" required readonly>
+                    </div>
+                    <div class="modal-form-group">
+                        <label for="paymentAmount">{{ get_text('sum_amount') }}</label>
+                        <input type="text" id="paymentAmount" name="paymentAmount" required readonly>
+                    </div>
+                    <div class="modal-form-group">
+                        <label for="collectedAmount">{{ get_text('sales_paid') }}</label>
+                        <input type="text" id="collectedAmount" name="collectedAmount" required readonly>
+                    </div>
+                    <div class="modal-form-group">
+                        <label for="remarks">{{ get_text('remark') }}</label>
+                        <textarea id="remarks" name="remarks" rows="3"></textarea>
+                    </div>
+                    <div class="button-group">
+                        <button type="submit" class="btn btn-primary">{{ get_text('save') }}</button>
+                        <button type="button" class="btn btn-secondary" onclick="closePaymentModal()">{{ get_text('cancel') }}</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </main>
+    <footer>
+        <p>&copy; 2024 MES 시스템. All rights reserved.</p>
+    </footer>
+    <script>
+        // 번역 텍스트 변수들
+        const translations = {
+            noDataFound: "{{ get_text('no_data_found') }}",
+            unpaid: "{{ get_text('unpaid') }}",
+            partialPaid: "{{ get_text('partial_paid') }}",
+            completed: "{{ get_text('completed') }}",
+            selectSalesToProcess: "{{ get_text('select_sales_to_process') }}",
+            onlyOnePaymentProcess: "{{ get_text('only_one_payment_process') }}",
+            alreadyCompleted: "{{ get_text('already_completed') }}",
+            paymentAmountMismatch: "{{ get_text('payment_amount_mismatch') }}",
+            paymentProcessed: "{{ get_text('payment_processed') }}",
+            paymentFailed: "{{ get_text('payment_failed') }}",
+            selectSalesToBulkProcess: "{{ get_text('select_sales_to_bulk_process') }}",
+            bulkPaymentConfirm: "{{ get_text('bulk_payment_confirm') }}",
+            bulkPaymentProcessed: "{{ get_text('bulk_payment_processed') }}",
+            bulkPaymentFailed: "{{ get_text('bulk_payment_failed') }}",
+            salesStatusProcess: "{{ get_text('sales_status_process') }}",
+            salesStatusCompleted: "{{ get_text('sales_status_completed') }}"
+        };
+
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeDates();
+            loadCustomers();
+            searchPayments();
+
+            document.getElementById('searchBtn').addEventListener('click', searchPayments);
+            document.getElementById('resetBtn').addEventListener('click', resetSearch);
+            document.getElementById('processPaymentBtn').addEventListener('click', showPaymentModal);
+            document.getElementById('processBulkPaymentBtn').addEventListener('click', processBulkPayment);
+            document.getElementById('selectAll').addEventListener('change', toggleSelectAll);
+            document.getElementById('paymentForm').addEventListener('submit', processPayment);
+            document.querySelector('.close').addEventListener('click', closePaymentModal);
+            document.getElementById('excelDownloadBtn').addEventListener('click', downloadExcel);
+            document.getElementById('cancelPaymentBtn').addEventListener('click', cancelPayment);
+        });
+
+        // 날짜 초기화 (현재 달의 시작일과 종료일)
+        function toKoreaDateString(date) {
+            // UTC+9로 보정
+            const korea = new Date(date.getTime() + 9 * 60 * 60 * 1000);
+            return korea.toISOString().slice(0, 10);
+        }
+        function initializeDates() {
+            const today = new Date();
+            const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+            const lastDayOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+            document.getElementById('startDate').value = toKoreaDateString(firstDayOfMonth);
+            document.getElementById('endDate').value = toKoreaDateString(lastDayOfMonth);
+        }
+
+        // 거래처 목록 로드
+        function loadCustomers() {
+            fetch('/sales/api/vendor/options')
+                .then(response => response.json())
+                .then(data => {
+                    const customerSelect = document.getElementById('customerCode');
+                    data.forEach(customer => {
+                        const option = document.createElement('option');
+                        option.value = customer.code;
+                        option.textContent = `${customer.code} - ${customer.name}`;
+                        customerSelect.appendChild(option);
+                    });
+                })
+                .catch(error => {
+                    console.error('Error loading customers:', error);
+                    alert("{{ get_text('customer_load_failed') }}");
+                });
+        }
+
+        // 수금관리 목록 검색
+        function searchPayments(page) {
+            if (typeof page !== 'number' || isNaN(page)) page = 1;
+            window.currentPage = page;
+            const searchBtn = document.getElementById('searchBtn');
+            searchBtn.classList.add('loading');
+
+            const searchData = {
+                startDate: document.getElementById('startDate').value,
+                endDate: document.getElementById('endDate').value,
+                customerCode: document.getElementById('customerCode').value,
+                status: document.getElementById('paymentStatus').value,
+                salesNo: document.getElementById('salesNo').value,
+                poNo: document.getElementById('poNo').value,
+                page: page,
+                itemsPerPage: 15
+            };
+
+            fetch('/sales/api/sales/payment/list', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(searchData)
+            })
+            .then(response => response.json())
+            .then(data => {
+                renderPayments(data.items || []);
+                if (data.pagination) {
+                    renderPagination(data.pagination.total_count || 0, data.pagination.current_page || page, 15);
+                }
+            })
+            .catch(error => {
+                console.error('Error searching payments:', error);
+                renderPayments([]);
+                alert('수금관리 목록을 불러오는데 실패했습니다.');
+                renderPagination(0, 1, 15);
+            })
+            .finally(() => {
+                searchBtn.classList.remove('loading');
+            });
+        }
+
+        // 수금관리 목록 렌더링 (간단 예시)
+        function renderPayments(payments) {
+            const tbody = document.getElementById('paymentTableBody');
+            tbody.innerHTML = '';
+            let sumAmount = 0, sumVat = 0, sumTotal = 0, sumPaid = 0, sumUnpaid = 0;
+            if (!payments || payments.length === 0) {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `<td colspan="14" style="text-align: center;">${translations.noDataFound}</td>`;
+                tbody.appendChild(tr);
+                document.getElementById('sumAmount').textContent = '0.00';
+                document.getElementById('sumVat').textContent = '0.00';
+                document.getElementById('sumTotal').textContent = '0.00';
+                document.getElementById('sumPaid').textContent = '0.00';
+                document.getElementById('sumUnpaid').textContent = '0.00';
+                return;
+            }
+            // 페이지네이션 전체 기준 순번 계산
+            const page = (window.currentPage || 1);
+            const itemsPerPage = 15;
+            const startIdx = (page - 1) * itemsPerPage;
+            payments.forEach((payment, idx) => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td><input type="checkbox" class="payment-select" value="${payment.salesNo || ''}" data-sales-no="${payment.salesNo}"></td>
+                    <td>${startIdx + idx + 1}</td>
+                    <td>${payment.salesDate || ''}</td>
+                    <td>${payment.salesNo || ''}</td>
+                    <td>${payment.customerName || ''}</td>
+                    <td>${payment.po_no || ''}</td>
+                    <td>${payment.currency || ''}</td>
+                    <td class="text-right">${formatNumber(payment.exchangeRate || 0)}</td>
+                    <td class="text-right">${formatNumber(payment.amount || 0)}</td>
+                    <td class="text-right">${formatNumber(payment.vat || 0)}</td>
+                    <td class="text-right">${formatNumber(payment.total || 0)}</td>
+                    <td class="text-right">${formatNumber(payment.paidAmount || 0)}</td>
+                    <td class="text-right">${formatNumber(payment.unpaidAmount || 0)}</td>
+                    <td>${payment.paymentDueDate || ''}</td>
+                    <td>${payment.paymentDate || ''}</td> <!-- 결제일 추가 -->
+                    <td>${formatSalesStatus(payment.salesStatus)}</td>
+                    <td><span class="status-badge ${((payment.status === 'UNPAID' || payment.status === 'DRAFT') ? 'status-unpaid' : (payment.status === 'PARTIAL' ? 'status-partial' : (payment.status === 'COMPLETED' ? 'status-completed' : '')))}">${getStatusText(payment.status)}</span></td>
+                `;
+                tbody.appendChild(tr);
+                sumAmount += payment.amount || 0;
+                sumVat += payment.vat || 0;
+                sumTotal += (payment.amount || 0) + (payment.vat || 0);
+                sumPaid += payment.paidAmount || 0;
+                sumUnpaid += payment.unpaidAmount || 0;
+            });
+            document.getElementById('sumAmount').textContent = formatNumber(sumAmount);
+            document.getElementById('sumVat').textContent = formatNumber(sumVat);
+            document.getElementById('sumTotal').textContent = formatNumber(sumTotal);
+            document.getElementById('sumPaid').textContent = formatNumber(sumPaid);
+            document.getElementById('sumUnpaid').textContent = formatNumber(sumUnpaid);
+        }
+
+        function formatNumber(num) {
+            return num ? num.toLocaleString('ko-KR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '0.00';
+        }
+        function getStatusText(status) {
+            if (status === 'UNPAID' || status === 'DRAFT') return translations.unpaid;
+            if (status === 'PARTIAL' ) return translations.partialPaid;
+            if (status === 'COMPLETED' ) return translations.completed;
+            return status || '';
+        }
+        
+        function formatSalesStatus(status) {
+            if (status === 'PROCESS') return translations.salesStatusProcess;
+            if (status === 'COMPLETED' ) return translations.salesStatusCompleted;
+            return status || '';
+        }
+        function resetSearch() {
+            initializeDates();
+            document.getElementById('customerCode').value = '';
+            document.getElementById('paymentStatus').value = '';
+            searchPayments();
+        }
+
+        // 수금처리 모달 표시
+        function showPaymentModal() {
+            const selectedPayments = document.querySelectorAll('.payment-select:checked');
+            if (selectedPayments.length === 0) {
+                alert(translations.selectSalesToProcess);
+                return;
+            }
+            if (selectedPayments.length > 1) {
+                alert(translations.onlyOnePaymentProcess + '\n선택된 건수: ' + selectedPayments.length + '건');
+                return;
+            }
+            const selectedRow = selectedPayments[0].closest('tr');
+            const status = selectedRow.querySelector('.status-badge').textContent.trim();
+            if (status === translations.completed) {
+                alert(translations.alreadyCompleted);
+                return;
+            }
+            // 공급금액, 부가세 테이블에서 읽어오기 (셀 인덱스: 8, 9)
+            const supplyAmount = parseFloat(selectedRow.cells[8].textContent.replace(/,/g, '')) || 0;
+            const vatAmount = parseFloat(selectedRow.cells[9].textContent.replace(/,/g, '')) || 0;
+            const totalAmount = +(supplyAmount + vatAmount).toFixed(2); // 직접 계산
+            document.getElementById('totalAmount').value = supplyAmount.toLocaleString('ko-KR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+            document.getElementById('vatAmount').value = vatAmount.toLocaleString('ko-KR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+            document.getElementById('paymentAmount').value = totalAmount.toLocaleString('ko-KR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+            document.getElementById('collectedAmount').value = totalAmount.toLocaleString('ko-KR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+            document.getElementById('paymentDate').value = new Date().toISOString().split('T')[0];
+            document.getElementById('paymentModal').style.display = 'block';
+        }
+
+        // 수금처리 모달 닫기
+        function closePaymentModal() {
+            document.getElementById('paymentModal').style.display = 'none';
+            document.getElementById('paymentForm').reset();
+        }
+
+        // 수금처리
+        function processPayment(e) {
+            e.preventDefault();
+            const selectedCheckbox = document.querySelector('.payment-select:checked');
+            if (!selectedCheckbox) {
+                alert(translations.selectSalesToProcess);
+                return;
+            }
+            const salesNo = selectedCheckbox.dataset.salesNo;
+            const totalAmount = parseFloat(document.getElementById('totalAmount').value.replace(/,/g, '')) || 0;
+            const vatAmount = parseFloat(document.getElementById('vatAmount').value.replace(/,/g, '')) || 0;
+            const paymentAmount = parseFloat(document.getElementById('paymentAmount').value.replace(/,/g, '')) || 0;
+            const collectedAmount = parseFloat(document.getElementById('collectedAmount').value.replace(/,/g, '')) || 0;
+            const paymentData = {
+                salesNo: salesNo,
+                paymentDate: document.getElementById('paymentDate').value,
+                paymentMethod: document.getElementById('paymentMethod').value,
+                amount: totalAmount,
+                vat: vatAmount,
+                totalAmount: paymentAmount,
+                remarks: document.getElementById('remarks').value
+            };
+            fetch('/sales/api/sales/payment/process', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(paymentData)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    alert(translations.paymentProcessed);
+                    closePaymentModal();
+                    searchPayments();
+                } else {
+                    throw new Error(data.message || translations.paymentFailed);
+                }
+            })
+            .catch(error => {
+                console.error('Error processing payment:', error);
+                alert(translations.paymentFailed + ': ' + error.message);
+            });
+        }
+
+        // 전체 선택/해제
+        function toggleSelectAll() {
+            const isChecked = document.getElementById('selectAll').checked;
+            document.querySelectorAll('.payment-select').forEach(checkbox => {
+                checkbox.checked = isChecked;
+            });
+        }
+
+        // 수금일괄처리
+        function processBulkPayment() {
+            const selectedPayments = document.querySelectorAll('.payment-select:checked');
+            if (selectedPayments.length === 0) {
+                alert(translations.selectSalesToBulkProcess);
+                return;
+            }
+            const completedPayments = Array.from(selectedPayments).filter(checkbox => {
+                const row = checkbox.closest('tr');
+                const status = row.querySelector('.status-badge').textContent.trim();
+                return status === translations.completed;
+            });
+            if (completedPayments.length > 0) {
+                alert(`선택된 건 중 ${completedPayments.length}건이 이미 수금완료되어 처리할 수 없습니다.`);
+                return;
+            }
+            if (!confirm(translations.bulkPaymentConfirm.replace('{count}', selectedPayments.length))) {
+                return;
+            }
+            const salesNos = Array.from(selectedPayments).map(checkbox => checkbox.value);
+            const currentDate = new Date().toISOString().split('T')[0];
+            const bulkPaymentData = {
+                salesNos: salesNos,
+                paymentDate: currentDate,
+                paymentMethod: 'BANK_TRANSFER',
+                remarks: '일괄처리'
+            };
+            fetch('/sales/api/sales/payment/bulk-process', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(bulkPaymentData)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    alert(translations.bulkPaymentProcessed.replace('{count}', selectedPayments.length));
+                    searchPayments();
+                } else {
+                    throw new Error(data.message || translations.bulkPaymentFailed);
+                }
+            })
+            .catch(error => {
+                console.error('Error processing bulk payment:', error);
+                alert(translations.bulkPaymentFailed + ': ' + error.message);
+            });
+        }
+
+        // Excel 다운로드
+        function downloadExcel() {
+            const searchData = {
+                startDate: document.getElementById('startDate').value,
+                endDate: document.getElementById('endDate').value,
+                customerCode: document.getElementById('customerCode').value,
+                status: document.getElementById('paymentStatus').value,
+                salesNo: document.getElementById('salesNo').value,
+                poNo: document.getElementById('poNo').value
+            };
+            fetch('/sales/api/sales/payment/excel', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(searchData)
+            })
+            .then(response => response.blob())
+            .then(blob => {
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `수금현황_${searchData.startDate}_${searchData.endDate}.xlsx`;
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(url);
+                a.remove();
+            })
+            .catch(error => {
+                console.error('Error downloading excel:', error);
+                alert('엑셀 다운로드에 실패했습니다.');
+            });
+        }
+
+        // 페이지네이션 렌더링
+        function renderPagination(total, currentPage, perPage) {
+            if (typeof currentPage !== 'number' || isNaN(currentPage)) currentPage = 1;
+            window.currentPage = currentPage;
+            const pagination = document.getElementById('pagination');
+            pagination.innerHTML = '';
+            const totalPages = Math.ceil(total / perPage);
+            const maxButtons = 5;
+            let startPage = Math.max(1, currentPage - Math.floor(maxButtons / 2));
+            let endPage = Math.min(totalPages, startPage + maxButtons - 1);
+            if (endPage - startPage + 1 < maxButtons) {
+                startPage = Math.max(1, endPage - maxButtons + 1);
+            }
+            if (currentPage > 1) {
+                addPageButton(pagination, currentPage - 1, '이전');
+            }
+            for (let i = startPage; i <= endPage; i++) {
+                addPageButton(pagination, i, i.toString(), i === currentPage);
+            }
+            if (currentPage < totalPages) {
+                addPageButton(pagination, currentPage + 1, '다음');
+            }
+        }
+        function addPageButton(container, page, text, isActive = false) {
+            if (typeof page !== 'number' || isNaN(page)) page = 1;
+            const button = document.createElement('button');
+            button.textContent = text;
+            button.onclick = () => searchPayments(page);
+            if (isActive) button.classList.add('active');
+            container.appendChild(button);
+        }
+
+        // 수금처리 취소
+        function cancelPayment() {
+            const selectedPayments = Array.from(document.querySelectorAll('.payment-select:checked'));
+            if (selectedPayments.length === 0) {
+                alert('취소할 수금건을 선택해주세요.');
+                return;
+            }
+            const salesNos = selectedPayments.map(cb => cb.value).filter(Boolean);
+            if (salesNos.length === 0) {
+                alert('salesNo가 올바르지 않습니다.');
+                return;
+            }
+            if (!confirm(`정말로 ${salesNos.length}건의 수금건을 취소하시겠습니까?`)) {
+                return;
+            }
+            fetch('/sales/api/sales/payment/cancel', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ salesNos })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    alert('수금처리가 취소되었습니다.');
+                    searchPayments();
+                } else {
+                    throw new Error(data.message || '취소에 실패했습니다.');
+                }
+            })
+            .catch(error => {
+                alert('수금처리 취소에 실패했습니다: ' + error.message);
+            });
+        }
+    </script>
+
+    
+<script>
+    document.querySelectorAll('.nav-item').forEach(item => {
+        item.addEventListener('mouseover', function() {
+            this.querySelector('.submenu').style.display = 'block';
+        });
+        
+        item.addEventListener('mouseout', function() {
+            this.querySelector('.submenu').style.display = 'none';
+        });
+    });
+</script>
+
+
+</body>
+</html> 

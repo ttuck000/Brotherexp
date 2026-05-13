@@ -1,0 +1,637 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="purchase-list-container">
+    <div class="purchase-list-card">
+        <div class="purchase-list-header">
+            <h2>{{ get_text('purchase_management') }}</h2>
+        </div>
+        <div class="purchase-list-filters">
+            <form id="searchForm" class="purchase-search-form">
+                <div class="purchase-form-group">
+                    <label for="startDate">{{ get_text('start_date') }}</label>
+                    <input type="date" id="startDate" name="startDate" class="purchase-form-control">
+                </div>
+                <div class="purchase-form-group">
+                    <label for="endDate">{{ get_text('end_date') }}</label>
+                    <input type="date" id="endDate" name="endDate" class="purchase-form-control">
+                </div>
+                <div class="purchase-form-group">
+                    <label for="vendorCode">{{ get_text('vendor') }}</label>
+                    <select id="vendorCode" name="vendorCode" class="purchase-form-control">
+                        <option value="">{{ get_text('all') }}</option>
+                    </select>
+                </div>
+                <div class="purchase-form-group">
+                    <label for="status">{{ get_text('purchase_status') }}</label>
+                    <select id="status" name="status" class="purchase-form-control">
+                        <option value="">{{ get_text('all') }}</option>
+                        <option value="PROCESS">{{ get_text('in_process') }}</option>
+                        <option value="COMPLETED">{{ get_text('confirmed') }}</option>
+                    </select>
+                </div>
+                <div class="purchase-button-group">
+                    <button type="button" class="purchase-btn search" onclick="searchPurchases()">
+                        <i class="fas fa-search"></i> {{ get_text('search') }}
+                    </button>
+                    <button type="button" class="purchase-btn reset" onclick="resetSearch()">
+                        <i class="fas fa-undo"></i> {{ get_text('reset') }}
+                    </button>
+                    <button type="button" class="purchase-btn new" onclick="location.href='/purchase/in'">
+                        <i class="fas fa-plus"></i> {{ get_text('new_register') }}
+                    </button>
+                    <button type="button" class="purchase-btn excel" id="excelDownloadBtn">
+                        <i class="fas fa-file-excel"></i> {{ get_text('excel_download') }}
+                    </button>
+                </div>
+            </form>
+        </div>
+        <div class="purchase-list-table-wrap">
+            <table class="purchase-list-table">
+                <thead>
+                    <tr>
+                        <th>No</th>
+                        <th>{{ get_text('purchase_date') }}</th>
+                        <th>{{ get_text('purchase_no') }}</th>
+                        <th>{{ get_text('vendor') }}</th>
+                        <th>{{ get_text('warehouse') }}</th>
+                        <th>{{ get_text('total_quantity') }}</th>
+                        <th>{{ get_text('total_amount') }}</th>
+                        <th>{{ get_text('payment_method') }}</th>
+                        <th>{{ get_text('purchase_payment_due_date') }}</th>
+                        <th>{{ get_text('purchase_status') }}</th>
+                        <th>{{ get_text('action') }}</th>
+                    </tr>
+                </thead>
+                <tbody id="purchaseList"></tbody>
+                <tfoot>
+                    <tr id="purchaseSummaryRow" style="font-weight:bold; background:#f0f4ff;">
+                        <td colspan="7" style="text-align:right; color:#1a237e;">{{ get_text('total') }}</td>
+                        <td class="right" id="totalQuantity">0</td>
+                        <td class="right" id="totalAmount">0</td>
+                        <td colspan="4"></td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+        <div class="purchase-list-pagination" id="pagination"></div>
+    </div>
+</div>
+
+<style>
+    /* === Purchase list styles (namespaced, no global .btn override) === */
+
+    /* Layout */
+    .purchase-list-container {
+        width: 100%;
+        padding: 0;
+        margin: 0;
+        background: #f8fafc;
+    }
+
+    .purchase-list-card {
+        background: #fff;
+        border-radius: 14px;
+        box-shadow: 0 4px 24px rgba(26,35,126,0.08), 0 1.5px 6px rgba(0,0,0,0.03);
+        padding: 28px 24px 24px;
+        box-sizing: border-box;
+        margin: 0 auto;
+    }
+
+    .purchase-list-header h2 {
+        font-size: 1.1rem;
+        font-weight: 700;
+        color: #1a237e;
+        margin-bottom: 18px;
+    }
+
+    /* Filters / form */
+    .purchase-search-form {
+        display: flex;
+        gap: 18px;
+        flex-wrap: wrap;
+        align-items: flex-end;
+        font-size: 0.9rem;
+    }
+
+    .purchase-form-group {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+    }
+
+        .purchase-form-group label {
+            color: #374151;
+            font-weight: 500;
+            font-size: 0.9rem;
+        }
+
+    .purchase-form-control {
+        font-size: 0.9rem;
+        padding: 3px 8px;
+        border-radius: 5px;
+        border: 1px solid #d1d5db;
+    }
+
+    /* Top buttons (scoped) */
+    .purchase-button-group {
+        display: flex;
+        gap: 8px;
+    }
+
+    .purchase-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 6px 12px;
+        border-radius: 6px;
+        border: none;
+        color: #fff;
+        font-weight: 500;
+        cursor: pointer;
+        font-size: 0.9rem;
+    }
+
+        .purchase-btn.search {
+            background: #4f8cff;
+        }
+
+        .purchase-btn.reset {
+            background: #6c757d;
+        }
+
+        .purchase-btn.new {
+            background: #43b97f;
+        }
+
+        .purchase-btn.excel {
+            background: #43b97f;
+        }
+
+    /* Table */
+    .purchase-list-table-wrap {
+        overflow-x: auto;
+        width: 100%;
+    }
+
+    .purchase-list-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 0.9rem;
+        background: #f8fafc;
+    }
+
+        .purchase-list-table th, .purchase-list-table td {
+            border: 1px solid #e5e7eb;
+            padding: 7px 8px;
+            text-align: center;
+            vertical-align: middle;
+        }
+
+        .purchase-list-table th {
+            background: #e3e8f0;
+            color: #1a237e;
+            font-weight: 600;
+        }
+
+        /* Numeric/right aligned */
+        .purchase-list-table td.right {
+            text-align: right;
+        }
+
+    /* Pagination */
+    .purchase-list-pagination {
+        display: flex;
+        justify-content: center;
+        gap: 6px;
+        margin-top: 18px;
+    }
+
+        .purchase-list-pagination button {
+            background: #f0f4ff;
+            border: 1px solid #b3c6ff;
+            color: #1a237e;
+            border-radius: 5px;
+            padding: 4px 10px;
+            cursor: pointer;
+        }
+
+            .purchase-list-pagination button.active, .purchase-list-pagination button:hover {
+                background: #4f8cff;
+                color: #fff;
+                border-color: #4f8cff;
+            }
+
+    /* Action buttons: scoped and specific to avoid global conflicts */
+    .purchase-list-table td .action-btns {
+        display: flex;
+        gap: 6px;
+        justify-content: center;
+        align-items: center;
+        white-space: nowrap;
+    }
+
+        .purchase-list-table td .action-btns .action-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 34px;
+            height: 34px;
+            padding: 0;
+            border-radius: 6px;
+            color: #fff;
+            text-decoration: none;
+            border: none;
+            cursor: pointer;
+        }
+        .purchase-list-table td .action-btns .action-view {
+            background: #17a2b8;
+        }
+        /* info */
+        .purchase-list-table td .action-btns .action-edit {
+            background: #4f8cff;
+        }
+        /* primary */
+        .purchase-list-table td .action-btns .action-delete {
+            background: #ef4444;
+        }
+        /* danger */
+        .purchase-list-table td .action-btns .action-btn i {
+            font-size: 14px;
+            color: #fff;
+        }
+
+    /* Small-screen adjustments */
+    @media (max-width:900px) {
+        .purchase-search-form {
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .purchase-list-card {
+            padding: 16px 6px 12px;
+        }
+
+        .purchase-list-table th, .purchase-list-table td {
+            font-size: 0.85rem;
+            padding: 5px 6px;
+        }
+    }
+
+    /* 강제 우선 적용: action 버튼 항상 위에 있고 포인터 허용 */
+    .purchase-list-table td { position: relative; } /* td가 겹침의 원인이라면 position 기준 제공 */
+    .purchase-list-table td .action-btns { position: relative; z-index: 1000; pointer-events: auto; }
+    .purchase-list-table td .action-btns .btn,
+    .purchase-list-table td .action-btns .action-btn {
+      pointer-events: auto !important;
+      position: relative !important;
+      z-index: 1001 !important;
+    }
+
+    /* ACTION 버튼 우선 표시 & 클릭 가능 보장 */
+    .purchase-list-table td.action-cell { position: relative; }
+    .purchase-list-table td .action-btns { position: relative; z-index: 2000; pointer-events: auto; }
+    .purchase-list-table td .action-btns .btn,
+    .purchase-list-table td .action-btns .action-btn {
+      pointer-events: auto !important;
+      position: relative !important;
+      z-index: 2001 !important;
+      display: inline-flex !important;
+      align-items: center;
+      justify-content: center;
+      width: 34px;
+      height: 34px;
+      padding: 0;
+      margin: 0 6px;
+      border-radius: 6px;
+      border: none;
+    }
+    .purchase-list-table td .action-btns .btn i,
+    .purchase-list-table td .action-btns .action-btn i { color: #fff !important; font-size:14px; }
+    .purchase-list-table td .action-btns .btn-info,
+    .purchase-list-table td .action-btns .action-view { background:#17a2b8 !important; }
+    .purchase-list-table td .action-btns .btn-primary,
+    .purchase-list-table td .action-btns .action-edit { background:#4f8cff !important; }
+    .purchase-list-table td .action-btns .btn-danger,
+    .purchase-list-table td .action-btns .action-delete { background:#ef4444 !important; }
+
+    /* (임시) 오버레이 요소가 있다면 포인터를 통과시키도록 할 경우 */
+    /* .overlay-selector { pointer-events: none !important; } */
+
+    /* 임시: action 버튼 최상단 표시 + 클릭 허용 (강제) */
+    .purchase-list-table td.action-cell,
+    .purchase-list-table td.action-cell .action-btns {
+      position: relative !important;
+      z-index: 99999 !important;
+      pointer-events: auto !important;
+    }
+    .purchase-list-table td.action-cell .action-btns button,
+    .purchase-list-table td.action-cell .action-btns .btn {
+      display: inline-flex !important;
+      visibility: visible !important;
+      opacity: 1 !important;
+      pointer-events: auto !important;
+      align-items: center !important;
+      justify-content: center !important;
+      width: 34px !important;
+      height: 34px !important;
+      padding: 0 !important;
+      margin: 0 6px !important;
+      border-radius: 6px !important;
+      border: none !important;
+    }
+    .purchase-list-table td.action-cell .action-btns i {
+      color: #fff !important;
+      font-size: 14px !important;
+    }
+</style>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        loadVendors();
+        initializeDateRange();
+        searchPurchases();
+
+        const excelBtn = document.getElementById('excelDownloadBtn');
+        if (excelBtn) excelBtn.addEventListener('click', downloadPurchaseListExcel);
+    });
+
+    // 안전한 fetch → JSON 유틸
+    async function fetchJson(url, options) {
+        const resp = await fetch(url, options);
+        if (!resp.ok) {
+            const text = await resp.text().catch(()=>'');
+            throw new Error(`Network error ${resp.status}: ${text.substring(0,200)}`);
+        }
+        const ct = resp.headers.get('content-type') || '';
+        if (!ct.includes('application/json')) {
+            const text = await resp.text().catch(()=>'');
+            throw new Error('Invalid JSON response: ' + text.substring(0,200));
+        }
+        return resp.json();
+    }
+
+    // 공급업체 목록 로드
+    function loadVendors() {
+        fetchJson('/purchase/api/vendors')
+            .then(data => {
+                const vendorSelect = document.getElementById('vendorCode');
+                if (!vendorSelect) return;
+                vendorSelect.innerHTML = `<option value="">{{ get_text('all') }}</option>`;
+                (data || []).forEach(vendor => {
+                    const option = document.createElement('option');
+                    option.value = vendor.code;
+                    option.textContent = `${vendor.code} - ${vendor.name}`;
+                    vendorSelect.appendChild(option);
+                });
+            })
+            .catch(error => {
+                console.error('Error loading vendors:', error);
+            });
+    }
+
+    // 날짜 범위 초기화
+    function toKoreaDateString(date) {
+        const korea = new Date(date.getTime() + 9 * 60 * 60 * 1000);
+        return korea.toISOString().slice(0, 10);
+    }
+
+    function initializeDateRange() {
+        const today = new Date();
+        const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+        const lastDayOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+        const sd = document.getElementById('startDate');
+        const ed = document.getElementById('endDate');
+        if (sd) sd.value = toKoreaDateString(firstDayOfMonth);
+        if (ed) ed.value = toKoreaDateString(lastDayOfMonth);
+    }
+
+    // 매입 목록 검색
+    function searchPurchases(page = 1) {
+        const perPage = 10;
+        const startDate = document.getElementById('startDate')?.value || '';
+        const endDate = document.getElementById('endDate')?.value || '';
+        const vendorCode = document.getElementById('vendorCode')?.value || '';
+        const status = document.getElementById('status')?.value || '';
+
+        const params = new URLSearchParams({ startDate, endDate, page, per_page: perPage });
+        if (vendorCode) params.append('vendorCode', vendorCode);
+        if (status) params.append('status', status);
+
+        fetchJson(`/purchase/api/purchases?${params.toString()}`)
+            .then(data => {
+                displayPurchases(data.purchases || [], page, perPage);
+                displayPagination(data.pagination || { currentPage: 1, totalPages: 1 });
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('데이터 조회 중 오류가 발생했습니다. 콘솔을 확인하세요.');
+            });
+    }
+
+    // 매입 목록 표시
+    function displayPurchases(purchases, page, perPage) {
+        const tbody = document.getElementById('purchaseList');
+        if (!tbody) return;
+        tbody.innerHTML = '';
+
+        let totalQuantity = 0;
+        let totalAmount = 0;
+
+        purchases.forEach((purchase, idx) => {
+            totalQuantity += Number(purchase.totalQuantity) || 0;
+            totalAmount += Number(purchase.totalAmount) || 0;
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td>${(page - 1) * perPage + idx + 1}</td>
+                <td>${purchase.purchaseDate || ''}</td>
+                <td><a href="/purchase/detail/${purchase.purchaseNo}">${purchase.purchaseNo}</a></td>
+                <td>${purchase.vendorName || ''}</td>
+                <td>${purchase.warehouseName || ''}</td>
+                <td class="right">${formatNumber(purchase.totalQuantity)}</td>
+                <td class="right">${formatNumber(purchase.totalAmount)}</td>
+                <td>${purchase.paymentMethod || ''}</td>
+                <td>${purchase.paymentDueDate || ''}</td>
+                <td>${getStatusText(purchase.status)}</td>
+                <td class="action-cell">
+                  <div class="action-btns">
+                    <button type="button" class="btn btn-info btn-sm action-view" onclick="viewDetail('${purchase.purchaseNo}')">
+                      <i class="fas fa-eye"></i>
+                    </button>
+                    <button type="button" class="btn btn-primary btn-sm action-edit" onclick="editPurchase('${purchase.purchaseNo}')">
+                      <i class="fas fa-edit"></i>
+                    </button>
+                    <button type="button" class="btn btn-danger btn-sm action-delete" onclick="deletePurchase('${purchase.purchaseNo}')">
+                      <i class="fas fa-trash-alt"></i>
+                    </button>
+                  </div>
+                </td>
+            `;
+            tbody.appendChild(tr);
+        });
+
+        const tq = document.getElementById('totalQuantity');
+        const ta = document.getElementById('totalAmount');
+        if (tq) tq.textContent = formatNumber(totalQuantity);
+        if (ta) ta.textContent = formatNumber(totalAmount);
+    }
+
+    // 페이지네이션 표시
+    function displayPagination(pagination) {
+        const container = document.getElementById('pagination');
+        if (!container) return;
+        container.innerHTML = '';
+
+        const current = pagination.currentPage || 1;
+        const total = pagination.totalPages || 1;
+
+        if (current > 1) {
+            const prevButton = document.createElement('button');
+            prevButton.innerHTML = '&laquo;';
+            prevButton.onclick = () => searchPurchases(current - 1);
+            container.appendChild(prevButton);
+        }
+
+        for (let i = 1; i <= total; i++) {
+            const button = document.createElement('button');
+            button.textContent = i;
+            button.onclick = () => searchPurchases(i);
+            if (i === current) button.classList.add('active');
+            container.appendChild(button);
+        }
+
+        if (current < total) {
+            const nextButton = document.createElement('button');
+            nextButton.innerHTML = '&raquo;';
+            nextButton.onclick = () => searchPurchases(current + 1);
+            container.appendChild(nextButton);
+        }
+    }
+
+    function resetSearch() {
+        if (document.getElementById('vendorCode')) document.getElementById('vendorCode').value = '';
+        if (document.getElementById('status')) document.getElementById('status').value = '';
+        initializeDateRange();
+        searchPurchases();
+    }
+
+    function viewDetail(purchaseNo) { window.location.href = `/purchase/detail/${purchaseNo}`; }
+    function editPurchase(purchaseNo) { window.location.href = `/purchase/edit/${purchaseNo}`; }
+
+    const deleteConfirmMsg = { 'ko': '정말로 삭제 하시겠습니까?', 'en': 'Are you sure you want to delete?', 'th': 'คุณต้องการลบข้อมูลนี้จริงหรือไม่?' };
+    const deleteSuccessMsg = { 'ko': '삭제되었습니다.', 'en': 'Deleted successfully.', 'th': 'ลบข้อมูลเรียบร้อยแล้ว' };
+    function getCurrentLanguage() { return "{{ session.get('language', 'ko') }}"; }
+
+    function deletePurchase(purchaseNo) {
+        const lang = getCurrentLanguage();
+        if (!confirm(deleteConfirmMsg[lang] || deleteConfirmMsg.ko)) return;
+
+        fetch('/purchase/delete', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ purchaseNos: [purchaseNo] })
+        })
+        .then(resp => resp.json())
+        .then(data => {
+            if (data.success) {
+                alert(deleteSuccessMsg[lang] || deleteSuccessMsg.ko);
+                searchPurchases();
+            } else {
+                alert(data.error || '삭제 중 오류가 발생했습니다.');
+            }
+        })
+        .catch(err => { console.error(err); alert('삭제 중 오류가 발생했습니다.'); });
+    }
+
+    function formatNumber(value) {
+        if (value === null || value === undefined || value === '') return '';
+        return new Intl.NumberFormat('ko-KR', { maximumFractionDigits: 2 }).format(Number(value));
+    }
+
+    const statusMap = {
+        "CONFIRMED": "{{ get_text('confirmed') }}",
+        "COMPLETED": "{{ get_text('completed') }}",
+        "PROCESS": "{{ get_text('in_process') }}"
+    };
+    function getStatusText(status) { return statusMap[status] || status || ''; }
+
+    function downloadPurchaseListExcel() {
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = '/purchase/api/list-detail/excel';
+        form.style.display = 'none';
+
+        const startDate = document.getElementById('startDate')?.value || '';
+        const endDate = document.getElementById('endDate')?.value || '';
+        const vendorCode = document.getElementById('vendorCode')?.value || '';
+        const status = document.getElementById('status')?.value || '';
+
+        [['startDate', startDate], ['endDate', endDate], ['vendorCode', vendorCode], ['status', status]].forEach(([n, v]) => {
+            const input = document.createElement('input');
+            input.type = 'hidden';
+            input.name = n;
+            input.value = v;
+            form.appendChild(input);
+        });
+
+        document.body.appendChild(form);
+        form.submit();
+        form.remove();
+    }
+</script>
+
+<style>
+/* 액션 버튼 우선 표시 보장 */
+.purchase-list-table td .action-btns .btn {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 34px !important;
+  height: 34px !important;
+  padding: 0 !important;
+  margin: 0 6px !important;
+  vertical-align: middle !important;
+  border: none !important;
+}
+.purchase-list-table td .action-btns .btn i {
+  color: #fff !important;
+  font-size: 14px !important;
+}
+
+/* 색상 강제 */
+.purchase-list-table td .action-btns .btn-info { background-color: #17a2b8 !important; border-color: #17a2b8 !important; }
+.purchase-list-table td .action-btns .btn-primary { background-color: #4f8cff !important; border-color: #4f8cff !important; }
+.purchase-list-table td .action-btns .btn-danger { background-color: #ef4444 !important; border-color: #ef4444 !important; }
+
+/* 버튼 보이기/클릭 우선 적용 (강제) */
+.purchase-list-table td.action-cell { position: relative; }
+.purchase-list-table td .action-btns { position: relative; z-index: 3000; pointer-events: auto; display:flex; gap:6px; }
+
+/* 임시: action 버튼 최상단 표시 + 클릭 허용 (강제) */
+.purchase-list-table td.action-cell,
+.purchase-list-table td.action-cell .action-btns {
+  position: relative !important;
+  z-index: 99999 !important;
+  pointer-events: auto !important;
+}
+.purchase-list-table td.action-cell .action-btns button,
+.purchase-list-table td.action-cell .action-btns .btn {
+  display: inline-flex !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  pointer-events: auto !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 34px !important;
+  height: 34px !important;
+  padding: 0 !important;
+  margin: 0 6px !important;
+  border-radius: 6px !important;
+  border: none !important;
+}
+.purchase-list-table td.action-cell .action-btns i {
+  color: #fff !important;
+  font-size: 14px !important;
+}
+</style>
+{% endblock %}

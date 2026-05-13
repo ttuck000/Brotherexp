@@ -1,0 +1,970 @@
+<!DOCTYPE html>
+<html lang="{{ session.get('language', 'ko') }}">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{{ get_text('account_actual_new') or 'Account Actual - New' }}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <style>
+        /* Base */
+        body {
+            background: #f6f8fb;
+            font-family: system-ui, Arial, sans-serif;
+            color: #223;
+            margin: 0;
+            padding: 0;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 18px auto;
+            padding: 18px;
+            background: #fff;
+            border-radius: 8px;
+            box-shadow: 0 6px 18px rgba(2,6,23,0.06);
+        }
+
+        /* Heading */
+        h2 {
+            margin: 0 0 12px;
+            color: #0b3b78;
+            padding-bottom: 8px;
+            position: relative;
+        }
+        /* 파란 실선: 전체 너비로 보이도록 */
+        .heading-underline {
+            height: 3px;
+            background: #0d6efd;
+            margin-top: 8px;
+            border-radius: 2px;
+        }
+
+        /* Form grid */
+        form {
+            width: 100%;
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 18px;
+            align-items: center;
+            margin-top: 12px;
+        }
+            /* 일부 행은 4열 사용 (금액 그룹 등) */
+            .form-row.cols-4 {
+                grid-template-columns: repeat(4, 1fr);
+            }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        label {
+            font-size: 13px;
+            color: #556;
+        }
+
+        /* inputs full width inside grid cell */
+        input[type="text"], input[type="date"], input[type="number"], select, textarea {
+            padding: 10px 12px;
+            border: 1px solid #d6e2f0;
+            border-radius: 6px;
+            background: #fff;
+            width: 100%;
+            box-sizing: border-box;
+            color: #223;
+        }
+
+        input[readonly] {
+            background: #f5f5f5;
+        }
+
+        /* Action buttons */
+        .actions {
+            display: flex;
+            gap: 8px;
+            justify-content: center;
+            margin-top: 18px;
+        }
+
+        .btn {
+            padding: 8px 16px;
+            border-radius: 6px;
+            border: none;
+            color: #fff;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .btn-save {
+            background: #0d6efd;
+        }
+
+        .btn-cancel {
+            background: #6c757d;
+        }
+
+        /* Section divider: 검정 굵은선 */
+        .section-divider {
+            border: 0;
+            border-top: 3px solid #0d6efd;
+            margin: 16px 0;
+            width: 100%;
+        }
+
+        /* account picker modal (unchanged behavior) */
+        .account-tree-modal {
+            display: none;
+            position: fixed;
+            inset: 0;
+            z-index: 1500;
+            align-items: center;
+            justify-content: center;
+        }
+
+            .account-tree-modal.open {
+                display: flex;
+            }
+
+        .account-tree-backdrop {
+            position: absolute;
+            inset: 0;
+            background: rgba(0,0,0,0.45);
+        }
+
+        .account-tree-dialog {
+            position: relative;
+            width: 90%;
+            max-width: 920px;
+            max-height: 84vh;
+            overflow: auto;
+            background: #fff;
+            border-radius: 10px;
+            padding: 16px;
+            box-shadow: 0 18px 48px rgba(10,20,40,0.3);
+        }
+
+        /* Account tree styles keep */
+        .acct-tree-root, .acct-tree-root ul {
+            list-style: none;
+            margin: 0;
+            padding-left: 12px;
+        }
+
+        .node-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 8px;
+            border-radius: 6px;
+        }
+
+            .node-row:hover {
+                background: #f6f9ff;
+            }
+
+        .node-toggle {
+            width: 22px;
+            height: 22px;
+            border-radius: 4px;
+            background: transparent;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            color: #0950d6;
+            border: 1px solid transparent;
+        }
+
+            .node-toggle::after {
+                content: '+';
+                transform: scale(0.9);
+            }
+
+            .node-toggle[aria-expanded="true"]::after {
+                content: '−';
+            }
+
+            .node-toggle.node-toggle-empty {
+                visibility: hidden;
+            }
+
+        .node-label {
+            font-weight: 700;
+            color: #0b3b78;
+            margin-right: 6px;
+            cursor: pointer;
+        }
+
+        .node-row.leaf .node-label {
+            color: #d9534f;
+        }
+
+        .node-sub {
+            color: #3b556f;
+            font-size: 13px;
+            margin-left: 6px;
+        }
+
+        .node-row.selected {
+            background: #e6f0ff;
+        }
+
+        .node-children.collapsed {
+            display: none;
+        }
+
+        .node-children.expanded {
+            display: block;
+        }
+
+        /* Vendor box - 3열로 수정 */
+        .vendor-box {
+            border: 1px solid #e0e0e0;
+            padding: 12px;
+            border-radius: 6px;
+            background: #fbfdff;
+        }
+
+            .vendor-box .row {
+                display: grid;
+                grid-template-columns: 1fr 1fr 1fr; /* 3열로 변경 */
+                gap: 12px;
+                align-items: center;
+            }
+
+            .vendor-box label {
+                font-weight: 600;
+                font-size: 13px;
+                margin-bottom: 6px;
+                display: block;
+            }
+
+        /* numeric formatting */
+        .numeric-input {
+            text-align: right;
+        }
+
+        @media (max-width:900px) {
+            .form-row {
+                grid-template-columns: 1fr;
+            }
+
+            .vendor-box .row {
+                grid-template-columns: 1fr; /* 모바일에서는 1열 */
+            }
+        }
+    </style>
+</head>
+<body>
+    {% include 'nav.html' %}
+    <div class="container">
+        <h2>{{ get_text('account_actual_new') or '실적 등록' }}</h2>
+        <div class="heading-underline" aria-hidden="true"></div>
+
+        <form id="accountActualForm" method="post" action="{{ url_for('accounting.account_actual_add') }}">
+            <!-- ID row -->
+            <div class="form-row" style="margin-top:6px;">
+                <div class="form-group">
+                    <label for="id">{{ get_text('id') or 'ID' }}</label>
+                    <input type="text" id="id" name="id" value="{{ next_id }}" readonly>
+                </div>
+            </div>
+
+            <div class="form-row" style="margin-top:6px;">
+                <div class="form-group">
+                    <label for="cost_center">{{ get_text('cost_center') or '비용센터' }}</label>
+                    <select id="cost_center" name="cost_center">
+                        <option value="RECYCLE">RECYCLE</option>
+                        <option value="INJECTION">INJECTION</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="actual_type">{{ get_text('actual_type') or '계정유형' }}</label>
+                    <select id="actual_type" name="actual_type">
+                        <option value="ASSET">{{ get_text('actual_type_asset') or '자산' }}</option>
+                        <option value="LIABILITY">{{ get_text('actual_type_liability') or '부채' }}</option>
+                        <option value="REVENUE">{{ get_text('actual_type_revenue') or '수익' }}</option>
+                        <option value="EXPENSE" selected>{{ get_text('actual_type_expense') or '비용' }}</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="actual_code">{{ get_text('expense_code') or '계정코드' }}</label>
+                    <div style="display:flex; gap:8px; align-items:center;">
+                        <input type="text" id="actual_code_display" name="actual_code_display" readonly placeholder="{{ get_text('select') or '선택' }}" style="flex:1;">
+                        <input type="hidden" id="actual_code" name="actual_code" value="">
+                        <button type="button" id="openAccountPicker" class="btn btn-save" style="min-width:140px;">{{ get_text('select_account') or '계정선택' }}</button>
+                    </div>
+                </div>
+            </div>
+
+            <hr class="section-divider" role="separator">
+
+            <!-- billing / payer / amount -->
+            <div class="form-row" style="margin-top:6px;">
+                <div class="form-group">
+                    <label for="billing_date">{{ get_text('billing_date') or '청구일' }}</label>
+                    <input type="date" id="billing_date" name="billing_date">
+                </div>
+
+                <div class="form-group">
+                    <label for="payer">{{ get_text('payer') or '지급자' }}</label>
+                    <input type="text" id="payer" name="payer" placeholder="{{ get_text('enter_payer') or '지급자를 입력하세요' }}">
+                </div>
+
+                <div class="form-group">
+                    <label for="before_vat_amt">{{ get_text('before_vat_amt') or '금액' }}</label>
+                    <input type="text" id="before_vat_amt" name="before_vat_amt" class="numeric-input" inputmode="decimal" placeholder="0.00">
+                </div>
+            </div>
+
+            <!-- VAT row: align with Billing Date / Payer / Before VAT Amount -->
+            <div class="form-row" style="margin-top:8px;">
+                <div class="form-group">
+                    <label for="vat_type">{{ get_text('vat_type') or '부가세 유형' }}</label>
+                    <select id="vat_type" name="vat_type">
+                        <option value="">--</option>
+                        <option value="VAT">VAT</option>
+                        <option value="NO VAT">NO VAT</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="vat_rate">{{ get_text('vat_rate') or '부가세율(%)' }}</label>
+                    <input type="number" id="vat_rate" name="vat_rate" step="0.01" min="0" class="numeric-input" value="{{ default_vat_rate }}">
+                </div>
+
+                <div class="form-group">
+                    <label for="total_amount">{{ get_text('vat_amount') or '부가세 금액' }}</label>
+                    <input type="text" id="total_amount" name="vat_amount" class="numeric-input" inputmode="decimal" placeholder="0.00">
+                </div>
+            </div>
+
+            <!-- WHT / Payment row: align with VAT row columns -->
+            <div class="form-row" style="margin-top:6px;">
+                <div class="form-group">
+                    <label for="wht_rate">{{ get_text('wht_rate') or '원천세(%)' }}</label>
+                    <input type="number" id="wht_rate" name="wht_rate" step="0.01" min="0" class="numeric-input" value="{{ default_wht_rate }}">
+                </div>
+
+                <div class="form-group">
+                    <label for="wht_amount">{{ get_text('wht_amount') or '원천징수 금액' }}</label>
+                    <input type="text" id="wht_amount" name="wht_amount" class="numeric-input" inputmode="decimal" placeholder="0.00">
+                </div>
+
+                <div class="form-group">
+                    <label for="payment">{{ get_text('payment') or '지급' }}</label>
+                    <input type="text" id="payment" name="payment" class="numeric-input" inputmode="decimal" placeholder="0.00">
+                </div>
+            </div>
+
+            <div class="form-row" style="margin-top:8px;">
+                <div class="form-group" style="grid-column:1 / -1;">
+                    <label for="remark">{{ get_text('remark') or '비고' }}</label>
+                    <textarea id="remark" name="remark" rows="4"></textarea>
+                </div>
+            </div>
+
+            <hr class="section-divider" role="separator">
+
+            <!-- Payment Method + Vendor + Account Box (3열) -->
+            <div class="form-row" style="margin-top:8px;">
+                <div class="form-group" style="grid-column:1 / -1;">
+                    <label>{{ get_text('vendor_and_payment') or '거래처 및 지불계좌' }}</label>
+                    <div class="vendor-box">
+                        <div class="row">
+                            <!-- 1. Payment Method -->
+                            <div>
+                                <label for="payment_method_select">{{ get_text('payment_method') or 'Payment Method' }}</label>
+                                <select id="payment_method_select" name="payment_method">
+                                    <option value="">{{ get_text('select_payment_method') or 'Payment Method 선택' }}</option>
+                                    <option value="KCC">KCC</option>
+                                    <option value="BULK">BULK</option>
+                                </select>
+                            </div>
+
+                            <!-- 2. 공급업체 -->
+                            <div>
+                                <label for="vendor_select">{{ get_text('vendor') or '공급업체' }}</label>
+                                <select id="vendor_select" name="partner">
+                                    <option value="">{{ get_text('select_vendor') or '공급업체 선택' }}</option>
+                                </select>
+                            </div>
+
+                            <!-- 3. Payment Account -->
+                            <div>
+                                <label for="payment_account_select">{{ get_text('payment_account') or 'Payment Account' }}</label>
+                                <select id="payment_account_select" name="partner_account">
+                                    <option value="">{{ get_text('select_bank_account') or '계좌 선택' }}</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div id="vendor_account_note" style="margin-top:10px; color:#3b556f; font-size:13px;"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="actions">
+                <button type="submit" class="btn btn-save">{{ get_text('save') or '저장' }}</button>
+                <button type="button" class="btn btn-cancel" onclick="history.back()">{{ get_text('cancel') or '취소' }}</button>
+            </div>
+        </form>
+    </div>
+
+    <!-- existing scripts unchanged (account picker, formatting, vendor/account loaders) -->
+    <!-- keep original script blocks below unchanged to preserve behavior -->
+    <!-- ACCOUNT PICKER MODAL -->
+    <div id="acctPickerModal" class="account-tree-modal" aria-hidden="true">
+        <div class="account-tree-backdrop" id="acctPickerBackdrop"></div>
+        <div class="account-tree-dialog" role="dialog" aria-modal="true">
+            <div class="account-tree-header">
+                <h3>{{ get_text('account_picker_title') or '계정 선택' }}</h3>
+                <div class="account-tree-controls">
+                    <input id="acctPickerSearch" type="search" placeholder="{{ get_text('account_search_placeholder') or '검색 (코드 또는 명칭)' }}" />
+                    <button id="acctPickerClose" class="btn btn-cancel">{{ get_text('close') or '닫기' }}</button>
+                </div>
+            </div>
+            <div id="acctPickerContainer" class="account-tree-container">
+                <div class="loading">{{ get_text('loading') or '로딩 중...' }}</div>
+            </div>
+            <div style="margin-top:12px;text-align:right">
+                <button id="acctPickerConfirm" class="btn btn-save">{{ get_text('select') or '선택' }}</button>
+                <button id="acctPickerCancel" class="btn btn-cancel">{{ get_text('cancel') or '취소' }}</button>
+            </div>
+        </div>
+    </div>
+
+    <pre id="vendor_debug" style="white-space:pre-wrap; background:#f8f9fa; border:1px solid #e9ecef; padding:8px; max-height:200px; overflow:auto; display:none;"></pre>
+
+    {% if super is defined %}
+    {{ super() }}
+    {% endif %}
+
+    <script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const vatType = document.getElementById('vat_type');
+        const vatRate = document.getElementById('vat_rate');
+        if (!vatType || !vatRate) return;
+
+        function applyVatDefault() {
+            // VAT 선택 시 기본 7% 부여. 값 설정 후 항상 input 이벤트 발생시켜 재계산 트리거
+            if (vatType.value === 'VAT' && (!vatRate.value || vatRate.value.trim() === '')) {
+                vatRate.value = '7';
+            }
+            // programmatic change -> trigger existing input listeners
+            try { vatRate.dispatchEvent(new Event('input', { bubbles: true })); } catch (e) { /* noop */ }
+        }
+
+        vatType.addEventListener('change', applyVatDefault);
+        applyVatDefault();
+    });
+
+    /* Account picker: fetch /account/hierarchy and let user pick one node.
+       Only display nodes whose code prefix matches selected actual_type.
+       Prefix mapping can be adjusted below if your chart uses different ranges. */
+    (async function(){
+      const modal = document.getElementById('acctPickerModal');
+      const backdrop = document.getElementById('acctPickerBackdrop');
+      const openBtn = document.getElementById('openAccountPicker');
+      const closeBtn = document.getElementById('acctPickerClose');
+      const cancelBtn = document.getElementById('acctPickerCancel');
+      const confirmBtn = document.getElementById('acctPickerConfirm');
+      const container = document.getElementById('acctPickerContainer');
+      const searchInput = document.getElementById('acctPickerSearch');
+      const displayInput = document.getElementById('actual_code_display');
+      const valueInput = document.getElementById('actual_code');
+      const actualTypeSelect = document.getElementById('actual_type');
+
+      let treeData = null;
+      let selectedNode = null;
+
+      const typePrefixMap = {
+        'ASSET': ['1'],
+        'LIABILITY': ['2'],
+        'REVENUE': ['4'],
+        'EXPENSE': ['5']
+      };
+
+      function codeMatchesPrefixes(code, prefixes) {
+        if (!code) return false;
+        return prefixes.some(p => String(code).startsWith(p));
+      }
+
+      // show expanded by default
+      const DEFAULT_EXPANDED = true;
+
+      function createNodeElement(node) {
+        const li = document.createElement('li');
+        li.className = 'acct-node';
+        const row = document.createElement('div');
+        row.className = 'node-row';
+
+        const toggle = document.createElement('button');
+        toggle.type = 'button';
+        toggle.className = 'node-toggle';
+        // will set aria-expanded below according to default expanded state or later toggle
+        toggle.setAttribute('aria-expanded','false');
+
+        const label = document.createElement('span');
+        label.className = 'node-label';
+        label.textContent = (node.code || '') ;
+        const sub = document.createElement('span');
+        sub.className = 'node-sub';
+        sub.textContent = node.name ? (' - ' + node.name) : '';
+
+        label.style.cursor = 'pointer';
+        label.addEventListener('click', () => {
+          container.querySelectorAll('.node-row.selected').forEach(el => el.classList.remove('selected'));
+          row.classList.add('selected');
+          selectedNode = node;
+        });
+        sub.addEventListener('click', () => { label.click(); });
+
+        row.appendChild(toggle);
+        row.appendChild(label);
+        row.appendChild(sub);
+        li.appendChild(row);
+
+        if (node.children && node.children.length) {
+          const ul = document.createElement('ul');
+          // default expanded/ collapsed according to DEFAULT_EXPANDED
+          ul.className = 'node-children ' + (DEFAULT_EXPANDED ? 'expanded' : 'collapsed');
+          node.children.forEach(ch => ul.appendChild(createNodeElement(ch)));
+          li.appendChild(ul);
+
+          // set initial aria-expanded state to match DEFAULT_EXPANDED
+          toggle.setAttribute('aria-expanded', DEFAULT_EXPANDED ? 'true' : 'false');
+
+          toggle.addEventListener('click', () => {
+            const collapsed = ul.classList.contains('collapsed');
+            ul.classList.toggle('collapsed', !collapsed);
+            ul.classList.toggle('expanded', collapsed);
+            toggle.setAttribute('aria-expanded', String(collapsed));
+          });
+        } else {
+          toggle.classList.add('node-toggle-empty');
+          toggle.setAttribute('aria-hidden','true');
+          // mark leaf nodes so CSS can style them
+          row.classList.add('leaf');
+        }
+        return li;
+      }
+
+      function renderTree(data) {
+        container.innerHTML = '';
+        selectedNode = null;
+        if (!Array.isArray(data) || data.length === 0) {
+          container.innerHTML = '<div class="no-data">등록된 계정이 없습니다.</div>';
+          return;
+        }
+        const ul = document.createElement('ul');
+        ul.className = 'acct-tree-root';
+        data.forEach(root => ul.appendChild(createNodeElement(root)));
+        container.appendChild(ul);
+
+        // ensure all children are expanded when opening
+        if (DEFAULT_EXPANDED) {
+          container.querySelectorAll('.node-children').forEach(ul => {
+            ul.classList.remove('collapsed');
+            ul.classList.add('expanded');
+            const toggle = ul.previousElementSibling?.querySelector('.node-toggle');
+            if (toggle) toggle.setAttribute('aria-expanded', 'true');
+          });
+        }
+      }
+
+      function filterByActualType(fullTree, actualType) {
+        const prefixes = typePrefixMap[actualType] || [];
+        if (!prefixes.length) return fullTree;
+        function prune(node) {
+          if (codeMatchesPrefixes(node.code, prefixes)) {
+            return { ...node, children: (node.children||[]).map(prune).filter(Boolean) };
+          }
+          const child = (node.children||[]).map(prune).filter(Boolean);
+          if (child.length) return { code: node.code, name: node.name, children: child };
+          return null;
+        }
+        return fullTree.map(prune).filter(Boolean);
+      }
+
+      async function loadTree() {
+        container.innerHTML = '<div class="loading">로딩 중...</div>';
+        try {
+          const res = await fetch('{{ url_for("base.account_hierarchy_api") }}', { headers: {'X-Requested-With':'XMLHttpRequest'}, credentials: 'same-origin' });
+          if (!res.ok) throw new Error('failed to load ' + res.status);
+          const ct = res.headers.get('content-type') || '';
+          const txt = await res.text();
+          if (!ct.includes('application/json')) {
+            console.error('account_hierarchy_api returned non-json:', txt.slice(0,1000));
+            throw new Error('non-json response');
+          }
+          treeData = JSON.parse(txt);
+          const chosen = actualTypeSelect?.value || '';
+          const pruned = filterByActualType(treeData, chosen);
+          renderTree(pruned);
+        } catch (e) {
+          container.innerHTML = '<div class="error">로드 실패</div>';
+          console.error(e);
+        }
+      }
+
+      openBtn?.addEventListener('click', () => {
+        modal.classList.add('open'); modal.setAttribute('aria-hidden','false');
+        if (!treeData) loadTree();
+        else {
+          const pruned = filterByActualType(treeData, actualTypeSelect?.value || '');
+          renderTree(pruned);
+        }
+      });
+      closeBtn?.addEventListener('click', ()=>{ modal.classList.remove('open'); modal.setAttribute('aria-hidden','true'); });
+      backdrop?.addEventListener('click', ()=>{ modal.classList.remove('open'); modal.setAttribute('aria-hidden','true'); });
+      cancelBtn?.addEventListener('click', ()=>{ modal.classList.remove('open'); modal.setAttribute('aria-hidden','true'); });
+
+      confirmBtn?.addEventListener('click', ()=> {
+        if (!selectedNode) { alert('{{ get_text("please_select_account") or "계정을 선택하세요." }}'); return; }
+        valueInput.value = selectedNode.code || '';
+        displayInput.value = (selectedNode.code || '') + (selectedNode.name ? ' - ' + selectedNode.name : '');
+        modal.classList.remove('open'); modal.setAttribute('aria-hidden','true');
+      });
+
+      searchInput?.addEventListener('input', (e) => {
+        const q = (e.target.value || '').trim().toLowerCase();
+        if (!treeData) return;
+        if (!q) { const pruned = filterByActualType(treeData, actualTypeSelect?.value || ''); renderTree(pruned); return; }
+        const matches = new Set();
+        function walk(node, ancestors=[]) {
+          const text = ((node.code||'') + ' ' + (node.name||'')).toLowerCase();
+          if (text.includes(q)) { ancestors.forEach(a=>matches.add(a.code)); matches.add(node.code); }
+          (node.children||[]).forEach(ch => walk(ch, ancestors.concat(node)));
+        }
+        treeData.forEach(r => walk(r, []));
+        function prune(node) {
+          if (!node) return null;
+          if (matches.has(node.code)) {
+            return { code: node.code, name: node.name, children: (node.children||[]).map(prune).filter(Boolean) };
+          }
+          const child = (node.children||[]).map(prune).filter(Boolean);
+          if (child.length) return { code: node.code, name: node.name, children: child };
+          return null;
+        }
+        const prunedAll = treeData.map(prune).filter(Boolean);
+        const prunedByType = filterByActualType(prunedAll, actualTypeSelect?.value || '');
+        renderTree(prunedByType);
+        // keep search results expanded
+        container.querySelectorAll('.node-children').forEach(ul=>{ ul.classList.remove('collapsed'); ul.classList.add('expanded'); });
+      });
+
+    })();
+
+    // helper: format/unformat numbers
+    (function(){
+        function unformat(str){ return (str||'').toString().replace(/,/g,'').trim(); }
+        function formatNumber(n){
+            if (n === null || n === undefined || isNaN(n)) return '';
+            return Number(n).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
+        }
+        function parseNum(v){
+            const s = unformat(v);
+            if (s === '') return NaN;
+            const n = parseFloat(s);
+            return Number.isFinite(n) ? n : NaN;
+        }
+
+        const beforeInput = document.getElementById('before_vat_amt');
+        const vatRateInput = document.getElementById('vat_rate');
+        const totalInput = document.getElementById('total_amount');
+        const whtRateInput = document.getElementById('wht_rate');
+        const whtAmountInput = document.getElementById('wht_amount');
+        const paymentInput = document.getElementById('payment');
+
+        function computeAndSetTotal() {
+            const bv = parseNum(beforeInput?.value);
+            const vr = parseNum(vatRateInput?.value);
+
+            // treat empty vat as 0
+            const vat = isNaN(vr) ? 0 : vr;
+
+            if (!isNaN(bv)) {
+                const result = (bv * (vat / 100));
+                totalInput.value = formatNumber(Math.round(result * 100) / 100);
+            } else {
+                totalInput.value = totalInput.value && totalInput.value !== '' ? totalInput.value : '';
+            }
+
+            computeAndSetWht();
+        }
+
+        function computeAndSetWht() {
+            // WHT는 Before VAT Amount 기준으로 계산: before_vat_amt * (wht_rate/100)
+            const beforeNum = parseNum(beforeInput?.value);
+            const whtRateNum = parseNum(whtRateInput?.value);
+            const whtRate = isNaN(whtRateNum) ? 0 : whtRateNum;
+
+            if (!isNaN(beforeNum)) {
+                const wht = beforeNum * (whtRate / 100);
+                whtAmountInput.value = formatNumber(Math.round(wht * 100) / 100);
+            } else {
+                whtAmountInput.value = '';
+            }
+
+            // Payment 재계산 (before + vat - wht)
+            computeAndSetPayment();
+        }
+
+        function computeAndSetPayment() {
+            const beforeVat = parseNum(beforeInput?.value);
+            const vatAmount = parseNum(totalInput?.value);
+            const whtAmount = parseNum(whtAmountInput?.value);
+
+            if (!isNaN(beforeVat) && !isNaN(vatAmount) && !isNaN(whtAmount)) {
+                const payment = beforeVat + vatAmount - whtAmount;
+                paymentInput.value = formatNumber(Math.round(payment * 100) / 100);
+            } else if (!isNaN(beforeVat) && !isNaN(vatAmount)) {
+                const payment = beforeVat + vatAmount;
+                paymentInput.value = formatNumber(Math.round(payment * 100) / 100);
+            } else {
+                paymentInput.value = '';
+            }
+        }
+
+        [beforeInput, totalInput, whtAmountInput, paymentInput].forEach(el => {
+            if (!el) return;
+            el.addEventListener('focus', (e)=> { e.target.value = unformat(e.target.value); });
+            el.addEventListener('blur', (e)=> { const n = parseNum(e.target.value); e.target.value = isNaN(n) ? '' : formatNumber(n); });
+        });
+
+        beforeInput?.addEventListener('input', computeAndSetTotal);
+        vatRateInput?.addEventListener('input', computeAndSetTotal);
+        totalInput?.addEventListener('input', computeAndSetWht);
+        whtRateInput?.addEventListener('input', computeAndSetWht);
+
+        const form = document.getElementById('accountActualForm');
+        form?.addEventListener('submit', (e) => {
+            // 필수 필드 검증
+            const actualCode = document.getElementById('actual_code');
+            const payer = document.getElementById('payer');
+            
+            if (!actualCode || !actualCode.value || actualCode.value.trim() === '') {
+                e.preventDefault();
+                alert('{{ get_text("please_select_account_code") or "계정코드를 선택하세요." }}');
+                return false;
+            }
+            
+            if (!payer || !payer.value || payer.value.trim() === '') {
+                e.preventDefault();
+                alert('{{ get_text("please_enter_payer") or "지급자를 입력하세요." }}');
+                payer?.focus();
+                return false;
+            }
+            
+            // 숫자 필드 포맷 제거
+            [beforeInput, totalInput, whtAmountInput, paymentInput].forEach(el => { 
+                if (!el) return; 
+                el.value = unformat(el.value); 
+            });
+        });
+
+        document.addEventListener('DOMContentLoaded', () => {
+            [beforeInput, totalInput, whtAmountInput, paymentInput].forEach(el => { if (!el) return; const n = parseNum(el.value); el.value = isNaN(n) ? '' : formatNumber(n); });
+            computeAndSetTotal();
+        });
+    })();
+
+    (function(){
+        const vendorsUrl = '{{ url_for("base.customer_code_expense") }}';
+        const accountsUrlTemplate = '{{ url_for("base.api_get_vendor_expense_accounts", vd_code="__VD__") }}';
+        const vendorSelect = document.getElementById('vendor_select');
+        const accountSelect = document.getElementById('payment_account_select');
+        const note = document.getElementById('vendor_account_note');
+        const debugEl = document.getElementById('vendor_debug');
+
+        function clearAccounts() {
+            accountSelect.innerHTML = '<option value="">{{ get_text("select_account") or "계좌 선택" }}</option>';
+            note.textContent = '';
+        }
+
+        function mkOptionText(row) {
+            // Ensure we show CODE + NAME
+            const code = row.vd_code || row.vdcode || row.code || '';
+            const name = row.vd_name || row.vendor_name || row.name || '';
+            return code ? (code + (name ? ' - ' + name : '')) : (name || '');
+        }
+
+        async function safeFetchJson(url) {
+            try {
+                const res = await fetch(url, {
+                    method: 'GET',
+                    headers: {'X-Requested-With': 'XMLHttpRequest'},
+                    credentials: 'same-origin'
+                });
+                const j = await res.json();
+                return j;
+            } catch (err) {
+                if (debugEl) { debugEl.style.display='block'; debugEl.textContent = 'FETCH ERROR: ' + err.message; }
+                throw err;
+            }
+        }
+
+        function populateVendors(list) {
+            vendorSelect.innerHTML = '<option value="">{{ get_text("select_vendor") or "거래처 선택" }}</option>';
+            if (!Array.isArray(list) || list.length === 0) return;
+            list.forEach(row => {
+                const opt = document.createElement('option');
+                opt.value = row.vd_code || row.vdcode || row.code || '';
+                opt.textContent = mkOptionText(row);
+                vendorSelect.appendChild(opt);
+            });
+        }
+
+        async function loadVendors() {
+            try {
+                const data = await safeFetchJson(vendorsUrl);
+                const list = Array.isArray(data) ? data : (Array.isArray(data.rows) ? data.rows : (Array.isArray(data.data) ? data.data : []));
+                populateVendors(list);
+            } catch (err) {
+                console.error('loadVendors error:', err);
+                if (debugEl) { debugEl.style.display='block'; debugEl.textContent = 'VENDOR LOAD ERROR:\n' + (err.message || err); }
+                note.textContent = '{{ get_text("failed_to_load_vendors") or "거래처 로드 실패" }}';
+            }
+        }
+
+        async function loadAccountsForVendor(vd) {
+            clearAccounts();
+            try {
+                const url = accountsUrlTemplate.replace('__VD__', encodeURIComponent(vd));
+                const data = await safeFetchJson(url);
+                const list = Array.isArray(data) ? data : (Array.isArray(data.rows) ? data.rows : (Array.isArray(data.data) ? data.data : []));
+                if (!list.length) {
+                    note.textContent = '{{ get_text("no_accounts_for_vendor") or "해당 거래처에 등록된 계좌가 없습니다." }}';
+                    return;
+                }
+
+                const isMasterTrue = (val) => {
+                    if (val === null || val === undefined) return false;
+                    const s = String(val).trim().toLowerCase();
+                    return s === '1' || s === 'true' || s === 'y' || s === 'yes' || s === 'Y';
+                };
+
+                // 찾기: 대표계좌(is_master)
+                const master = list.find(a => isMasterTrue(a.is_master));
+
+                // 대표계좌가 있으면 그 계좌를 맨 앞으로 이동
+                if (master) {
+                    const masterValRaw = (master.vd_account || master.vdaccount || master.account || '').toString().trim();
+                    list.sort((a, b) => {
+                        const aa = (a.vd_account || a.vdaccount || a.account || '').toString().trim();
+                        const bb = (b.vd_account || b.vdaccount || b.account || '').toString().trim();
+                        if (aa === masterValRaw) return -1;
+                        if (bb === masterValRaw) return 1;
+                        return 0;
+                    });
+                }
+
+                let masterVal = '';
+                const masterAccRaw = master ? ((master.vd_account || master.vdaccount || master.account || '').toString().trim()) : '';
+                list.forEach(acc => {
+                    const accNum = (acc.vd_account || acc.vdaccount || acc.account || '').toString().trim();
+                    const bank = (acc.bank || '').toString().trim();
+                    const remark = acc.remark ? acc.remark.toString().trim() : '';
+                    const isMasterFlag = isMasterTrue(acc.is_master) ? '1' : '0';
+
+                    const opt = document.createElement('option');
+
+                    // 저장되는 값: "은행명 - 계좌번호" (은행명이 없으면 계좌번호만)
+                    const displayValue = bank ? (bank + ' - ' + accNum) : accNum;
+                    opt.value = displayValue;
+
+                    // 화면 텍스트: "은행명 - 계좌번호 - remark" (가능하면)
+                    opt.textContent = displayValue + (remark ? (' - ' + remark) : '');
+
+                    // dataset 보관: bank/account/ismaster (노트/추후 파싱 용)
+                    if (bank) opt.dataset.bank = bank;
+                    opt.dataset.account = accNum;
+                    opt.dataset.ismaster = isMasterFlag;
+
+                    accountSelect.appendChild(opt);
+
+                    // master가 있으면 displayValue를 기억
+                    if (master && accNum && masterAccRaw && accNum === masterAccRaw) {
+                        masterVal = displayValue;
+                    }
+                });
+
+                if (masterVal) {
+                    accountSelect.value = masterVal;
+                    try { accountSelect.dispatchEvent(new Event('change', { bubbles: true })); } catch (e) { /* noop */ }
+                    const sel = accountSelect.selectedOptions[0];
+                    const bank = sel?.dataset?.bank || '';
+                    const accountNum = sel?.dataset?.account || (sel?.value || '');
+                    note.textContent = bank ? ('대표계좌: ' + bank + ' ' + accountNum) : '{{ get_text("representative_account_shown_first") or "대표계좌가 먼저 표시됩니다." }}';
+                } else {
+                    note.textContent = '';
+                }
+            } catch (err) {
+                console.error('loadAccountsForVendor error:', err);
+                if (debugEl) { debugEl.style.display = 'block'; debugEl.textContent = 'ACCOUNTS LOAD ERROR:\n' + (err.message || err); }
+                note.textContent = '';
+            }
+        }
+
+        // show bank/remark when account select changes
+        accountSelect?.addEventListener('change', (e) => {
+            const sel = e.target.selectedOptions && e.target.selectedOptions[0];
+            if (!sel || !sel.value) {
+                note.textContent = '';
+                return;
+            }
+            // value 형식은 "은행명 - 계좌번호" 또는 "계좌번호"
+            const bank = sel.dataset.bank || '';
+            const accountNum = sel.dataset.account || (sel.value.replace(bank ? (bank + ' - ') : '', '') || sel.value);
+            const isMaster = (sel.dataset.ismaster || '0') === '1';
+
+            // 표시: "은행명 계좌번호 (대표계좌)" 또는 "계좌번호"
+            note.textContent = bank ? (bank + ' ' + accountNum + (isMaster ? ' (대표계좌)' : '')) : (sel.textContent || accountNum);
+        });
+
+        vendorSelect?.addEventListener('change', (e) => {
+            const v = e.target.value;
+            if (!v) { clearAccounts(); return; }
+            loadAccountsForVendor(v);
+        });
+
+        // 페이지 로드 시 기본값 설정
+        document.addEventListener('DOMContentLoaded', () => {
+
+            loadVendors();
+
+            // 현재 날짜를 청구일에 설정
+            const billingDateField = document.getElementById('billing_date');
+            if (billingDateField && !billingDateField.value) {
+                const today = new Date();
+                const year = today.getFullYear();
+                const month = String(today.getMonth() + 1).padStart(2, '0');
+                const day = String(today.getDate()).padStart(2, '0');
+                billingDateField.value = `${year}-${month}-${day}`;
+            }
+
+            // 숫자 필드들에 기본값 0 설정
+            const numericFields = ['before_vat_amt', 'vat_rate', 'total_amount', 'wht_rate', 'wht_amount', 'payment'];
+            numericFields.forEach(fieldId => {
+                const field = document.getElementById(fieldId);
+                if (field && (!field.value || field.value.trim() === '')) {
+                    if (field.type === 'number') {
+                        field.value = '0';
+                    } else {
+                        field.value = '0.00';
+                    }
+                }
+            });
+        });
+    })();
+    </script>
+</body>
+</html>

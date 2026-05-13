@@ -1,0 +1,336 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container-fluid mt-4">
+    <div class="row justify-content-center">
+        <div class="col-12 col-xl-11">
+            <h2 class="mb-4" style="font-weight:700;color:#2a4365;font-size:1.5rem;"><i class="fas fa-clipboard-list me-2"></i>{{ get_text('inventory_check') }}</h2>
+            <div class="card shadow-sm mb-4 rounded-4">
+                <div class="card-body bg-light rounded-4">
+                    <form class="row g-3 align-items-end" id="searchForm" style="font-size:0.875rem;">
+                        <div class="col-md-3">
+                            <label for="startDate" class="form-label">{{ get_text('start_date') }}</label>
+                            <input type="date" class="form-control" id="startDate" name="startDate">
+                        </div>
+                        <div class="col-md-3">
+                            <label for="endDate" class="form-label">{{ get_text('end_date') }}</label>
+                            <input type="date" class="form-control" id="endDate" name="endDate">
+                        </div>
+                        <div class="col-md-3">
+                            <label for="searchWarehouse" class="form-label">{{ get_text('warehouse') }}</label>
+                            <select class="form-select" id="searchWarehouse" name="searchWarehouse">
+                                <option value="">{{ get_text('all') }}</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3 d-flex gap-2 justify-content-end">
+                            <button type="submit" class="btn btn-primary px-4" style="font-size:0.875rem;"><i class="fas fa-search me-1"></i>{{ get_text('search') }}</button>
+                            <a href="/inventory/inventory_audit_register" class="btn btn-success px-4" style="font-size:0.875rem;"><i class="fas fa-plus me-1"></i>{{ get_text('audit_register') }}</a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            <div class="card shadow rounded-4">
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-bordered table-hover align-middle mb-0 rounded-4 overflow-hidden" style="font-size:0.875rem;">
+                            <thead class="table-primary text-center">
+                                <tr>
+                                    <th class="text-center">{{ get_text('sequence') }}</th>
+                                    <th class="text-center">{{ get_text('audit_id') }}</th>
+                                    <th class="text-center">{{ get_text('audit_date') }}</th>
+                                    <th class="text-center">{{ get_text('warehouse') }}</th>
+                                    <th class="text-center">{{ get_text('remark') }}</th>
+                                    <th class="text-center">{{ get_text('registrant') }}</th>
+                                    <th class="text-center">{{ get_text('registration_time') }}</th>
+                                    <th class="text-center">{{ get_text('action') }}</th>
+                                    <th class="text-center">{{ get_text('status') }}</th>
+                                    <th class="text-center">{{ get_text('audit_apply') }}</th>
+                                </tr>
+                            </thead>
+                            <tbody id="auditListBody">
+                                <!-- JS로 행 추가, 각 행의 <td>에도 text-center 클래스 적용 -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            <div id="pagination" class="mt-3 text-center"></div>
+        </div>
+    </div>
+</div>
+<script>
+// 번역 데이터를 JavaScript에서 사용할 수 있도록 전달
+const translations = {
+    all: "{{ get_text('all') }}",
+    prev: "{{ get_text('prev') }}",
+    next: "{{ get_text('next') }}",
+    edit: "{{ get_text('edit') }}",
+    delete: "{{ get_text('delete') }}",
+    detail: "{{ get_text('detail') }}",
+    applied: "{{ get_text('applied') }}",
+    not_applied: "{{ get_text('not_applied') }}",
+    apply: "{{ get_text('apply') }}",
+    cancel_apply: "{{ get_text('cancel_apply') }}",
+    confirm_delete: "{{ get_text('confirm_delete') }}",
+    confirm_apply: "{{ get_text('confirm_apply') }}",
+    confirm_cancel_apply: "{{ get_text('confirm_cancel_apply') }}",
+    delete_success: "{{ get_text('delete_success') }}",
+    delete_failed: "{{ get_text('delete_failed') }}",
+    apply_success: "{{ get_text('apply_success') }}",
+    apply_failed: "{{ get_text('apply_failed') }}",
+    cancel_apply_success: "{{ get_text('cancel_apply_success') }}",
+    cancel_apply_failed: "{{ get_text('cancel_apply_failed') }}",
+    unknown_error: "{{ get_text('unknown_error') }}",
+    delete_error: "{{ get_text('delete_error') }}",
+    apply_error: "{{ get_text('apply_error') }}",
+    cancel_apply_error: "{{ get_text('cancel_apply_error') }}",
+    list_load_error: "{{ get_text('list_load_error') }}",
+    applied_audit_cannot_delete: "{{ get_text('applied_audit_cannot_delete') }}",
+    already_applied: "{{ get_text('already_applied') }}",
+    cannot_cancel_not_applied: "{{ get_text('cannot_cancel_not_applied') }}"
+};
+
+document.addEventListener('DOMContentLoaded', function() {
+    // 시작일: 당월 1일, 종료일: 당월 마지막날로 기본값 셋팅
+    const today = new Date();
+    const yyyy = today.getFullYear();
+    const mm = String(today.getMonth() + 1).padStart(2, '0');
+    const firstDay = `${yyyy}-${mm}-01`;
+    const lastDay = new Date(yyyy, today.getMonth() + 1, 0).getDate();
+    const lastDayStr = `${yyyy}-${mm}-${String(lastDay).padStart(2, '0')}`;
+    document.getElementById('startDate').value = firstDay;
+    document.getElementById('endDate').value = lastDayStr;
+    loadWarehouses();
+    loadAuditList(); // 페이지 진입 시 자동조회
+    document.getElementById('searchForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        currentPage = 1; // 검색 시 1페이지로 회귀
+        loadAuditList();
+    });
+});
+
+function loadWarehouses() {
+    fetch('/api/warehouse/options')
+        .then(response => response.json())
+        .then(data => {
+            const select = document.getElementById('searchWarehouse');
+            select.innerHTML = `<option value="">${translations.all}</option>`;
+            // 창고코드 오름차순 정렬
+            data.sort((a, b) => (a.code || '').localeCompare(b.code || ''));
+            data.forEach(wh => {
+                const option = document.createElement('option');
+                option.value = wh.code;
+                option.textContent = `${wh.code} - ${wh.name}`;
+                select.appendChild(option);
+            });
+        })
+        .catch(error => {
+            console.error('Error:', error);
+        });
+}
+
+let currentPage = 1;
+let pageSize = 20;
+
+function renderPagination(totalCount) {
+    const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
+    const paginationDiv = document.getElementById('pagination');
+    if (!paginationDiv) return;
+    let html = '';
+    html += `<button class='btn btn-outline-secondary btn-sm' ${currentPage === 1 ? 'disabled' : ''} onclick='gotoPage(${currentPage - 1})'>${translations.prev}</button> `;
+    html += `<span class='mx-2'>${currentPage} / ${totalPages}</span>`;
+    html += `<button class='btn btn-outline-secondary btn-sm' ${currentPage === totalPages ? 'disabled' : ''} onclick='gotoPage(${currentPage + 1})'>${translations.next}</button>`;
+    paginationDiv.innerHTML = html;
+}
+
+function gotoPage(page) {
+    if (page < 1) page = 1;
+    currentPage = page;
+    loadAuditList();
+}
+
+function editAudit(auditId) {
+    // 실사 수정 페이지로 이동
+    window.location.href = `/inventory/inventory_audit_edit?id=${auditId}`;
+}
+
+function deleteAudit(auditId) {
+    if (!confirm(translations.confirm_delete)) {
+        return;
+    }
+    fetch(`/inventory/api/inventory/audit/delete/${auditId}`, {
+        method: 'DELETE',
+        headers: {
+            'Content-Type': 'application/json'
+        }
+    })
+    .then(res => res.json())
+    .then(result => {
+        if (result.success) {
+            alert(translations.delete_success);
+            loadAuditList(); // 목록 새로고침
+        } else {
+            alert(translations.delete_failed + ': ' + (result.message || translations.unknown_error));
+        }
+    })
+    .catch(error => {
+        console.error('삭제 오류:', error);
+        alert(translations.delete_error);
+    });
+}
+
+function applyAudit(auditId) {
+    if (!confirm(translations.confirm_apply)) return;
+    fetch(`/inventory/api/inventory/audit/apply/${auditId}`, { method: 'POST' })
+        .then(res => res.json())
+        .then(result => {
+            if (result.success) {
+                alert(translations.apply_success);
+                loadAuditList();
+            } else {
+                alert(translations.apply_failed + ': ' + (result.message || translations.unknown_error));
+            }
+        })
+        .catch(error => {
+            console.error('반영 오류:', error);
+            alert(translations.apply_error);
+        });
+}
+
+function cancelApplyAudit(auditId) {
+    if (!confirm(translations.confirm_cancel_apply)) return;
+    fetch(`/inventory/api/inventory/audit/cancel_apply/${auditId}`, { method: 'POST' })
+        .then(res => res.json())
+        .then(result => {
+            if (result.success) {
+                alert(translations.cancel_apply_success);
+                loadAuditList();
+            } else {
+                alert(translations.cancel_apply_failed + ': ' + (result.message || translations.unknown_error));
+            }
+        })
+        .catch(error => {
+            console.error('반영취소 오류:', error);
+            alert(translations.cancel_apply_error);
+        });
+}
+
+function loadAuditList() {
+    // IDs corrected: startDate / endDate
+    const startDate = document.getElementById('startDate').value;
+    const endDate = document.getElementById('endDate').value;
+    const warehouse = document.getElementById('searchWarehouse').value || '';
+    const params = new URLSearchParams({
+        startDate: startDate,   // 서버는 startDate (CamelCase)를 사용
+        endDate: endDate,       // 서버는 endDate (CamelCase)를 사용
+        searchWarehouse: warehouse,
+        page: currentPage,
+        pageSize: pageSize
+    }).toString();
+
+    // Use blueprint-prefixed endpoint
+    fetch("{{ url_for('inventory.inventory_audit_list_api') }}?" + params)
+        .then(r => {
+            if (!r.ok) throw new Error('Network response was not ok: ' + r.status);
+            return r.json();
+        })
+        .then(resp => {
+            if (!resp) {
+                alert(translations.list_load_error);
+                return;
+            }
+            // API returns { totalCount, data }
+            const rows = resp.data || [];
+            const totalCount = resp.totalCount || rows.length;
+            // render table
+            const tbody = document.getElementById('auditListBody');
+            if (tbody) {
+                tbody.innerHTML = '';
+                rows.forEach((row, idx) => {
+                    const seq = (currentPage - 1) * pageSize + idx + 1;
+                    const tr = document.createElement('tr');
+                    // status display
+                    const statusText = row.status === 'Y' ? translations.applied : translations.not_applied;
+                    // action buttons
+                    let actionButtons = `
+                        <button class="btn btn-sm btn-info me-1" onclick="viewDetail(${row.id})">${translations.detail}</button>
+                        <button class="btn btn-sm btn-warning me-1" onclick="editAudit(${row.id})">${translations.edit}</button>
+                        <button class="btn btn-sm btn-danger me-1" onclick="deleteAudit(${row.id})">${translations.delete}</button>
+                    `;
+                    // apply/cancel button
+                    let applyBtn = row.status === 'Y'
+                        ? `<button class="btn btn-sm btn-secondary" onclick="cancelApplyAudit(${row.id})">${translations.cancel_apply}</button>`
+                        : `<button class="btn btn-sm btn-success" onclick="applyAudit(${row.id})">${translations.apply}</button>`;
+
+                    tr.innerHTML = `
+                        <td class="text-center">${seq}</td>
+                        <td class="text-center">${row.id}</td>
+                        <td class="text-center">${row.audit_date}</td>
+                        <td class="text-center">${row.warehouse_code ? row.warehouse_code + (row.warehouse_name ? ' - ' + row.warehouse_name : '') : ''}</td>
+                        <td class="text-center">${row.remarks || ''}</td>
+                        <td class="text-center">${row.createuser || ''}</td>
+                        <td class="text-center">${row.createdate || ''}</td>
+                        <td class="text-center">${actionButtons}</td>
+                        <td class="text-center">${statusText}</td>
+                        <td class="text-center">${applyBtn}</td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            }
+            renderPagination(totalCount);
+        })
+        .catch(e => {
+            console.error(e);
+            alert(translations.list_load_error);
+        });
+}
+
+function viewDetail(auditId) {
+    window.location.href = `/inventory/inventory_audit_detail?id=${auditId}`;
+}
+</script>
+<style>
+.status-applied {
+    color: #1976d2;
+    font-weight: bold;
+}
+
+/* 재고관리 페이지 공통 스타일 */
+.form-control, .form-select {
+    font-size: 0.875rem !important;
+}
+
+.form-label {
+    font-size: 0.875rem !important;
+    font-weight: 500;
+}
+
+.btn-sm {
+    font-size: 0.75rem !important;
+    padding: 0.375rem 0.75rem;
+}
+
+.table th {
+    font-size: 0.875rem !important;
+    font-weight: 600;
+    padding: 0.75rem 0.5rem;
+}
+
+.table td {
+    font-size: 0.875rem !important;
+    padding: 0.5rem;
+}
+
+.pagination .btn {
+    font-size: 0.875rem !important;
+}
+
+.card {
+    border-radius: 0.75rem;
+    box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+}
+
+.card-body {
+    padding: 1.25rem;
+}
+</style>
+{% endblock %}

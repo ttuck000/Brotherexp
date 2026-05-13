@@ -1,0 +1,879 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ get_text('customer_code_management') }} - MES 시스템</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/product_code.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+    <style>
+        /* (원본 스타일 동일, 생략) */
+        /* 간단한 modal 스타일 추가 */
+        .modal-backdrop {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.45);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1200;
+        }
+
+        .modal-dialog {
+            background: #fff;
+            width: 90%;
+            max-width: 900px;
+            border-radius: 8px;
+            padding: 16px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.25);
+        }
+
+        .acc-grid {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 8px;
+        }
+
+            .acc-grid th, .acc-grid td {
+                border: 1px solid #e6e6e6;
+                padding: 8px;
+                text-align: left;
+            }
+
+        .acc-actions {
+            display: flex;
+            gap: 8px;
+            justify-content: flex-end;
+            margin-top: 10px;
+        }
+
+        .btn-small {
+            padding: 6px 10px;
+            border-radius: 6px;
+            cursor: pointer;
+            border: none;
+        }
+
+        .btn-add-row {
+            background: #28a745;
+            color: #fff;
+        }
+
+        .btn-save-modal {
+            background: #0d6efd;
+            color: #fff;
+        }
+
+        .btn-cancel-modal {
+            background: #6c757d;
+            color: #fff;
+        }
+
+        /* master accounts row style */
+        .master-accounts-row td {
+            background: #fbfbfb;
+            padding: 6px 12px;
+            font-size: 0.95rem;
+            color: #333;
+        }
+
+        .master-accounts-label {
+            font-weight: 600;
+            margin-right: 8px;
+        }
+
+        /* Accessibility / bigger UI for account modal and grid */
+        :root{
+            --ui-font-size: 16px;       /* 기본 텍스트 크기 */
+            --ui-input-font-size: 15px; /* input/select 등 */
+            --ui-btn-font-size: 14px;   /* 버튼 텍스트 */
+            --ui-row-padding: 12px;     /* 셀 패딩 */
+            --ui-input-height: 40px;    /* 입력 박스 높이 */
+        }
+
+        /* 모달 전체 크기/타이포그래피 */
+        .modal-dialog {
+            font-size: var(--ui-font-size);
+            padding: 20px;
+        }
+        .modal-dialog h3 {
+            font-size: 1.25rem;
+            margin: 0 0 8px 0;
+        }
+
+        /* 계좌 테이블(그리드) 확대 */
+        .acc-grid th, .acc-grid td {
+            font-size: var(--ui-input-font-size);
+            padding: var(--ui-row-padding);
+            vertical-align: middle;
+        }
+
+        /* 입력/선택 박스 크기 증가 */
+        .acc-grid input[type="text"],
+        .acc-grid select,
+        .acc-grid .acc-account,
+        .acc-grid .acc-remark,
+        .acc-grid .acc-bank {
+            font-size: var(--ui-input-font-size);
+            height: var(--ui-input-height);
+            padding: 6px 10px;
+            box-sizing: border-box;
+        }
+
+        /* 체크박스와 작은 버튼 정렬 및 크기 조정 */
+        .acc-grid input[type="checkbox"] {
+            width: 20px;
+            height: 20px;
+        }
+        .btn-small {
+            font-size: var(--ui-btn-font-size);
+            padding: 8px 12px;
+        }
+        .acc-actions .btn {
+            font-size: var(--ui-btn-font-size);
+            padding: 8px 14px;
+        }
+
+        /* 마스터 계좌 표시 영역 가독성 향상 */
+        .master-accounts-row td {
+            padding: 10px 14px;
+            font-size: var(--ui-input-font-size);
+        }
+
+        /* 작은 화면에서 최소 크기 유지 */
+        @media (max-width: 480px) {
+            :root{
+                --ui-font-size: 14px;
+                --ui-input-font-size: 13px;
+                --ui-btn-font-size: 13px;
+                --ui-input-height: 36px;
+            }
+            .modal-dialog { width: 96%; }
+        }
+
+        /* Pagination: 더 크게, 접근성 좋게 */
+        .pagination {
+            display: flex;
+            gap: 8px;
+            justify-content: flex-end;
+            align-items: center;
+            padding: 12px;
+            margin-top: 12px;
+            font-size: 16px; /* 버튼 텍스트 키움 */
+            background: transparent;
+            /* 충분한 클릭 영역 확보 */
+            --pagination-btn-height: 44px;
+            --pagination-btn-minwidth: 48px;
+        }
+
+        .pagination button {
+            min-width: var(--pagination-btn-minwidth);
+            height: var(--pagination-btn-height);
+            padding: 6px 12px;
+            font-size: 15px;
+            border-radius: 8px;
+            border: 1px solid #dee2e6;
+            background: #ffffff;
+            color: #333;
+            cursor: pointer;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+        }
+
+        /* 활성/호버 상태를 눈에 띄게 */
+        .pagination button:hover:not([disabled]) {
+            background: #0d6efd;
+            color: #fff;
+            border-color: #0d6efd;
+        }
+        .pagination button.active {
+            background: #0d6efd;
+            color: #fff;
+            border-color: #0d6efd;
+        }
+
+        /* 비활성 버튼 가독성 유지 */
+        .pagination button[disabled] {
+            opacity: 0.55;
+            cursor: not-allowed;
+            background: #f8f9fa;
+        }
+
+        /* 모바일 화면에서 적절한 크기 보장 */
+        @media (max-width: 640px) {
+            .pagination {
+                font-size: 14px;
+                padding: 8px;
+                gap: 6px;
+            }
+            .pagination button {
+                --pagination-btn-height: 36px;
+                --pagination-btn-minwidth: 40px;
+                font-size: 13px;
+                padding: 6px 8px;
+            }
+        }
+    </style>
+</head>
+<body>
+        {% include 'nav.html' %}
+
+    <main class="content-area">
+        <div class="form-container">
+            <h2>{{ get_text('customer_code_management') }}</h2>
+
+            <div class="search-section">
+                <form id="searchForm" class="search-form">
+                    <div class="form-group">
+                        <label for="customerCode">{{ get_text('customer_code') }}</label>
+                        <input type="text" id="customerCode" name="customerCode" placeholder="{{ get_text('enter_customer_code') }}">
+                    </div>
+                    <div class="form-group">
+                        <label for="customerName">{{ get_text('customer_name') }}</label>
+                        <input type="text" id="customerName" name="customerName" placeholder="{{ get_text('enter_customer_name') }}">
+                    </div>
+                    <button type="submit" class="search-btn">{{ get_text('search') }}</button>
+                </form>
+            </div>
+
+            <div class="button-section">
+                <button id="newCustomer" class="btn btn-add">{{ get_text('new') }}</button>
+                <button id="editCustomer" class="btn btn-edit">{{ get_text('edit') }}</button>
+                <button id="deleteCustomer" class="btn btn-delete">{{ get_text('delete') }}</button>
+                <button id="viewFinancial" class="btn" style="background-color:#28a745; color:white;">{{ get_text('financial_info') }}</button>
+
+                <!-- 계좌관리 버튼 추가 -->
+                <button id="manageAccounts" class="btn" style="background-color:#ffc107; color:#111;">{{ get_text('vendor_account_manage') }}</button>
+
+                <button id="excelDownload" class="btn" style="background-color:#17a2b8; color:white;">{{ get_text('excel_download') }}</button>
+            </div>
+
+            <div class="grid-section">
+                <table class="product-grid">
+                    <thead>
+                        <tr>
+                            <th>{{ get_text('select') }}</th>
+                            <th>{{ get_text('sequence') }}</th>
+                            <th>{{ get_text('customer_code') }}</th>
+                            <th>{{ get_text('customer_name') }}</th>
+                            <th>{{ get_text('business_number') }}</th>
+                            <th>{{ get_text('president') }}</th>
+                            <th>{{ get_text('kind') }}</th>
+                            <th>{{ get_text('item') }}</th>
+                            <th>{{ get_text('phone') }}</th>
+                            <th>{{ get_text('address') }}</th>
+                            <th>{{ get_text('charger') }}</th>
+                            <th>{{ get_text('charger_phone') }}</th>
+                            <th>{{ get_text('usage') }}</th>
+                            <th>{{ get_text('tax_id') }}</th>
+                            <th>{{ get_text('is_master') }}</th>
+                        </tr>
+                    </thead>
+                    <tbody id="customerTableBody"></tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+
+    <!-- 계좌관리 모달 -->
+    <div id="accountModal" style="display:none;">
+        <div class="modal-backdrop" id="accountModalBackdrop">
+            <div class="modal-dialog" role="dialog" aria-modal="true">
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <h3>{{ get_text('vendor_account_manage') }}</h3>
+                    <button id="closeAccountModal" class="btn btn-cancel-modal">✕</button>
+                </div>
+
+                <div>
+                    <div style="display:flex; gap:8px; align-items:center; margin-top:8px;">
+                        <strong>{{ get_text('customer_code') }}:</strong>
+                        <span id="accModalVdCode" style="font-weight:700;"></span>
+                        <button id="addAccRow" class="btn btn-small btn-add-row">{{ get_text('add_row') }}</button>
+                    </div>
+
+                    <table class="acc-grid" id="accTable">
+                        <thead>
+                            <tr>
+                                <th>{{ get_text('bank') or 'bank' }}</th>
+                                <th>{{ get_text('account') or 'Account' }}</th>
+                                <th>{{ get_text('is_master') or '대표계좌' }}</th>
+                                <th>{{ get_text('remark') }}</th>
+                                <th>{{ get_text('actions') }}</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+
+                    <div class="acc-actions">
+                        <button id="saveAccBtn" class="btn btn-save-modal">{{ get_text('save') }}</button>
+                        <button id="cancelAccBtn" class="btn btn-cancel-modal">{{ get_text('cancel') }}</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <footer>
+        <p>&copy; 2024 MES 시스템. All rights reserved.</p>
+    </footer>
+
+    <script>
+        // 다국어 텍스트를 JS에서 사용할 상수로 주입
+        const TXT_PREV = "{{ get_text('prev') }}";
+        const TXT_NEXT = "{{ get_text('next') }}";
+        const TXT_NO_DATA = "{{ get_text('no_data_found') }}";
+        const TXT_LOADING = "{{ get_text('loading') }}";
+        const TXT_MASTER_LABEL = "{{ get_text('is_master') }}";
+
+        let currentPage = 1;
+        let itemsPerPage = 20;
+        let allCustomers = [];
+        let totalPages = 1;
+
+        document.addEventListener('DOMContentLoaded', function() {
+            loadCustomerTypes();
+            document.getElementById('searchForm').addEventListener('submit', function(e) {
+                e.preventDefault();
+                currentPage = 1;
+                searchCustomerTypes();
+            });
+            document.getElementById('newCustomer').addEventListener('click', function() {
+                window.location.href = '/customer_code_expense/add';
+            });
+            document.getElementById('editCustomer').addEventListener('click', function() {
+                const selectedRow = document.querySelector('input[type="checkbox"]:checked');
+                if (selectedRow) {
+                    const code = selectedRow.closest('tr').querySelector('td:nth-child(3)').textContent;
+                    window.location.href = `/customer_code_expense/edit/${code}`;
+                } else {
+                    alert("{{ get_text('select_customer_to_edit') }}");
+                }
+            });
+            document.getElementById('deleteCustomer').addEventListener('click', function() {
+                const selectedCheckboxes = document.querySelectorAll('input[type="checkbox"]:checked');
+                if (selectedCheckboxes.length === 0) {
+                    alert("{{ get_text('select_customer_to_delete') }}");
+                    return;
+                }
+                if (confirm("{{ get_text('confirm_delete_customer') }}")) {
+                    const codes = Array.from(selectedCheckboxes).map(checkbox =>
+                        checkbox.closest('tr').querySelector('td:nth-child(3)').textContent
+                    );
+                    deleteCustomerTypes(codes);
+                }
+            });
+            document.getElementById('viewFinancial').addEventListener('click', function() {
+                const selectedRow = document.querySelector('input[type="checkbox"]:checked');
+                if (selectedRow) {
+                    const code = selectedRow.closest('tr').querySelector('td:nth-child(3)').textContent;
+                    window.location.href = `/customer_code_expense/financial/${code}`;
+                } else {
+                    alert("{{ get_text('select_customer_for_financial') }}");
+                }
+            });
+            // 서버측 엑셀 다운로드 트리거는 이 메뉴에서 사용하지 않음.
+            // 기본 동작 차단하여 중복 다운로드(서버 + 클라이언트)를 방지합니다.
+            document.getElementById('excelDownload').addEventListener('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                // 실제 엑셀 생성/다운로드는 하단의 클라이언트 핸들러에서 처리됩니다.
+            });
+
+            // 계좌관리 버튼
+            document.getElementById('manageAccounts').addEventListener('click', function() {
+                const selectedRow = document.querySelector('input[type="checkbox"]:checked');
+                if (!selectedRow) { alert("{{ get_text('select_customer_to_edit') }}"); return; }
+                const vd = selectedRow.closest('tr').querySelector('td:nth-child(3)').textContent.trim();
+                openAccountModal(vd);
+            });
+
+            // modal buttons
+            document.getElementById('closeAccountModal').addEventListener('click', closeAccountModal);
+            document.getElementById('cancelAccBtn').addEventListener('click', closeAccountModal);
+            document.getElementById('addAccRow').addEventListener('click', addAccountRow);
+            document.getElementById('saveAccBtn').addEventListener('click', saveAccounts);
+            document.getElementById('accountModalBackdrop').addEventListener('click', function(e){
+                if (e.target === this) closeAccountModal();
+            });
+        });
+
+        // --- account modal logic ---
+        function openAccountModal(vd_code) {
+            document.getElementById('accModalVdCode').textContent = vd_code;
+            document.getElementById('accountModal').style.display = 'block';
+            fetch(`/api/customer_code_expense/accounts/${encodeURIComponent(vd_code)}`, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+                .then(r => r.json())
+                .then(data => {
+                    renderAccountRows(data || []);
+                })
+                .catch(err => {
+                    console.error(err);
+                    renderAccountRows([]);
+                });
+        }
+        function closeAccountModal() {
+            document.getElementById('accountModal').style.display = 'none';
+            const tbody = document.querySelector('#accTable tbody');
+            tbody.innerHTML = '';
+        }
+        function renderAccountRows(rows) {
+            const tbody = document.querySelector('#accTable tbody');
+            tbody.innerHTML = '';
+            // 서버 필드명 차이 대비: 'bank' 또는 'vd_bank'
+            rows.forEach(r => appendAccountRow(r.bank || r.vd_bank || '', r.vd_account || r.account || '', r.is_master, r.remark));
+        }
+        function appendAccountRow(bank='', account='', is_master='', remark='') {
+            const tbody = document.querySelector('#accTable tbody');
+            const tr = document.createElement('tr');
+
+            // 고정 은행 목록
+            const fixedBanks = ['BBL', 'BAY', 'K-BANK', 'GBS', 'GHB', 'SCB', 'TMB', 'KTB'];
+            const bankOptions = fixedBanks
+                .map(b => `<option value="${escapeHtml(b)}" ${ (b === (bank || '')) ? 'selected' : '' }>${escapeHtml(b)}</option>`)
+                .join('');
+
+            tr.innerHTML = `
+                <td>
+                    <select class="acc-bank">
+                        <option value="">선택</option>
+                        ${bankOptions}
+                    </select>
+                </td>
+                <td><input type="text" class="acc-account" value="${escapeHtml(account || '')}" /></td>
+                <td style="text-align:center;"><input type="checkbox" class="acc-master" ${ (is_master && (is_master==='Y' || is_master==='1' || is_master===true)) ? 'checked' : '' } /></td>
+                <td><input type="text" class="acc-remark" value="${escapeHtml(remark || '')}" /></td>
+                <td style="text-align:center;"><button type="button" class="btn btn-small" onclick="this.closest('tr').remove()">삭제</button></td>
+            `;
+            tbody.appendChild(tr);
+
+            // 서버에서 온 값이 고정 목록에 없으면 옵션으로 추가하여 선택 상태로 둠 (데이터 보존)
+            const select = tr.querySelector('.acc-bank');
+            if (bank && !fixedBanks.includes(bank)) {
+                const opt = document.createElement('option');
+                opt.value = bank;
+                opt.textContent = bank;
+                opt.selected = true;
+                select.appendChild(opt);
+            }
+        }
+        function addAccountRow(){ appendAccountRow(); }
+
+        function saveAccounts(){
+            const vd_code = document.getElementById('accModalVdCode').textContent.trim();
+            if (!vd_code) return alert("VD code missing");
+            const rows = Array.from(document.querySelectorAll('#accTable tbody tr'));
+            const accounts = rows.map(tr => {
+                const bank = (tr.querySelector('.acc-bank') && tr.querySelector('.acc-bank').value.trim()) || '';
+                const acc = (tr.querySelector('.acc-account') && tr.querySelector('.acc-account').value.trim()) || '';
+                const is_master = tr.querySelector('.acc-master').checked ? 'Y' : 'N';
+                const remark = (tr.querySelector('.acc-remark') && tr.querySelector('.acc-remark').value.trim()) || '';
+                return { bank: bank, vd_account: acc, is_master: is_master, remark: remark };
+            }).filter(a => a.vd_account !== '');
+            fetch('/api/customer_code_expense/accounts/save', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ vd_code: vd_code, accounts: accounts })
+            })
+            .then(r=>r.json())
+            .then(j=>{
+                if (j.success) {
+                    alert("{{ get_text('save_success') }}");
+                    closeAccountModal();
+                } else {
+                    alert(j.error || "{{ get_text('save_failed') }}");
+                }
+            })
+            .catch(e=>{
+                console.error(e);
+                alert("{{ get_text('save_failed') }}");
+            });
+        }
+
+        // escape for safety in innerHTML
+        function escapeHtml(s){ return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+        // fetch master accounts and render into given cell
+        function fetchAndRenderMasterAccounts(vd_code, cell, append=false) {
+            if (!vd_code) { if (!append) cell.innerHTML = ''; return; }
+            if (!append) cell.innerHTML = TXT_LOADING;
+
+            // 응답 필드명 후보 (서버 응답 차이 대비)
+            const bankKeys = ['bank','vd_bank','vdbank','bank_name','bank_nm','bank_name_ko','bankCode','bank_code'];
+            const accKeys  = ['vd_account','vdaccount','account','account_no','acct_no','acct'];
+
+            function findField(obj, keys) {
+                if (!obj) return '';
+                for (const k of keys) {
+                    if (Object.prototype.hasOwnProperty.call(obj, k) && obj[k] != null) {
+                        return String(obj[k]).trim();
+                    }
+                }
+                return '';
+            }
+
+            fetch(`/api/customer_code_expense/accounts/${encodeURIComponent(vd_code)}`, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+                .then(r => r.json())
+                .then(rows => {
+                    console.log('[DEBUG] master accounts for', vd_code, rows);
+                    if (!rows || rows.length === 0) {
+                        if (!append) cell.innerHTML = '';
+                        return;
+                    }
+
+                    const masters = rows
+                        .filter(r => {
+                            const v = r.is_master;
+                            if (v === true) return true;
+                            const s = String(v || '').trim().toLowerCase();
+                            return s === 'y' || s === '1' || s === 'true';
+                        })
+                        .map(r => {
+                            const bankRaw = findField(r, bankKeys);
+                            const accRaw  = findField(r, accKeys);
+                            const bank = escapeHtml(bankRaw || '');
+                            const acc  = escapeHtml(accRaw || '');
+                            if (!acc) return '';
+                            return bank ? `${bank}-${acc}` : acc;
+                        })
+                        .filter(v => v && v.trim() !== '');
+
+                    if (masters.length === 0) {
+                        if (!append) cell.innerHTML = '';
+                        return;
+                    }
+
+                    const masterHtml = masters.join(', ');
+                    if (append) {
+                        cell.innerHTML = cell.innerHTML.trim()
+                            ? `${cell.innerHTML} <span style="margin-left:8px;">${masterHtml}</span>`
+                            : masterHtml;
+                    } else {
+                        cell.innerHTML = masterHtml;
+                    }
+                })
+                .catch(err => {
+                    console.error('master accounts load error', err);
+                    if (!append) cell.innerHTML = '';
+                });
+        }
+
+        // 기존 customer list functions remain unchanged...
+        function loadCustomerTypes() {
+            fetch('/customer_code_expense', { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+                .then(response => response.json())
+                .then(data => {
+                    allCustomers = data;
+                    totalPages = Math.ceil(allCustomers.length / itemsPerPage);
+                    renderCustomers();
+                    renderPagination();
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert("{{ get_text('failed_to_load_customer') }}");
+                });
+        }
+
+        function searchCustomerTypes() {
+            const code = document.getElementById('customerCode').value;
+            const name = document.getElementById('customerName').value;
+            fetch(`/customer_code_expense?customerCode=${encodeURIComponent(code)}&customerName=${encodeURIComponent(name)}`, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+                .then(response => response.json())
+                .then(data => {
+                    allCustomers = data;
+                    totalPages = Math.ceil(allCustomers.length / itemsPerPage);
+                    renderCustomers();
+                    renderPagination();
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert("{{ get_text('search_failed') }}");
+                });
+        }
+
+        function renderCustomers() {
+            const tbody = document.getElementById('customerTableBody');
+            tbody.innerHTML = '';
+            if (!allCustomers || allCustomers.length === 0) {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `<td colspan="15" style="text-align:center;">${TXT_NO_DATA}</td>`;
+                tbody.appendChild(tr);
+                return;
+            }
+            const startIndex = (currentPage - 1) * itemsPerPage;
+            const endIndex = Math.min(startIndex + itemsPerPage, allCustomers.length);
+            for (let i = startIndex; i < endIndex; i++) {
+                const customer = allCustomers[i];
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td><input type="checkbox"></td>
+                    <td>${i - startIndex + 1}</td>
+                    <td>${escapeHtml(customer.vd_code || '')}</td>
+                    <td>${escapeHtml(customer.vd_name || '')}</td>
+                    <td>${escapeHtml(customer.vd_biz_number || '')}</td>
+                    <td>${escapeHtml(customer.vd_president || '')}</td>
+                    <td>${escapeHtml(customer.vd_kind || '')}</td>
+                    <td>${escapeHtml(customer.vd_item || '')}</td>
+                    <td>${escapeHtml(customer.vd_phone || '')}</td>
+                    <td>${escapeHtml(customer.vd_address || '')}</td>
+                    <td>${escapeHtml(customer.vd_charger || '')}</td>
+                    <td>${escapeHtml(customer.vd_charger_phone || '')}</td>
+                    <td>${escapeHtml(customer.usage || 'Y')}</td>
+                    <td>${escapeHtml(customer.vd_tax_id || '')}</td>
+                    <td class="master-cell"></td>
+                `;
+                tbody.appendChild(tr);
+
+                // is_master 컬럼 셀에 마스터 계좌 로드
+                const masterTd = tr.querySelector('td.master-cell');
+                fetchAndRenderMasterAccounts(customer.vd_code, masterTd, false);
+            }
+        }
+
+        function renderPagination() {
+            let pagination = document.getElementById('pagination');
+            if (!pagination) {
+                pagination = document.createElement('div');
+                pagination.id = 'pagination';
+                pagination.className = 'pagination';
+                document.querySelector('.grid-section').appendChild(pagination);
+            }
+
+            // 디버그 정보 추가
+            console.log('Rendering pagination - totalPages:', totalPages, 'currentPage:', currentPage);
+
+            pagination.innerHTML = '';
+
+            // 이전 버튼
+            const prevBtn = document.createElement('button');
+            prevBtn.textContent = TXT_PREV;
+            prevBtn.disabled = currentPage === 1;
+            prevBtn.addEventListener('click', () => {
+                if (currentPage > 1) {
+                    currentPage--;
+                    renderCustomers();
+                    renderPagination();
+                }
+            });
+            pagination.appendChild(prevBtn);
+
+            // 페이지 번호 버튼들 (최소 1페이지는 표시)
+            const maxPages = Math.max(1, totalPages);
+            for (let i = 1; i <= maxPages; i++) {
+                const pageBtn = document.createElement('button');
+                pageBtn.textContent = i;
+                pageBtn.classList.toggle('active', i === currentPage);
+                pageBtn.addEventListener('click', () => {
+                    currentPage = i;
+                    renderCustomers();
+                    renderPagination();
+                });
+                pagination.appendChild(pageBtn);
+            }
+
+            // 다음 버튼
+            const nextBtn = document.createElement('button');
+            nextBtn.textContent = TXT_NEXT;
+            nextBtn.disabled = currentPage === totalPages || totalPages <= 1;
+            nextBtn.addEventListener('click', () => {
+                if (currentPage < totalPages) {
+                    currentPage++;
+                    renderCustomers();
+                    renderPagination();
+                }
+            });
+            pagination.appendChild(nextBtn);
+        }
+
+        function deleteCustomerTypes(codes) {
+            fetch('/customer_code_expense/delete', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ codes: codes })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert("{{ get_text('customer_deleted') }}");
+                    loadCustomerTypes();
+                } else {
+                    alert(data.error || "{{ get_text('delete_failed') }}");
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert("{{ get_text('delete_failed') }}");
+            });
+        }
+
+        /* CSV 다운로드 유틸 */
+        function csvEscape(v) {
+            if (v === null || v === undefined) return '';
+            let s = String(v);
+            // 따옴표가 있으면 이스케이프
+            if (s.indexOf('"') !== -1) s = s.replace(/"/g, '""');
+            // CSV 필드로 감싸기
+            if (s.indexOf(',') !== -1 || s.indexOf('\n') !== -1 || s.indexOf('"') !== -1) {
+                return `"${s}"`;
+            }
+            return s;
+        }
+
+        function downloadBlob(content, filename, mime='text/csv;charset=utf-8') {
+            const blob = new Blob([content], { type: mime });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            URL.revokeObjectURL(url);
+        }
+
+        /* 화면에 로드된 allCustomers 배열을 CSV로 만들어 다운 */
+        async function downloadCustomersAsCsv() {
+            if (!Array.isArray(allCustomers) || allCustomers.length === 0) {
+                alert("{{ get_text('no_data_found') }}");
+                return;
+            }
+
+            // CSV 헤더와 대응되는 필드명 매핑 (원하는 컬럼을 수정하세요)
+            const columns = [
+                { label: "{{ get_text('customer_code') }}", field: "vd_code" },
+                { label: "{{ get_text('customer_name') }}", field: "vd_name" },
+                { label: "{{ get_text('business_number') }}", field: "vd_biz_number" },
+                { label: "{{ get_text('president') }}", field: "vd_president" },
+                { label: "{{ get_text('kind') }}", field: "vd_kind" },
+                { label: "{{ get_text('item') }}", field: "vd_item" },
+                { label: "{{ get_text('phone') }}", field: "vd_phone" },
+                { label: "{{ get_text('address') }}", field: "vd_address" },
+                { label: "{{ get_text('charger') }}", field: "vd_charger" },
+                { label: "{{ get_text('charger_phone') }}", field: "vd_charger_phone" },
+                { label: "{{ get_text('usage') }}", field: "usage" },
+                { label: "{{ get_text('tax_id') }}", field: "vd_tax_id" }
+                // master 계좌 포함하고 싶으면 여기 추가 가능 (추가 fetch 필요)
+            ];
+
+            const header = columns.map(c => csvEscape(c.label)).join(',');
+            const rows = [header];
+
+            for (const item of allCustomers) {
+                const line = columns.map(c => csvEscape(item[c.field] ?? '')).join(',');
+                rows.push(line);
+            }
+
+            const csvContent = '\uFEFF' + rows.join('\n'); // BOM 추가 (Excel에서 한글 깨짐 방지)
+            const ts = new Date().toISOString().slice(0,19).replace(/[:T]/g,'_');
+            downloadBlob(csvContent, `customers_${ts}.csv`);
+        }
+
+        /* 엑셀(xls) 다운로드: 기존 리스너 제거 후 클라이언트에서 xls 생성 (business 숨김) */
+        const excelBtn = document.getElementById('excelDownload');
+        if (excelBtn) {
+            // 기존 이벤트 리스너 제거: 버튼을 복제해서 교체
+            const newBtn = excelBtn.cloneNode(true);
+            excelBtn.parentNode.replaceChild(newBtn, excelBtn);
+
+            newBtn.addEventListener('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+
+                if (!Array.isArray(allCustomers) || allCustomers.length === 0) {
+                    alert("{{ get_text('no_data_found') }}");
+                    return;
+                }
+
+                // 컬럼 정의 (business 숨김) + 마스터계좌 컬럼 추가
+                const columns = [
+                    { label: "{{ get_text('customer_code') }}", field: "vd_code" },
+                    { label: "{{ get_text('customer_name') }}", field: "vd_name" },
+                    { label: "{{ get_text('president') }}", field: "vd_president" },
+                    { label: "{{ get_text('kind') }}", field: "vd_kind" },
+                    { label: "{{ get_text('item') }}", field: "vd_item" },
+                    { label: "{{ get_text('phone') }}", field: "vd_phone" },
+                    { label: "{{ get_text('address') }}", field: "vd_address" },
+                    { label: "{{ get_text('charger') }}", field: "vd_charger" },
+                    { label: "{{ get_text('charger_phone') }}", field: "vd_charger_phone" },
+                    { label: "{{ get_text('usage') }}", field: "usage" },
+                    { label: "{{ get_text('tax_id') }}", field: "vd_tax_id" },
+                    { label: "{{ get_text('is_master') }}", field: "master_accounts" } // 추가된 칼럼
+                ];
+
+                // 각 vd_code별로 master 계좌를 병렬 조회
+                const bankKeys = ['bank','vd_bank','vdbank','bank_name','bank_nm','bank_name_ko','bankCode','bank_code'];
+                const accKeys  = ['vd_account','vdaccount','account','account_no','acct_no','acct'];
+
+                function findField(obj, keys) {
+                    if (!obj) return '';
+                    for (const k of keys) {
+                        if (Object.prototype.hasOwnProperty.call(obj, k) && obj[k] != null) return String(obj[k]).trim();
+                    }
+                    return '';
+                }
+
+                const codes = allCustomers.map(c => c.vd_code || '');
+                const fetches = codes.map(code => {
+                    if (!code) return Promise.resolve([]);
+                    return fetch(`/api/customer_code_expense/accounts/${encodeURIComponent(code)}`, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+                        .then(r => r.ok ? r.json() : [])
+                        .catch(() => []);
+                });
+
+                Promise.all(fetches).then(results => {
+                    // results 배열은 allCustomers와 동일 인덱스 순서
+                    const masterByIndex = results.map(rows => {
+                        if (!Array.isArray(rows) || rows.length === 0) return '';
+                        const masters = rows.filter(r => {
+                            const v = r.is_master;
+                            if (v === true) return true;
+                            const s = String(v || '').trim().toLowerCase();
+                            return s === 'y' || s === '1' || s === 'true';
+                        }).map(r => {
+                            const bank = findField(r, bankKeys);
+                            const acc = findField(r, accKeys);
+                            if (!acc) return '';
+                            return bank ? `${bank}-${acc}` : acc;
+                        }).filter(x => x && x.trim() !== '');
+                        return masters.join(', ');
+                    });
+
+                    // 테이블 HTML 생성 (마스터 계좌 값은 masterByIndex 사용)
+                    let table = '<table><thead><tr>';
+                    table += columns.map(c => `<th>${escapeHtml(c.label)}</th>`).join('');
+                    table += '</tr></thead><tbody>';
+                    for (let i = 0; i < allCustomers.length; i++) {
+                        const item = allCustomers[i];
+                        const masterVal = masterByIndex[i] || '';
+                        table += '<tr>' + columns.map(c => {
+                            const v = (c.field === 'master_accounts') ? masterVal : (item[c.field] ?? '');
+                            return `<td>${escapeHtml(v)}</td>`;
+                        }).join('') + '</tr>';
+                    }
+                    table += '</tbody></table>';
+
+                    const html = `
+                        <html xmlns:o="urn:schemas-microsoft-com:office:office"
+                              xmlns:x="urn:schemas-microsoft-com:office:excel">
+                        <head><meta charset="utf-8"></head><body>${table}</body></html>`;
+
+                    const blob = new Blob([html], { type: 'application/vnd.ms-excel;charset=utf-8' });
+                    const ts = new Date().toISOString().slice(0,19).replace(/[:T]/g,'_');
+                    const filename = `customers_${ts}.xls`;
+
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = filename;
+                    document.body.appendChild(a);
+                    a.click();
+                    a.remove();
+                    URL.revokeObjectURL(url);
+                }).catch(err => {
+                    console.error('master fetch error', err);
+                    alert("{{ get_text('download_failed') }}");
+                });
+            }, { passive: false });
+        }
+    </script>
+</body>
+</html>

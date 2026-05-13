@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ get_text('currency_code_new') }} - MES 시스템</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/product_code.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+    <style>
+    /* Content Area Styles- SMALL */
+.content-area {
+    max-width: 1200px;
+    margin: 20px auto;
+    padding: 20px;
+    background-color: white;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    border-radius: 4px;
+}
+
+
+        .form-container {
+            background-color: #fff;
+            border-radius: 8px;
+            padding: 30px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        h2 {
+            font-size: 22px;
+            margin-bottom: 25px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #007bff;
+            color: #2c3e50;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 500;
+            color: #495057;
+            font-size: 14px;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid #ced4da;
+            border-radius: 4px;
+            font-size: 14px;
+            line-height: 1.5;
+            transition: border-color 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+        }
+
+        .form-group input:focus {
+            border-color: #007bff;
+            box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+            outline: none;
+        }
+
+        .checkbox-group {
+            margin-top: 5px;
+        }
+
+        .checkbox-group label {
+            display: inline-flex;
+            align-items: center;
+            margin-right: 15px;
+            cursor: pointer;
+        }
+
+        .checkbox-group input[type="checkbox"] {
+            width: auto;
+            margin-right: 5px;
+        }
+
+        .button-group {
+            margin-top: 30px;
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+        }
+
+        .btn {
+            padding: 8px 20px;
+            border: none;
+            border-radius: 4px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease-in-out;
+            min-width: 100px;
+        }
+
+        .btn-save {
+            background-color: #007bff;
+            color: white;
+        }
+
+        .btn-cancel {
+            background-color: #6c757d;
+            color: white;
+        }
+
+        .btn:hover {
+            transform: translateY(-1px);
+        }
+
+        .btn-save:hover {
+            background-color: #0056b3;
+        }
+
+        .btn-cancel:hover {
+            background-color: #5a6268;
+        }
+
+        .error-message {
+            color: #dc3545;
+            font-size: 13px;
+            margin-top: 5px;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <nav class="main-nav">
+        {% include 'nav.html' %}
+    </nav>
+
+    <main class="content-area">
+        <div class="form-container">
+            <h2>{{ get_text('currency_code_new') }}</h2>
+            
+            <form id="currencyForm">
+                <div class="form-group">
+                    <label for="currencyCode">{{ get_text('currency_code') }} *</label>
+                    <input type="text" id="currencyCode" name="currencyCode" required>
+                    <div class="error-message" id="codeError">{{ get_text('enter_currency_code') }}</div>
+                </div>
+
+                <div class="form-group">
+                    <label for="currencyName">{{ get_text('currency_name') }} *</label>
+                    <input type="text" id="currencyName" name="currencyName" required>
+                    <div class="error-message" id="nameError">{{ get_text('enter_currency_name') }}</div>
+                </div>
+
+                <div class="form-group">
+                    <label for="exchangeRate">{{ get_text('exchange_rate') }}</label>
+                    <input type="number" id="exchangeRate" name="exchangeRate" step="0.01" value="0">
+                </div>
+
+                <div class="form-group">
+                    <label>{{ get_text('base_currency') }}</label>
+                    <div class="checkbox-group">
+                        <label>
+                            <input type="checkbox" id="baseYn" name="baseYn">
+                            {{ get_text('base_currency') }}
+                        </label>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>{{ get_text('usage') }}</label>
+                    <div class="checkbox-group">
+                        <label>
+                            <input type="checkbox" id="usage" name="usage" checked>
+                            {{ get_text('usage') }}
+                        </label>
+                    </div>
+                </div>
+
+                <div class="button-group">
+                    <button type="submit" class="btn btn-save">{{ get_text('save') }}</button>
+                    <button type="button" class="btn btn-cancel" onclick="history.back()">{{ get_text('cancel') }}</button>
+                </div>
+            </form>
+        </div>
+    </main>
+
+    <footer>
+        <p>&copy; 2024 MES 시스템. All rights reserved.</p>
+    </footer>
+
+    <script>
+        document.getElementById('currencyForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            // 입력값 검증
+            const code = document.getElementById('currencyCode').value.trim();
+            const name = document.getElementById('currencyName').value.trim();
+            
+            if (!code) {
+                document.getElementById('codeError').style.display = 'block';
+                return;
+            }
+            
+            if (!name) {
+                document.getElementById('nameError').style.display = 'block';
+                return;
+            }
+            
+            // 데이터 준비
+            const formData = {
+                code: code,
+                name: name,
+                exchangeRate: parseFloat(document.getElementById('exchangeRate').value) || 0,
+                baseYn: document.getElementById('baseYn').checked ? 'Y' : 'N',
+                usage: document.getElementById('usage').checked ? 'Y' : 'N'
+            };
+            
+            // API 호출
+            fetch('/currency/save', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(formData)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert("{{ get_text('currency_save_success') }}");
+                    window.location.href = data.redirect;
+                } else {
+                    alert("{{ get_text('currency_save_failed') }}");
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert("{{ get_text('save_error') }}");
+            });
+        });
+
+        // 에러 메시지 초기화
+        document.getElementById('currencyCode').addEventListener('input', function() {
+            document.getElementById('codeError').style.display = 'none';
+        });
+
+        document.getElementById('currencyName').addEventListener('input', function() {
+            document.getElementById('nameError').style.display = 'none';
+        });
+    </script>
+
+    <script>
+        document.querySelectorAll('.nav-item').forEach(item => {
+            item.addEventListener('mouseover', function() {
+                this.querySelector('.submenu').style.display = 'block';
+            });
+            
+            item.addEventListener('mouseout', function() {
+                this.querySelector('.submenu').style.display = 'none';
+            });
+        });
+    </script>
+</body>
+</html> 

@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="text-center">{{ get_text('edit_profile') }}</h3>
+                </div>
+                <div class="card-body">
+                    <form method="POST" action="{{ url_for('user_profile') }}">
+                        <div class="mb-3">
+                            <label for="username" class="form-label">{{ get_text('username') }}</label>
+                            <input type="text" class="form-control" id="username" name="username" value="{{ user.username }}" required placeholder="{{ get_text('enter_username') }}">
+                        </div>
+                        <div class="mb-3">
+                            <label for="email" class="form-label">{{ get_text('email') }}</label>
+                            <input type="email" class="form-control" id="email" name="email" value="{{ user.email }}" required placeholder="{{ get_text('enter_email') }}">
+                        </div>
+                        <div class="mb-3">
+                            <label for="current_password" class="form-label">{{ get_text('current_password') }}</label>
+                            <input type="password" class="form-control" id="current_password" name="current_password" placeholder="{{ get_text('enter_current_password') }}">
+                        </div>
+                        <div class="mb-3">
+                            <label for="new_password" class="form-label">{{ get_text('new_password') }}</label>
+                            <input type="password" class="form-control" id="new_password" name="new_password" placeholder="{{ get_text('enter_new_password') }}">
+                        </div>
+                        <div class="mb-3">
+                            <label for="confirm_password" class="form-label">{{ get_text('confirm_new_password') }}</label>
+                            <input type="password" class="form-control" id="confirm_password" name="confirm_password" placeholder="{{ get_text('enter_confirm_password') }}">
+                        </div>
+                        <div class="text-center">
+                            <button type="submit" class="btn btn-primary">{{ get_text('update_info') }}</button>
+                            <a href="{{ url_for('home') }}" class="btn btn-secondary">{{ get_text('cancel') }}</a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 

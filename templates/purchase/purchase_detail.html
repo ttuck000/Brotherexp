@@ -1,0 +1,295 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="content-area">
+    <h2>{{ get_text('purchase_detail') }}</h2>
+
+    <div class="form-container">
+        <h3>{{ get_text('basic_info') }}</h3>
+        <div class="form-row">
+            <div class="form-group">
+                <label for="purchaseDate">{{ get_text('purchase_date') }}:</label>
+                <p id="purchaseDate"></p>
+            </div>
+            <div class="form-group">
+                <label for="purchaseNo">{{ get_text('purchase_no') }}:</label>
+                <p id="purchaseNo"></p>
+            </div>
+            <div class="form-group">
+                <label for="vendorName">{{ get_text('vendor') }}:</label>
+                <p id="vendorName"></p>
+            </div>
+        </div>
+        <div class="form-row">
+            <div class="form-group">
+                <label for="warehouseName">{{ get_text('warehouse') }}:</label>
+                <p id="warehouseName"></p>
+            </div>
+            <div class="form-group">
+                <label for="currencyName">{{ get_text('currency') }}:</label>
+                <p id="currencyName"></p>
+            </div>
+            <div class="form-group">
+                <label for="exchangeRate">{{ get_text('exchange_rate') }}:</label>
+                <p id="exchangeRate"></p>
+            </div>
+        </div>
+        <div class="form-row">
+            <div class="form-group">
+                <label for="paymentMethod">{{ get_text('payment_method') }}:</label>
+                <p id="paymentMethod"></p>
+            </div>
+             <div class="form-group">
+                <label for="paymentDueDate">{{ get_text('payment_due_date') }}:</label>
+                <p id="paymentDueDate"></p>
+            </div>
+             <div class="form-group">
+                <label for="status">{{ get_text('status') }}:</label>
+                <p id="status"></p>
+            </div>
+        </div>
+        <div class="form-row">
+             <div class="form-group" style="flex: 2;">
+                <label for="remarks">{{ get_text('remarks') }}:</label>
+                <p id="remarks"></p>
+            </div>
+        </div>
+    </div>
+
+    <div class="form-container" style="margin-top: 20px;">
+        <h3>{{ get_text('item_info') }}</h3>
+         <div class="item-details">
+            <table class="item-table">
+                <thead>
+                    <tr>
+                        <th>{{ get_text('item_code') }}</th>
+                        <th>{{ get_text('item_name') }}</th>
+                        <th>{{ get_text('item_spec') }}</th>
+                        <th>{{ get_text('unit') }}</th>
+                        <th>{{ get_text('quantity') }}</th>
+                        <th>{{ get_text('unit_price') }}</th>
+                        <th>{{ get_text('amount') }}</th>
+                        <th>{{ get_text('remark') }}</th>
+                    </tr>
+                </thead>
+                <tbody id="itemTableBody">
+                    <!-- 품목 상세 정보가 여기에 로드됩니다 -->
+                </tbody>
+                 <tfoot>
+                    <tr class="summary-row">
+                        <td colspan="4" class="text-right"><strong>{{ get_text('total_quantity') }}:</strong></td>
+                        <td id="totalQuantity"></td>
+                        <td></td>
+                        <td id="totalAmount"></td>
+                        <td></td>
+                    </tr>
+                </tfoot>
+            </table>
+         </div>
+    </div>
+
+    <div class="button-section">
+        <button type="button" class="btn btn-secondary" onclick="window.history.back()">{{ get_text('previous') }}</button>
+    </div>
+
+</div>
+
+<style>
+    .content-area {
+        max-width: 1200px;
+        margin: 20px auto;
+        padding: 20px;
+        background-color: white;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        border-radius: 4px;
+    }
+    .form-container {
+        background-color: #f8f9fa;
+        border-radius: 8px;
+        padding: 20px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    }
+    h2, h3 {
+        color: #007bff;
+        border-bottom: 1px solid #007bff;
+        padding-bottom: 10px;
+        margin-bottom: 20px;
+    }
+     h3 {
+        font-size: 18px;
+        border-bottom: 1px solid #ced4da;
+        color: #343a40;
+     }
+    .form-row {
+        display: flex;
+        flex-wrap: wrap;
+        margin-bottom: 15px;
+        gap: 20px;
+    }
+    .form-group {
+        flex: 1;
+        min-width: 200px;
+        display: flex;
+        flex-direction: column;
+    }
+    .form-group label {
+        font-weight: 600;
+        color: #555;
+        margin-bottom: 5px;
+        font-size: 14px;
+    }
+    .form-group p {
+        margin: 0;
+        padding: 8px 0;
+        font-size: 14px;
+        color: #333;
+         word-break: break-word;
+    }
+    .item-details table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 15px;
+    }
+    .item-details th, .item-details td {
+        border: 1px solid #dee2e6;
+        padding: 10px;
+        text-align: left;
+        font-size: 13px;
+    }
+    .item-details th {
+        background-color: #e9ecef;
+        font-weight: 600;
+        color: #495057;
+    }
+    .item-details tbody tr:nth-child(odd) {
+        background-color: #f8f9fa;
+    }
+    .item-details .text-right {
+        text-align: right;
+    }
+     .summary-row td {
+        font-weight: 700;
+        background-color: #e9ecef;
+        border-top: 2px solid #ced4da;
+     }
+    .button-section {
+        margin-top: 30px;
+        text-align: center;
+    }
+    .btn {
+        padding: 10px 20px;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 14px;
+        font-weight: 500;
+        transition: all 0.2s ease-in-out;
+    }
+    .btn-secondary {
+        background-color: #6c757d;
+        color: white;
+    }
+    .btn-secondary:hover {
+        background-color: #545b62;
+    }
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // localized messages
+    const MSG_NO_DATA = "{{ get_text('no_data_found') }}";
+    const MSG_LOAD_ERROR = "{{ get_text('list_load_error') }}";
+    const pathParts = window.location.pathname.split('/');
+    const purchaseNo = pathParts[pathParts.length - 1];
+
+    if (purchaseNo) {
+        loadPurchaseDetail(purchaseNo);
+    } else {
+        alert(MSG_NO_DATA);
+        window.location.href = '/purchase/list';
+    }
+});
+
+function loadPurchaseDetail(purchaseNo) {
+    // 서버에 존재하는 JSON 엔드포인트로 호출
+    fetch(`/purchase/purchase/detail/${purchaseNo}`)
+        .then(response => {
+            if (!response.ok) {
+                throw new Error("{{ get_text('list_load_error') }}");
+            }
+            return response.json();
+        })
+        .then(data => {
+            // 서버가 { header: {...}, details: [...] } 형태로 반환하므로 처리
+            const header = data.header || data; // fallback for older format
+            const items = data.details || data.items || [];
+
+            document.getElementById('purchaseDate').textContent = header.purchaseDate || '-';
+            document.getElementById('purchaseNo').textContent = header.purchaseNo || '-';
+            document.getElementById('vendorName').textContent = header.vendorName || '-';
+            document.getElementById('warehouseName').textContent = header.warehouseName || '-';
+            document.getElementById('currencyName').textContent = header.currencyName || header.currencyCode || '-';
+            document.getElementById('exchangeRate').textContent = (header.exchangeRate != null && header.exchangeRate !== '') ? Number(header.exchangeRate).toFixed(2) : '-';
+            // prefer server-provided display names (paymentMethodName / statusName); fallback to code
+            document.getElementById('paymentMethod').textContent = header.paymentMethodName || header.paymentMethod || '-';
+            document.getElementById('paymentDueDate').textContent = header.paymentDueDate || '-';
+            document.getElementById('status').textContent = header.statusName || header.status || '-';
+            document.getElementById('remarks').textContent = header.remarks || '-';
+
+            // 품목 상세 정보 표시
+            renderItemDetails(items);
+        })
+        .catch(error => {
+            console.error('Error loading purchase detail:', error);
+            alert(error.message || "{{ get_text('unknown_error') }}");
+        });
+}
+
+function renderItemDetails(items) {
+    const tbody = document.getElementById('itemTableBody');
+    tbody.innerHTML = '';
+
+    let totalQuantity = 0;
+    let totalAmount = 0;
+
+    if (!items || items.length === 0) {
+        const row = document.createElement('tr');
+        row.innerHTML = `<td colspan="8" class="text-center">{{ get_text('no_data_found') }}</td>`;
+        tbody.appendChild(row);
+        document.getElementById('totalQuantity').textContent = '0';
+        document.getElementById('totalAmount').textContent = '0.00';
+        return;
+    }
+
+    items.forEach(item => {
+        // item 키가 server-side와 약간 다를 수 있으니 안전하게 접근
+        const itemCode = item.itemCode || item.ItemCode || '-';
+        const itemName = item.itemName || item.ItemName || '-';
+        const itemSpec = item.itemSpec || item.spec || '-';
+        const unitName = item.unitName || item.unit || item.unitCode || '-';
+        const qty = item.quantity != null ? Number(item.quantity) : null;
+        const unitPrice = item.unitPrice != null ? Number(item.unitPrice) : null;
+        const amount = item.amount != null ? Number(item.amount) : null;
+
+        const row = document.createElement('tr');
+        row.innerHTML = `
+            <td>${itemCode}</td>
+            <td>${itemName}</td>
+            <td>${itemSpec}</td>
+            <td>${unitName}</td>
+            <td class="text-right">${qty != null ? qty.toLocaleString() : '-'}</td>
+            <td class="text-right">${unitPrice != null ? unitPrice.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) : '-'}</td>
+            <td class="text-right">${amount != null ? amount.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) : '-'}</td>
+            <td>${item.remarks || '-'}</td>
+        `;
+        tbody.appendChild(row);
+
+        totalQuantity += qty || 0;
+        totalAmount += amount || 0;
+    });
+
+    document.getElementById('totalQuantity').textContent = totalQuantity.toLocaleString() || '0';
+    document.getElementById('totalAmount').textContent = totalAmount.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) || '0.00';
+}
+</script>
+{% endblock %}

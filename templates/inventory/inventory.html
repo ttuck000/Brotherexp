@@ -1,0 +1,249 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container-fluid mt-4">
+    <div class="row justify-content-center">
+        <div class="col-12 col-xl-11">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2 class="mb-0" style="font-weight:700;color:#2a4365;font-size:1.5rem;">
+                    <i class="fas fa-warehouse me-2"></i>{{ get_text('inventory_current') }}
+                </h2>
+                <button class="btn btn-success" id="excelExportBtn" style="font-size:0.875rem;"><i class="fas fa-file-excel me-1"></i>{{ get_text('excel_download') }}</button>
+            </div>
+            <form class="row g-2 mb-3" id="searchForm" style="font-size:0.875rem;">
+                <div class="col-md-3">
+                    <input type="text" class="form-control" id="searchItemCode" placeholder="{{ get_text('item_code') }}">
+                </div>
+                <div class="col-md-3">
+                    <input type="text" class="form-control" id="searchItemName" placeholder="{{ get_text('item_name') }}">
+                </div>
+                <div class="col-md-3">
+                    <select class="form-select" id="searchWarehouse">
+                        <option value="">{{ get_text('all') }}</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <button type="submit" class="btn btn-primary w-100"><i class="fas fa-search me-1"></i>{{ get_text('search') }}</button>
+                </div>
+            </form>
+            <div class="card shadow rounded-4">
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-bordered table-hover align-middle mb-0 rounded-4 overflow-hidden" id="stockListTable" style="font-size:0.875rem;">
+                            <thead class="table-primary text-center">
+                                <tr>
+                                    <th>{{ get_text('sequence') }}</th>
+                                    <th>{{ get_text('item_code') }}</th>
+                                    <th>{{ get_text('item_name') }}</th>
+                                    <th>{{ get_text('warehouse') }}</th>
+                                    <th>{{ get_text('specification') }}</th>
+                                    <th>{{ get_text('unit') }}</th>
+                                    <th>{{ get_text('current_stock') }}</th>
+                                </tr>
+                            </thead>
+                            <tbody id="stockListBody">
+                                <!-- JS로 행 추가 -->
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="mt-3 d-flex justify-content-center" id="pagination"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<script>
+let allData = [];
+let currentPage = 1;
+const pageSize = 20;
+
+document.addEventListener('DOMContentLoaded', function() {
+    loadWarehouses();
+    loadStockList();
+    document.getElementById('excelExportBtn').addEventListener('click', exportToExcel);
+    document.getElementById('searchForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        currentPage = 1;
+        loadStockList();
+    });
+});
+
+// 번역 데이터를 JavaScript에서 사용할 수 있도록 전달
+const translations = {
+    all: "{{ get_text('all') }}",
+    prev: "{{ get_text('prev') }}",
+    next: "{{ get_text('next') }}"
+};
+
+function loadWarehouses() {
+    fetch("{{ url_for('inventory.warehouse_options') }}")
+        .then(response => response.json())
+        .then(data => {
+            const select = document.getElementById('searchWarehouse');
+            select.innerHTML = `<option value="">${translations.all}</option>`;
+            data.sort((a, b) => (a.code || '').localeCompare(b.code || ''));
+            data.forEach(wh => {
+                const option = document.createElement('option');
+                option.value = wh.code;
+                option.textContent = `${wh.code} - ${wh.name}`;
+                select.appendChild(option);
+            });
+        })
+        .catch(error => {
+            console.error('창고 옵션 로드 오류:', error);
+        });
+}
+
+function loadStockList() {
+    const params = new URLSearchParams({
+      item_code: document.querySelector('#searchItemCode')?.value || '',
+      item_name: document.querySelector('#searchItemName')?.value || '',
+      warehouse_code: document.querySelector('#searchWarehouse')?.value || ''
+    }).toString();
+
+    fetch("{{ url_for('inventory.inventory_stock_list_api') }}" + "?" + params)
+      .then(r => { if (!r.ok) throw new Error(r.status); return r.json(); })
+      .then(json => {
+        console.log('stock_list', json);
+        // normalize response
+        let rows = [];
+        if (Array.isArray(json)) rows = json;
+        else if (json && Array.isArray(json.data)) rows = json.data;
+        else if (json && json.success && Array.isArray(json.data)) rows = json.data;
+
+        allData = rows || [];
+        currentPage = 1;
+        renderTable();
+        renderPagination();
+      })
+      .catch(e => console.error(e));
+}
+
+function renderStockRowsFromResponse(resp) {
+    // kept for compatibility but not used by default
+    let rows = [];
+    if (Array.isArray(resp)) rows = resp;
+    else if (resp && Array.isArray(resp.data)) rows = resp.data;
+    else if (resp && resp.success && Array.isArray(resp.data)) rows = resp.data;
+
+    const tbody = document.getElementById('stockListBody');
+    if (!tbody) return;
+    tbody.innerHTML = '';
+    rows.forEach((r, idx) => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td class="text-center">${idx+1}</td>
+            <td class="text-center">${r.item_code || r.ItemCode || ''}</td>
+            <td class="text-center">${r.item_name || r.ItemName || ''}</td>
+            <td class="text-center">${r.warehouse_code || r.WarehouseCode || ''}</td>
+            <td class="text-center">${r.spec || r.Spec || ''}</td>
+            <td class="text-center">${r.unit || r.Unit || ''}</td>
+            <td class="text-end">${(r.current_stock !== undefined) ? Number(r.current_stock).toLocaleString() : ''}</td>
+        `;
+        tbody.appendChild(tr);
+    });
+}
+
+function renderTable() {
+    const tbody = document.getElementById('stockListBody');
+    if (!tbody) return;
+    tbody.innerHTML = '';
+    const startIdx = (currentPage - 1) * pageSize;
+    const endIdx = Math.min(startIdx + pageSize, allData.length);
+    for (let i = startIdx; i < endIdx; i++) {
+        const row = allData[i];
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td class="text-center">${i + 1}</td>
+            <td class="text-center">${row.item_code || row.ItemCode || ''}</td>
+            <td class="text-center">${row.item_name || row.ItemName || ''}</td>
+            <td class="text-center">${row.warehouse_name ? row.warehouse_code + ' - ' + row.warehouse_name : row.warehouse_code || ''}</td>
+            <td class="text-center">${row.spec || row.Spec || ''}</td>
+            <td class="text-center">${row.unit || row.Unit || ''}</td>
+            <td class="text-end">${formatNumber(row.current_stock)}</td>
+        `;
+        tbody.appendChild(tr);
+    }
+}
+
+function renderPagination() {
+    const totalPages = Math.ceil(allData.length / pageSize);
+    const paginationDiv = document.getElementById('pagination');
+    if (!paginationDiv) return;
+    paginationDiv.innerHTML = '';
+    if (totalPages <= 1) return;
+    let html = '';
+    html += `<button class='btn btn-outline-secondary btn-sm' ${currentPage === 1 ? 'disabled' : ''} onclick='gotoPage(${currentPage - 1})'>${translations.prev}</button> `;
+    for (let i = 1; i <= totalPages; i++) {
+        html += `<button class='btn btn-${i === currentPage ? 'primary' : 'light'} btn-sm mx-1' onclick='gotoPage(${i})'>${i}</button>`;
+    }
+    html += `<button class='btn btn-outline-secondary btn-sm' ${currentPage === totalPages ? 'disabled' : ''} onclick='gotoPage(${currentPage + 1})'>${translations.next}</button>`;
+    paginationDiv.innerHTML = html;
+}
+
+function gotoPage(page) {
+    currentPage = page;
+    renderTable();
+    renderPagination();
+}
+
+function exportToExcel() {
+    const itemCode = document.getElementById('searchItemCode').value;
+    const itemName = document.getElementById('searchItemName').value;
+    const warehouse = document.getElementById('searchWarehouse').value;
+    const params = new URLSearchParams({
+        page: currentPage,
+        pageSize: pageSize,
+        item_code: itemCode,
+        item_name: itemName,
+        warehouse_code: warehouse
+    });
+    const url = "{{ url_for('inventory.inventory_stock_list_excel') }}" + '?' + params.toString();
+    window.open(url, '_blank');
+}
+function formatNumber(num) {
+    if (num === null || num === undefined) return '0';
+    return Number(num).toLocaleString();
+}
+</script>
+
+<style>
+/* 재고관리 페이지 공통 스타일 */
+.form-control, .form-select {
+    font-size: 0.875rem !important;
+}
+
+.form-label {
+    font-size: 0.875rem !important;
+    font-weight: 500;
+}
+
+.btn-sm {
+    font-size: 0.75rem !important;
+    padding: 0.375rem 0.75rem;
+}
+
+.table th {
+    font-size: 0.875rem !important;
+    font-weight: 600;
+    padding: 0.75rem 0.5rem;
+}
+
+.table td {
+    font-size: 0.875rem !important;
+    padding: 0.5rem;
+}
+
+.pagination .btn {
+    font-size: 0.875rem !important;
+}
+
+.card {
+    border-radius: 0.75rem;
+    box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+}
+
+.card-body {
+    padding: 1.25rem;
+}
+</style>
+{% endblock %}

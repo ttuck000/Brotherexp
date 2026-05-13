@@ -1,0 +1,472 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MES 시스템</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/product_code.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+    
+    <script src="https://kit.fontawesome.com/your-code.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <style>
+        body {
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+            margin: 0;
+            background: linear-gradient(135deg, #f8fafc 0%, #e0e7ef 100%);
+        }
+        .content-area {
+            flex: 1;
+            padding: 40px 0 40px 0;
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+
+
+        .dashboard-section {
+            max-width: 1400px;
+            margin: 0 auto 40px auto;
+            padding: 0 20px;
+        }
+        .dashboard-section-title {
+            font-size: 1.2rem;
+            font-weight: 700;
+            color: #1a237e;
+            margin-bottom: 24px;
+            letter-spacing: -1px;
+            text-shadow: 0 2px 8px rgba(26,35,126,0.06);
+        }
+        .dashboard {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 32px;
+            padding: 0;
+            margin: 0;
+        }
+        .dashboard-card {
+            background: linear-gradient(135deg, #fff 60%, #f0f4ff 100%);
+            border-radius: 18px;
+            padding: 32px 28px 28px 28px;
+            box-shadow: 0 6px 32px rgba(26,35,126,0.08), 0 1.5px 6px rgba(0,0,0,0.03);
+            transition: transform 0.2s, box-shadow 0.2s;
+            border: 1.5px solid #e3e8f0;
+            position: relative;
+        }
+        .dashboard-card:hover {
+            transform: translateY(-6px) scale(1.02);
+            box-shadow: 0 12px 36px rgba(26,35,126,0.13), 0 2px 8px rgba(0,0,0,0.06);
+            border-color: #b3c6ff;
+        }
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 18px;
+            padding-bottom: 8px;
+            border-bottom: 2px solid #f0f0f0;
+        }
+        .card-title {
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: #1a237e;
+            letter-spacing: -0.5px;
+        }
+        .card-icon {
+            font-size: 1.5rem;
+            color: #4f8cff;
+            background: #e3e8f0;
+            border-radius: 50%;
+            padding: 8px 12px;
+            box-shadow: 0 2px 8px rgba(79,140,255,0.08);
+        }
+        .card-content {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 18px;
+        }
+        .stat-item {
+            padding: 14px 10px;
+            background: #f8faff;
+            border-radius: 8px;
+            box-shadow: 0 1px 4px rgba(26,35,126,0.03);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+        }
+        .stat-label {
+            font-size: 0.9rem;
+            color: #6b7280;
+            margin-bottom: 4px;
+            font-weight: 500;
+            width: 100%;
+            text-align: center;
+        }
+        .stat-value {
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: #1a237e;
+            letter-spacing: -0.5px;
+            width: 100%;
+            text-align: center;
+        }
+        .card-footer {
+            margin-top: 18px;
+            padding-top: 10px;
+            border-top: 1px solid #f0f0f0;
+            text-align: right;
+        }
+        .view-more {
+            color: #4f8cff;
+            text-decoration: none;
+            font-size: 0.9rem;
+            font-weight: 600;
+            letter-spacing: -0.5px;
+            transition: color 0.2s;
+        }
+        .view-more:hover {
+            color: #1a237e;
+            text-decoration: underline;
+        }
+        .dashboard-graph-section {
+            max-width: 1400px;
+            margin: 0 auto 40px auto;
+            padding: 0 20px;
+        }
+        .dashboard-graph-title {
+            font-size: 1.2rem;
+            font-weight: 700;
+            color: #1a237e;
+            margin-bottom: 18px;
+            letter-spacing: -1px;
+            text-shadow: 0 2px 8px rgba(26,35,126,0.06);
+        }
+        .dashboard-graph {
+            background: linear-gradient(135deg, #fff 60%, #f0f4ff 100%);
+            border-radius: 18px;
+            box-shadow: 0 6px 32px rgba(26,35,126,0.08), 0 1.5px 6px rgba(0,0,0,0.03);
+            padding: 32px 28px 28px 28px;
+            margin-bottom: 32px;
+            width: 100%;
+            border: 1.5px solid #e3e8f0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        @media (max-width: 1200px) {
+            .dashboard {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+        @media (max-width: 900px) {
+            .dashboard {
+                grid-template-columns: 1fr;
+            }
+            .dashboard-graph {
+                max-width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    
+    <nav class="main-nav">
+        {% include 'nav.html' %}
+    </nav>
+
+  
+
+    <main class="content-area">
+
+
+        <div class="dashboard-section">
+            <div class="dashboard">
+                <!-- 매입관리 요약 -->
+                <div class="dashboard-card">
+                    <div class="card-header">
+                        <div class="card-title">{{ get_text('purchase_summary') }}</div>
+                        <div class="card-icon"><i class="fas fa-shopping-cart"></i></div>
+                    </div>
+                    <div class="card-content">
+                        <div class="stat-item">
+                            <div class="stat-label">{{ get_text('today_purchase') }}</div>
+                            <div class="stat-value" id="todayPurchase">0</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-label">{{ get_text('month_purchase') }}</div>
+                            <div class="stat-value" id="monthPurchase">0</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-label">{{ get_text('pending_purchase') }}</div>
+                            <div class="stat-value" id="pendingPurchase">0</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-label">{{ get_text('year_purchase') }}</div>
+                            <div class="stat-value" id="totalPurchase">0</div>
+                        </div>
+                    </div>
+                    <div class="card-footer">
+                        <a href="/purchase/list" class="view-more">{{ get_text('view_more') }} →</a>
+                    </div>
+                </div>
+
+                <!-- 매출관리 요약 -->
+                <div class="dashboard-card">
+                    <div class="card-header">
+                        <div class="card-title">{{ get_text('sales_summary') }}</div>
+                        <div class="card-icon"><i class="fas fa-chart-line"></i></div>
+                    </div>
+                    <div class="card-content">
+                        <div class="stat-item">
+                            <div class="stat-label">{{ get_text('today_sales') }}</div>
+                            <div class="stat-value" id="todaySales">0</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-label">{{ get_text('month_sales') }}</div>
+                            <div class="stat-value" id="monthSales">0</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-label">{{ get_text('pending_sales') }}</div>
+                            <div class="stat-value" id="pendingSales">0</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-label">{{ get_text('year_sales') }}</div>
+                            <div class="stat-value" id="totalSales">0</div>
+                        </div>
+                    </div>
+                    <div class="card-footer">
+                        <a href="/sales/sales_list" class="view-more">{{ get_text('view_more') }} →</a>
+                    </div>
+                </div>
+
+                <!-- 재고관리 요약 -->
+                <div class="dashboard-card">
+                    <div class="card-header">
+                        <div class="card-title">{{ get_text('inventory_summary') }}</div>
+                        <div class="card-icon"><i class="fas fa-boxes"></i></div>
+                    </div>
+                    <div class="card-content">
+                        <div class="stat-item">
+                            <div class="stat-label">{{ get_text('total_items') }}</div>
+                            <div class="stat-value" id="totalItems">0</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-label">{{ get_text('low_stock') }}</div>
+                            <div class="stat-value" id="lowStock">0</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-label">{{ get_text('out_of_stock') }}</div>
+                            <div class="stat-value" id="outOfStock">0</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-label">{{ get_text('total_value') }}</div>
+                            <div class="stat-value" id="totalValue">0</div>
+                        </div>
+                    </div>
+                    <div class="card-footer">
+                        <a href="/inventory/inventory" class="view-more">{{ get_text('view_more') }} →</a>
+                    </div>
+                </div>
+
+                <!-- 결산관리 요약 -->
+                <div class="dashboard-card">
+                    <div class="card-header">
+                        <div class="card-title">{{ get_text('financial_summary') }}</div>
+                        <div class="card-icon"><i class="fas fa-calculator"></i></div>
+                    </div>
+                    <div class="card-content">
+                        <div class="stat-item">
+                            <div class="stat-label">{{ get_text('monthly_revenue') }}</div>
+                            <div class="stat-value" id="monthlyRevenue">0</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-label">{{ get_text('monthly_expense') }}</div>
+                            <div class="stat-value" id="monthlyExpense">0</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-label">{{ get_text('monthly_profit') }}</div>
+                            <div class="stat-value" id="monthlyProfit">0</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-label">{{ get_text('yearly_profit') }}</div>
+                            <div class="stat-value" id="yearlyProfit">0</div>
+                        </div>
+                    </div>
+                    <div class="card-footer">
+                        <a href="/financial_summary" class="view-more">{{ get_text('view_more') }} →</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="dashboard-section">
+            <div class="dashboard" style="grid-template-columns: 1fr; gap: 32px;">
+                <div class="dashboard-graph">
+                    <div class="dashboard-graph-title">{{ get_text('purchase_trend') }}</div>
+                    <canvas id="purchaseTrendChart" height="59"></canvas>
+                </div>
+                <div class="dashboard-graph">
+                    <div class="dashboard-graph-title">{{ get_text('sales_trend') }}</div>
+                    <canvas id="salesTrendChart" height="59"></canvas>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer>
+        <p>&copy; 2026 BROTHER MIS SYSTEM. All rights reserved.</p>
+    </footer>
+
+    <script>
+        // 기존 네비게이션 스크립트
+        document.querySelectorAll('.nav-item').forEach(item => {
+            item.addEventListener('mouseover', function() {
+                this.querySelector('.submenu').style.display = 'block';
+            });
+            
+            item.addEventListener('mouseout', function() {
+                this.querySelector('.submenu').style.display = 'none';
+            });
+        });
+
+        // 대시보드 데이터 로드 함수
+        function loadDashboardData() {
+            // 매입 데이터 로드
+            fetch('/api/dashboard/purchase')
+                .then(response => response.json())
+                .then(data => {
+                    document.getElementById('todayPurchase').textContent = formatNumber(data.today);
+                    document.getElementById('monthPurchase').textContent = formatNumber(data.month);
+                    document.getElementById('pendingPurchase').textContent = formatNumber(data.pending);
+                    document.getElementById('totalPurchase').textContent = formatNumber(data.total);
+                });
+
+            // 매출 데이터 로드
+            fetch('/api/dashboard/sales')
+                .then(response => response.json())
+                .then(data => {
+                    document.getElementById('todaySales').textContent = formatNumber(data.today);
+                    document.getElementById('monthSales').textContent = formatNumber(data.month);
+                    document.getElementById('pendingSales').textContent = formatNumber(data.pending);
+                    document.getElementById('totalSales').textContent = formatNumber(data.total);
+                });
+
+            // 재고 데이터 로드
+            fetch('/api/dashboard/inventory')
+                .then(response => response.json())
+                .then(data => {
+                    document.getElementById('totalItems').textContent = formatNumber(data.total_items);
+                    document.getElementById('lowStock').textContent = formatNumber(data.low_stock);
+                    document.getElementById('outOfStock').textContent = formatNumber(data.out_of_stock);
+                    document.getElementById('totalValue').textContent = formatNumber(data.total_value);
+                });
+
+            // 결산 데이터 로드
+            fetch('/api/dashboard/financial')
+                .then(response => response.json())
+                .then(data => {
+                    document.getElementById('monthlyRevenue').textContent = formatNumber(data.monthlyRevenue);
+                    document.getElementById('monthlyExpense').textContent = formatNumber(data.monthlyExpense);
+                    document.getElementById('monthlyProfit').textContent = formatNumber(data.monthlyProfit);
+                    document.getElementById('yearlyProfit').textContent = formatNumber(data.yearlyProfit);
+                });
+        }
+
+        // 숫자 포맷팅 함수
+        function formatNumber(num) {
+            return new Intl.NumberFormat('ko-KR').format(num);
+        }
+
+        // 페이지 로드 시 데이터 로드
+        document.addEventListener('DOMContentLoaded', loadDashboardData);
+
+        function loadSalesTrendChart() {
+            fetch('/api/dashboard/sales/daily')
+                .then(response => response.json())
+                .then(data => {
+                    // 날짜에서 MM-DD만 추출
+                    const labels = data.map(item => item.date.slice(5));
+                    const values = data.map(item => item.amount);
+                    const ctx = document.getElementById('salesTrendChart').getContext('2d');
+                    new Chart(ctx, {
+                        type: 'line',
+                        data: {
+                            labels: labels,
+                            datasets: [{
+                                label: '매출현황 추이',
+                                data: values,
+                                borderColor: '#007bff',
+                                backgroundColor: 'rgba(0,123,255,0.1)',
+                                fill: true,
+                                tension: 0.3
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            plugins: {
+                                legend: { display: false },
+                                title: {
+                                    display: true,
+                                    text: '{{ get_text("sales_trend") }}',
+                                    font: { size: 18 }
+                                }
+                            },
+                            scales: {
+                                x: { title: { display: true, text: '{{ get_text("period") }}' } },
+                                y: { title: { display: true, text: '{{ get_text("amount") }}' } }
+                            }
+                        }
+                    });
+                });
+        }
+        document.addEventListener('DOMContentLoaded', loadSalesTrendChart);
+
+        function loadPurchaseTrendChart() {
+            fetch('/api/dashboard/purchase/daily')
+                .then(response => response.json())
+                .then(data => {
+                    // 날짜에서 MM-DD만 추출
+                    const labels = data.map(item => item.date.slice(5));
+                    const values = data.map(item => item.amount);
+                    const ctx = document.getElementById('purchaseTrendChart').getContext('2d');
+                    new Chart(ctx, {
+                        type: 'line',
+                        data: {
+                            labels: labels,
+                            datasets: [{
+                                label: '매입현황 추이',
+                                data: values,
+                                borderColor: '#28a745',
+                                backgroundColor: 'rgba(40,167,69,0.1)',
+                                fill: true,
+                                tension: 0.3
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            plugins: {
+                                legend: { display: false },
+                                title: {
+                                    display: true,
+                                    text: '{{ get_text("purchase_trend") }}',
+                                    font: { size: 18 }
+                                }
+                            },
+                            scales: {
+                                x: { title: { display: true, text: '{{ get_text("period") }}' } },
+                                y: { title: { display: true, text: '{{ get_text("amount") }}' } }
+                            }
+                        }
+                    });
+                });
+        }
+        document.addEventListener('DOMContentLoaded', loadPurchaseTrendChart);
+    </script>
+</body>
+</html> 

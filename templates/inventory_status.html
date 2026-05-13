@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>재고현황 - MES 시스템</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/inventory.css') }}">
+</head>
+<body>
+    <header class="main-header">
+        <div class="nav-container">
+            <div class="logo">
+                <h1><a href="/" style="text-decoration: none; color: inherit;">BIGBOY MES SYSTEM</a></h1>
+            </div>
+            <nav class="main-nav">
+                {% include 'nav.html' %}
+            </nav>
+        </div>
+    </header>
+
+    <main class="content-area">
+        <div class="inventory-container">
+            <h2>재고현황</h2>
+            <div class="search-section">
+                <form class="search-form">
+                    <div class="form-group">
+                        <label for="productCode">품목코드</label>
+                        <input type="text" id="productCode" name="productCode">
+                    </div>
+                    <div class="form-group">
+                        <label for="warehouse">창고</label>
+                        <input type="text" id="warehouse" name="warehouse">
+                    </div>
+                    <button type="submit" class="search-btn">검색</button>
+                </form>
+            </div>
+
+            <div class="grid-section">
+                <table class="inventory-grid">
+                    <thead>
+                        <tr>
+                            <th>품목코드</th>
+                            <th>품목명</th>
+                            <th>창고</th>
+                            <th>수량</th>
+                            <th>단위</th>
+                            <th>비고</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- 샘플 데이터 -->
+                        <tr>
+                            <td>PRD001</td>
+                            <td>제품 A</td>
+                            <td>본사 창고</td>
+                            <td>100</td>
+                            <td>EA</td>
+                            <td></td>
+                        </tr>
+                        <tr>
+                            <td>PRD002</td>
+                            <td>제품 B</td>
+                            <td>지사 창고</td>
+                            <td>200</td>
+                            <td>BOX</td>
+                            <td></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+
+    <footer>
+        <p>&copy; 2024 MES 시스템. All rights reserved.</p>
+    </footer>
+</body>
+</html> 

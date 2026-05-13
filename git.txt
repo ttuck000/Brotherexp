@@ -1,0 +1,4 @@
+git status --변경사항 확인(파일)
+git add . --변경파일 스테이징(변경사항을 저장소에 올릴준비)
+git commit -m "test" --변경내역 기록
+git push --github 저장소 업데이트

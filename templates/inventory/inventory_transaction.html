@@ -1,0 +1,313 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container-fluid mt-4">
+    <div class="row justify-content-center">
+        <div class="col-12 col-xl-11">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2 class="mb-0" style="font-weight:700;color:#2a4365;font-size:1.5rem;">
+                    <i class="fas fa-exchange-alt me-2"></i>{{ get_text('inventory_transaction') }}
+                </h2>
+                <button class="btn btn-success" id="excelExportBtn" style="font-size:0.875rem;"><i class="fas fa-file-excel me-1"></i>{{ get_text('excel_download') }}</button>
+            </div>
+            <form class="row g-2 mb-3" id="searchForm" style="font-size:0.875rem;">
+                <div class="col-md-2">
+                    <input type="date" class="form-control" id="searchStartDate" placeholder="{{ get_text('start_date') }}">
+                </div>
+                <div class="col-md-2">
+                    <input type="date" class="form-control" id="searchEndDate" placeholder="{{ get_text('end_date') }}">
+                </div>
+                <div class="col-md-2">
+                    <input type="text" class="form-control" id="searchItemCode" placeholder="{{ get_text('item_code') }}">
+                </div>
+                <div class="col-md-2">
+                    <input type="text" class="form-control" id="searchItemName" placeholder="{{ get_text('item_name') }}">
+                </div>
+                <div class="col-md-2">
+                    <select class="form-select" id="searchWarehouse">
+                        <option value="">{{ get_text('all_warehouse') }}</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <button type="submit" class="btn btn-primary w-100"><i class="fas fa-search me-1"></i>{{ get_text('search') }}</button>
+                </div>
+            </form>
+            <div class="card shadow rounded-4">
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-bordered table-hover align-middle mb-0 rounded-4 overflow-hidden" id="transactionListTable" style="font-size:0.875rem;">
+                            <thead class="table-primary text-center">
+                                <tr>
+                                    <th>{{ get_text('sequence') }}</th>
+                                    <th>{{ get_text('transaction_date') }}</th>
+                                    <th>{{ get_text('item_code') }}</th>
+                                    <th>{{ get_text('item_name') }}</th>
+                                    <th>{{ get_text('lot') }}</th>
+                                    <th>{{ get_text('warehouse') }}</th>
+                                    <th>{{ get_text('transaction_type') }}</th>
+                                    <th>{{ get_text('transaction_type_name') }}</th>
+                                    <th>{{ get_text('inbound_quantity') }}</th>
+                                    <th>{{ get_text('outbound_quantity') }}</th>
+                                    <th>{{ get_text('transaction_quantity') }}</th>
+                                    <th>{{ get_text('remaining_quantity') }}</th>
+                                    <th>{{ get_text('unit') }}</th>
+                                    <th>{{ get_text('remark') }}</th>
+                                    <th>{{ get_text('registrant') }}</th>
+                                    <th>{{ get_text('registration_date') }}</th>
+                                </tr>
+                            </thead>
+                            <tbody id="transactionListBody">
+                                <!-- JS로 행 추가 -->
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="mt-3 d-flex justify-content-center" id="pagination"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<script>
+let allData = [];
+let currentPage = 1;
+const pageSize = 20;
+
+document.addEventListener('DOMContentLoaded', function() {
+    // 오늘 날짜
+    const today = new Date();
+    // 당월 1일
+    const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+    // 당월 마지막일
+    const lastDayOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+
+    document.getElementById('searchStartDate').value = firstDayOfMonth.toISOString().split('T')[0];
+    document.getElementById('searchEndDate').value = lastDayOfMonth.toISOString().split('T')[0];
+
+    loadWarehouses();
+    loadTransactionList();
+    document.getElementById('excelExportBtn').addEventListener('click', exportToExcel);
+    document.getElementById('searchForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        currentPage = 1;
+        loadTransactionList();
+    });
+});
+
+function loadWarehouses() {
+    fetch('/api/warehouse/options')
+        .then(response => response.json())
+        .then(data => {
+            const select = document.getElementById('searchWarehouse');
+            select.innerHTML = `<option value="">${translations.all_warehouse}</option>`;
+            data.sort((a, b) => (a.code || '').localeCompare(b.code || ''));
+            data.forEach(wh => {
+                const option = document.createElement('option');
+                option.value = wh.code;
+                option.textContent = `${wh.code} - ${wh.name}`;
+                select.appendChild(option);
+            });
+        })
+        .catch(error => {
+            console.error('창고 옵션 로드 오류:', error);
+        });
+}
+
+// 번역 데이터를 JavaScript에서 사용할 수 있도록 전달
+const translations = {
+    all_warehouse: "{{ get_text('all_warehouse') }}",
+    prev: "{{ get_text('prev') }}",
+    next: "{{ get_text('next') }}",
+    inbound: "{{ get_text('inbound') }}",
+    outbound: "{{ get_text('outbound') }}",
+    adjustment: "{{ get_text('adjustment') }}",
+    list_load_error: "{{ get_text('list_load_error') }}"
+};
+
+function loadTransactionList() {
+    const startDate = document.getElementById('searchStartDate').value;
+    const endDate = document.getElementById('searchEndDate').value;
+    const itemCode = document.getElementById('searchItemCode').value;
+    const itemName = document.getElementById('searchItemName').value;
+    const warehouse = document.getElementById('searchWarehouse').value;
+
+    const params = new URLSearchParams({
+        start_date: startDate,
+        end_date: endDate,
+        item_code: itemCode,
+        item_name: itemName,
+        warehouse_code: warehouse
+    });
+
+    fetch("{{ url_for('inventory.inventory_transaction_list_api') }}" + "?" + params)
+        .then(r => {
+            if (!r.ok) throw new Error('Network response was not ok: ' + r.status);
+            return r.json();
+        })
+        .then(resp => {
+            // API 응답 포맷 호환 처리: { success: True, data: [...] } 또는 바로 배열
+            console.log('transaction_list response', resp);
+            let rows = [];
+            if (Array.isArray(resp)) {
+                rows = resp;
+            } else if (resp.data && Array.isArray(resp.data)) {
+                rows = resp.data;
+            } else if (resp.success && resp.data && Array.isArray(resp.data)) {
+                rows = resp.data;
+            } else {
+                console.warn('Unexpected response format', resp);
+            }
+            allData = rows;
+            currentPage = 1;
+            renderTable();
+            renderPagination();
+        })
+        .catch(e => {
+            console.error(e);
+            alert(translations.list_load_error);
+        });
+}
+
+function renderTable() {
+    const tbody = document.getElementById('transactionListBody');
+    tbody.innerHTML = '';
+    const startIdx = (currentPage - 1) * pageSize;
+    const endIdx = Math.min(startIdx + pageSize, allData.length);
+
+    for (let i = startIdx; i < endIdx; i++) {
+        const row = allData[i];
+        const tr = document.createElement('tr');
+
+        // 거래구분에 따른 배경색 설정
+        let rowClass = '';
+        let transactionTypeText = '';
+        if (row.transaction_type === 'IN') {
+            rowClass = 'table-success';
+            transactionTypeText = translations.inbound;
+        } else if (row.transaction_type === 'OUT') {
+            rowClass = 'table-danger';
+            transactionTypeText = translations.outbound;
+        } else if (row.transaction_type === 'ADJ') {
+            rowClass = 'table-warning';
+            transactionTypeText = translations.adjustment;
+        }
+
+        tr.className = rowClass;
+        tr.innerHTML = `
+            <td class="text-center">${i + 1}</td>
+            <td class="text-center">${row.transaction_date}</td>
+            <td class="text-center">${row.item_code}</td>
+            <td class="text-center">${row.item_name}</td>
+            <td class="text-center">${row.lotno || ''}</td>
+            <td class="text-center">${row.warehouse_name ? row.warehouse_code + ' - ' + row.warehouse_name : row.warehouse_code || ''}</td>
+            <td class="text-center fw-bold">${row.transaction_type}</td>
+            <td class="text-center">${row.tr_name || ''}</td>
+            <td class="text-end">${formatNumber(row.in_qty)}</td>
+            <td class="text-end">${formatNumber(row.out_qty)}</td>
+            <td class="text-end">${formatNumber(row.quantity)}</td>
+            <td class="text-end">${formatNumber(row.balance_qty)}</td>
+            <td class="text-center">${row.unit || ''}</td>
+            <td class="text-center">${row.remark || ''}</td>
+            <td class="text-center">${row.create_user || ''}</td>
+            <td class="text-center">${row.create_date || ''}</td>
+        `;
+        tbody.appendChild(tr);
+    }
+}
+
+function renderPagination() {
+    const totalPages = Math.ceil(allData.length / pageSize);
+    const paginationDiv = document.getElementById('pagination');
+    paginationDiv.innerHTML = '';
+    if (totalPages <= 1) return;
+
+    let html = '';
+    html += `<button class='btn btn-outline-secondary btn-sm' ${currentPage === 1 ? 'disabled' : ''} onclick='gotoPage(${currentPage - 1})'>${translations.prev}</button> `;
+
+    for (let i = 1; i <= totalPages; i++) {
+        html += `<button class='btn btn-${i === currentPage ? 'primary' : 'light'} btn-sm mx-1' onclick='gotoPage(${i})'>${i}</button>`;
+    }
+
+    html += `<button class='btn btn-outline-secondary btn-sm' ${currentPage === totalPages ? 'disabled' : ''} onclick='gotoPage(${currentPage + 1})'>${translations.next}</button>`;
+    paginationDiv.innerHTML = html;
+}
+
+function gotoPage(page) {
+    currentPage = page;
+    renderTable();
+    renderPagination();
+}
+
+function exportToExcel() {
+    // 검색 조건을 포함하여 엑셀 다운로드
+    const startDate = document.getElementById('searchStartDate').value;
+    const endDate = document.getElementById('searchEndDate').value;
+    const itemCode = document.getElementById('searchItemCode').value;
+    const itemName = document.getElementById('searchItemName').value;
+    const warehouse = document.getElementById('searchWarehouse').value;
+
+    const params = new URLSearchParams({
+        page: currentPage,
+        pageSize: pageSize,
+        start_date: startDate,
+        end_date: endDate,
+        item_code: itemCode,
+        item_name: itemName,
+        warehouse_code: warehouse
+    });
+
+    const url = "{{ url_for('inventory.inventory_transaction_list_excel') }}" + '?' + params.toString();
+    window.open(url, '_blank');
+}
+
+function formatNumber(num) {
+    if (num === null || num === undefined) return '0';
+    return Number(num).toLocaleString();
+}
+
+function formatDate(dateStr) {
+    if (!dateStr) return '';
+    const date = new Date(dateStr);
+    return date.toLocaleDateString('ko-KR');
+}
+</script>
+
+<style>
+    /* 재고관리 페이지 공통 스타일 */
+    .form-control, .form-select {
+        font-size: 0.875rem !important;
+    }
+
+    .form-label {
+        font-size: 0.875rem !important;
+        font-weight: 500;
+    }
+
+    .btn-sm {
+        font-size: 0.75rem !important;
+        padding: 0.375rem 0.75rem;
+    }
+
+    .table th {
+        font-size: 0.875rem !important;
+        font-weight: 600;
+        padding: 0.75rem 0.5rem;
+    }
+
+    .table td {
+        font-size: 0.875rem !important;
+        padding: 0.5rem;
+    }
+
+    .pagination .btn {
+        font-size: 0.875rem !important;
+    }
+
+    .card {
+        border-radius: 0.75rem;
+        box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+    }
+
+    .card-body {
+        padding: 1.25rem;
+    }
+</style>
+{% endblock %}

@@ -1,0 +1,564 @@
+{% extends "base.html" %}
+
+{% block content %}
+<style>
+    .required::after {
+        content: " *";
+        color: red;
+        font-weight: bold;
+    }
+</style>
+
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title">{{ get_text('sales_register') }}</h5>
+                </div>
+                <div class="card-body">
+                    <form id="salesForm">
+                        <div class="row mb-3">
+                            <div class="col-md-3">
+                                <label for="salesNo" class="form-label">{{ get_text('sales_no') }}</label>
+                                <input type="text" class="form-control" id="salesNo" name="salesNo" readonly>
+                            </div>
+                            <div class="col-md-3">
+                                <label for="poNo" class="form-label">PO.Number</label>
+                                <input type="text" class="form-control" id="poNo" name="poNo">
+                            </div>
+                            <div class="col-md-3">
+                                <label for="salesDate" class="form-label required">{{ get_text('sales_date') }}</label>
+                                <input type="date" class="form-control" id="salesDate" name="salesDate" required>
+                            </div>
+                            <div class="col-md-3">
+                                <label for="customerCode" class="form-label required">{{ get_text('customer') }}</label>
+                                <select class="form-select" id="customerCode" name="customerCode" required>
+                                    <option value="">선택</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="row mb-3">
+                            <div class="col-md-3">
+                                <label for="trCode" class="form-label required">수불유형코드</label>
+                                <select class="form-select" id="trCode" name="trCode" required>
+                                    <option value="">선택</option>
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <label for="currencyCode" class="form-label required">{{ get_text('currency') }}</label>
+                                <select class="form-select" id="currencyCode" name="currencyCode" required>
+                                    <option value="">선택</option>
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <label for="exchangeRate" class="form-label">{{ get_text('exchange_rate') }}</label>
+                                <input type="number" class="form-control" id="exchangeRate" name="exchangeRate" step="0.01" required>
+                            </div>
+                            <div class="col-md-3">
+                                <label for="paymentMethod" class="form-label required">{{ get_text('payment_method') }}</label>
+                                <select class="form-select" id="paymentMethod" name="paymentMethod" required>
+                                    <option value="">선택</option>
+                                    <option value="CASH">{{ get_text('cash') }}</option>
+                                    <option value="CARD">{{ get_text('credit_card') }}</option>
+                                    <option value="BANK">{{ get_text('bank_transfer') }}</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="row mb-3">
+                            <div class="col-md-3">
+                                <label for="paymentDueDate" class="form-label required">{{ get_text('payment_due_date') }}</label>
+                                <input type="date" class="form-control" id="paymentDueDate" name="paymentDueDate" required>
+                            </div>
+                            <div class="col-md-3">
+                                <label for="salesStatus" class="form-label required">{{ get_text('sales_status') }}</label>
+                                <select class="form-select" id="salesStatus" name="salesStatus" required>
+                                    <option value="">{{ get_text('select') }}</option>
+                                    <option value="PROCESS">{{ get_text('sales_status_process') }}</option>
+                                    <option value="COMPLETED">{{ get_text('sales_status_completed') }}</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <!-- 빈 공간 -->
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="remarks">{{ get_text('remark') }}</label>
+                            <textarea id="remarks" name="remarks" class="form-control" rows="3"></textarea>
+                        </div>
+
+                        <div class="card mt-4">
+                            <div class="card-header">
+                                <h6 class="card-title">{{ get_text('item_info') }}</h6>
+                            </div>
+                            <div class="card-body">
+                                <table class="table table-bordered" id="itemTable">
+                                    <thead>
+                                        <tr>
+                                            <th style="width: 20%">{{ get_text('item_code') }}</th>
+                                            <th style="width: 20%">{{ get_text('item_name') }}</th>
+                                            <th style="width: 20%">{{ get_text('specification') }}</th>
+                                            <th style="width: 10%">{{ get_text('warehouse_code') }}</th>
+                                            <th style="width: 10%">{{ get_text('quantity') }}</th>
+                                            <th style="width: 10%">{{ get_text('unit_price') }}</th>
+                                            <th style="width: 10%">{{ get_text('amount') }}</th>
+                                            <th style="width: 10%">{{ get_text('action') }}</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                    </tbody>
+                                    <tfoot>
+                                        <tr class="text-primary">
+                                            <td colspan="3" class="text-end"><strong>{{ get_text('total') }}</strong></td>
+                                           
+                                            <td></td>
+                                            <td class="text-end"><strong><span id="totalQuantity">0</span></strong></td>
+                                            <td class="text-end"><strong><span id="totalAmount">0</span></strong></td>
+                                            <td></td>
+                                        </tr>
+                                    </tfoot>
+                                </table>
+                                <button type="button" class="btn btn-primary" id="addItemBtn">{{ get_text('add_item') }}</button>
+                            </div>
+                        </div>
+
+                        <div class="row mt-3">
+                            <div class="col-md-4 offset-md-8">
+                                <div class="card">
+                                    <div class="card-body">
+                                        <div class="row mb-2">
+                                            <label class="col-sm-4 col-form-label text-end">{{ get_text('sub_total') }}</label>
+                                            <div class="col-sm-8">
+                                                <input type="text" class="form-control text-end" id="subTotal" readonly>
+                                            </div>
+                                        </div>
+                                        <div class="row mb-2">
+                                            <label class="col-sm-4 col-form-label text-end">{{ get_text('vat') }}</label>
+                                            <div class="col-sm-8">
+                                                <input type="text" class="form-control text-end" id="vat" onchange="formatNumberInput(this); updateGrandTotal();">
+                                            </div>
+                                        </div>
+                                        <div class="row">
+                                            <label class="col-sm-4 col-form-label text-end"><strong>{{ get_text('grand_total') }}</strong></label>
+                                            <div class="col-sm-8">
+                                                <input type="text" class="form-control text-end" id="grandTotal" readonly>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mt-3 text-center">
+                            <button type="button" class="btn btn-secondary" onclick="history.back()">{{ get_text('list') }}</button>
+                            <button type="button" class="btn btn-primary" onclick="saveSales()">{{ get_text('save') }}</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // 초기 데이터 로드
+    generateSalesNo();
+    loadCustomers();
+    loadCurrencies();
+    loadTransactionCodes();
+    // 오늘 날짜 설정
+    document.getElementById('salesDate').value = new Date().toISOString().split('T')[0];
+    document.getElementById('paymentDueDate').value = new Date().toISOString().split('T')[0];
+    // 매출상태 기본값 설정 (진행중)
+    document.getElementById('salesStatus').value = 'PROCESS';
+    // 통화 변경 시 환율 설정
+    document.getElementById('currencyCode').addEventListener('change', function() {
+        const selectedCurrency = this.value;
+        if (selectedCurrency === 'KRW') {
+            document.getElementById('exchangeRate').value = '1';
+            document.getElementById('exchangeRate').readOnly = true;
+        } else {
+            document.getElementById('exchangeRate').readOnly = false;
+        }
+    });
+});
+
+// 출고번호 생성
+function generateSalesNo() {
+    fetch('/sales/api/sales/generate-no')
+        .then(response => response.json())
+        .then(data => {
+            document.getElementById('salesNo').value = data.salesNo;
+        })
+        .catch(error => console.error('Error:', error));
+}
+
+// 거래처 목록 로드
+function loadCustomers() {
+    fetch('/sales/api/vendor/options')
+        .then(response => response.json())
+        .then(data => {
+            const select = document.getElementById('customerCode');
+            select.innerHTML = '<option value="">선택</option>';
+            // 업체코드 오름차순 정렬
+            data.sort((a, b) => (a.code || '').localeCompare(b.code || ''));
+            data.forEach(customer => {
+                const option = document.createElement('option');
+                option.value = customer.code;
+                option.textContent = `${customer.code} - ${customer.name}`;
+                select.appendChild(option);
+            });
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert("{{ get_text('load_customer_fail') }}");
+        });
+}
+
+// 통화 목록 로드
+function loadCurrencies() {
+    fetch('/sales/api/currencies')
+        .then(response => response.json())
+        .then(data => {
+            const select = document.getElementById('currencyCode');
+            select.innerHTML = '<option value="">선택</option>';
+            data.forEach(currency => {
+                const option = document.createElement('option');
+                option.value = currency.code;
+                option.textContent = `${currency.code} - ${currency.name}`;
+                select.appendChild(option);
+            });
+            // KRW 선택 시 환율 1로 설정
+            select.value = 'KRW';
+            document.getElementById('exchangeRate').value = '1';
+            document.getElementById('exchangeRate').readOnly = true;
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert("{{ get_text('load_currency_fail') }}");
+        });
+}
+
+// 수불유형코드 옵션 로드
+function loadTransactionCodes() {
+    fetch('/sales/api/transaction-codes')
+        .then(response => response.json())
+        .then(data => {
+            const select = document.getElementById('trCode');
+            select.innerHTML = '<option value="">선택</option>';
+            data.forEach(code => {
+                const option = document.createElement('option');
+                option.value = code.tr_code;
+                option.textContent = `${code.tr_code} - ${code.tr_name}`;
+                select.appendChild(option);
+            });
+        })
+        .catch(error => console.error('Error:', error));
+}
+
+// 품목 행 추가
+document.getElementById('addItemBtn').addEventListener('click', function() {
+    const tbody = document.querySelector('#itemTable tbody');
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+        <td>
+            <div class="input-group">
+                <select class="form-select item-code" required onchange="loadItemInfo(this)">
+                    <option value="">선택</option>
+                </select>
+                <button class="btn btn-outline-secondary" type="button" onclick="searchItemModal(this)">
+                    <i class="fas fa-search"></i>
+                </button>
+            </div>
+        </td>
+        <td><input type="text" class="form-control item-name" readonly></td>
+        <td><input type="text" class="form-control item-spec" readonly></td>
+        <td><select class="form-select item-warehouse-code" required><option value="">선택</option></select></td>
+        <td><input type="text" class="form-control quantity text-end" value="1.00" required></td>
+        <td><input type="text" class="form-control unit-price text-end" required></td>
+        <td><input type="text" class="form-control amount text-end" readonly></td>
+        <td>
+            <button type="button" class="btn btn-danger btn-sm" onclick="removeItem(this)">
+                <i class="fas fa-trash"></i>
+            </button>
+        </td>
+    `;
+    tbody.appendChild(tr);
+    loadWarehouseOptionsForItem(tr.querySelector('.item-warehouse-code'));
+    loadItemOptions(tr.querySelector('.item-code'));
+});
+
+// 품목 옵션 로드
+function loadItemOptions(selectElement) {
+    fetch('/sales/api/sales/item/options')
+        .then(response => response.json())
+        .then(data => {
+            const currentValue = selectElement.value;
+            selectElement.innerHTML = '<option value="">선택</option>';
+            data.forEach(item => {
+                const option = document.createElement('option');
+                option.value = item.item_code;
+                option.textContent = `${item.item_code} - ${item.item_name}`;
+                selectElement.appendChild(option);
+            });
+            if (currentValue) {
+                selectElement.value = currentValue;
+            }
+        })
+        .catch(error => console.error('Error:', error));
+}
+
+// 품목 정보 로드
+function loadItemInfo(select) {
+    const tr = select.closest('tr');
+    const itemCode = select.value;
+    const itemNameInput = tr.querySelector('.item-name');
+    const itemSpecInput = tr.querySelector('.item-spec');
+    const unitPriceInput = tr.querySelector('.unit-price');
+    const quantityInput = tr.querySelector('.quantity');
+
+    if (itemCode) {
+        fetch(`/sales/api/sales/item/detail/${itemCode}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data) {
+                    itemNameInput.value = data.item_name || '';
+                    itemSpecInput.value = data.item_spec || '';
+                    unitPriceInput.value = data.unit_price !== undefined ? Number(data.unit_price).toFixed(2) : '';
+                    if (!quantityInput.value) {
+                        quantityInput.value = '1.00';
+                    }
+                    calculateAmount(unitPriceInput);
+                }
+            })
+            .catch(error => console.error('Error:', error));
+    } else {
+        itemNameInput.value = '';
+        itemSpecInput.value = '';
+        unitPriceInput.value = '';
+        quantityInput.value = '1.00';
+        calculateAmount(unitPriceInput);
+    }
+}
+
+// 금액 계산 함수
+function calculateAmount(input) {
+    const tr = input.closest('tr');
+    const quantity = parseFloat(tr.querySelector('.quantity').value.replace(/,/g, '')) || 0;
+    const unitPrice = parseFloat(tr.querySelector('.unit-price').value.replace(/,/g, '')) || 0;
+    const amount = quantity * unitPrice;
+    tr.querySelector('.amount').value = formatNumber(amount);
+    updateTotals();
+}
+
+// 합계 업데이트 함수 (소계, 부가세, 총계까지 계산)
+function updateTotals() {
+    let totalQuantity = 0;
+    let totalAmount = 0;
+    const rows = document.querySelectorAll('#itemTable tbody tr');
+    rows.forEach(row => {
+        const quantity = parseFloat(row.querySelector('.quantity').value.replace(/,/g, '')) || 0;
+        const amount = parseFloat(row.querySelector('.amount').value.replace(/,/g, '')) || 0;
+        totalQuantity += quantity;
+        totalAmount += amount;
+    });
+    document.getElementById('totalQuantity').textContent = formatNumber(totalQuantity);
+    document.getElementById('totalAmount').textContent = formatNumber(totalAmount);
+    // 소계, 부가세, 총계 계산
+    document.getElementById('subTotal').value = formatNumber(totalAmount);
+    const vat = Math.round(totalAmount * 0.07 * 100) / 100;
+    document.getElementById('vat').value = formatNumber(vat);
+    document.getElementById('grandTotal').value = formatNumber(totalAmount + vat);
+}
+
+// 숫자 포맷팅 함수
+function formatNumber(num) {
+    if (typeof num !== 'number' || isNaN(num)) return '0.00';
+    return num.toLocaleString('ko-KR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+// 숫자 입력 필드 포맷팅
+function formatNumberInput(input) {
+    const value = input.value.replace(/,/g, '');
+    const num = parseFloat(value);
+    if (!isNaN(num)) {
+        input.value = formatNumber(num);
+    } else {
+        input.value = '0.00';
+    }
+}
+
+// 수량/단가 입력란에 input 이벤트 리스너 동적 등록
+function addInputListenersToRow(tr) {
+    const quantityInput = tr.querySelector('.quantity');
+    const unitPriceInput = tr.querySelector('.unit-price');
+    if (quantityInput) {
+        quantityInput.addEventListener('input', function() {
+            // 숫자와 소수점만 남김
+            this.value = this.value.replace(/[^\d.]/g, '');
+        });
+        quantityInput.addEventListener('blur', function() {
+            const num = parseFloat(this.value.replace(/,/g, ''));
+            this.value = (!isNaN(num)) ? formatNumber(num) : '0.00';
+            calculateAmount(this);
+        });
+    }
+    if (unitPriceInput) {
+        unitPriceInput.addEventListener('input', function() {
+            this.value = this.value.replace(/[^\d.]/g, '');
+        });
+        unitPriceInput.addEventListener('blur', function() {
+            const num = parseFloat(this.value.replace(/,/g, ''));
+            this.value = (!isNaN(num)) ? formatNumber(num) : '0.00';
+            calculateAmount(this);
+        });
+    }
+}
+// 품목 행 추가 시 삭제 버튼 이벤트도 동적으로 등록
+const addItemBtn = document.getElementById('addItemBtn');
+if (addItemBtn) {
+    addItemBtn.addEventListener('click', function() {
+        const tbody = document.querySelector('#itemTable tbody');
+        const tr = tbody.lastElementChild;
+        if (tr) {
+            addInputListenersToRow(tr);
+            // 삭제 버튼 이벤트 등록
+            const delBtn = tr.querySelector('.btn-danger');
+            if (delBtn) delBtn.onclick = function() { removeItem(this); };
+        }
+    });
+}
+// 페이지 로드시 기존 행에도 삭제 버튼 이벤트 등록
+window.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('#itemTable tbody tr').forEach(function(tr) {
+        addInputListenersToRow(tr);
+        const delBtn = tr.querySelector('.btn-danger');
+        if (delBtn) delBtn.onclick = function() { removeItem(this); };
+    });
+});
+
+function saveSales() {
+    console.log('saveSales: 시작');
+    // 필수 입력값 체크
+    const requiredFields = [
+        { id: 'salesDate', name: '출고일자' },
+        { id: 'customerCode', name: '거래처' },
+        { id: 'currencyCode', name: '통화' },
+        { id: 'paymentMethod', name: '결제방법' },
+        { id: 'paymentDueDate', name: "{{ get_text('payment_due_date') }}" },
+        { id: 'salesStatus', name: "{{ get_text('sales_status') }}" },
+        { id: 'trCode', name: '수불유형코드' }
+    ];
+    let missing = [];
+    requiredFields.forEach(f => {
+        const el = document.getElementById(f.id);
+        if (!el) {
+            console.log('saveSales: 필수값 id 없음', f.id);
+            missing.push(f.name + ' (id 없음)');
+        } else if (!el.value) {
+            missing.push(f.name);
+        }
+    });
+    if (missing.length > 0) {
+        console.log('saveSales: 필수값 누락', missing);
+        alert('필수 입력값을 확인하세요: ' + missing.join(', '));
+        return;
+    }
+    // 품목 데이터 수집
+    const items = [];
+    let missingWarehouse = false;
+    document.querySelectorAll('#itemTable tbody tr').forEach(tr => {
+        const itemCode = tr.querySelector('.item-code').value;
+        const warehouseCode = tr.querySelector('.item-warehouse-code').value;
+        const quantity = tr.querySelector('.quantity').value.replace(/,/g, '');
+        const unitPrice = tr.querySelector('.unit-price').value.replace(/,/g, '');
+        const amount = tr.querySelector('.amount').value.replace(/,/g, '');
+        if (!itemCode || !quantity || !unitPrice) return;
+        if (!warehouseCode) missingWarehouse = true;
+        items.push({
+            itemCode: itemCode,
+            warehouseCode: warehouseCode,
+            quantity: parseFloat(quantity),
+            unitPrice: parseFloat(unitPrice),
+            amount: parseFloat(amount)
+        });
+    });
+    if (missingWarehouse) {
+        console.log('saveSales: 품목별 창고코드 누락');
+        alert('모든 품목의 창고코드를 선택하세요.');
+        return;
+    }
+    if (items.length === 0) {
+        console.log('saveSales: 품목 없음');
+        alert('한 개 이상의 품목을 입력하세요.');
+        return;
+    }
+    // 마스터 데이터
+    const data = {
+        salesNo: document.getElementById('salesNo').value,
+        poNo: document.getElementById('poNo').value,
+        salesDate: document.getElementById('salesDate').value,
+        customerCode: document.getElementById('customerCode').value,
+        currencyCode: document.getElementById('currencyCode').value,
+        exchangeRate: parseFloat(document.getElementById('exchangeRate').value.replace(/,/g, '')) || 0,
+        paymentMethod: document.getElementById('paymentMethod').value,
+        paymentDueDate: document.getElementById('paymentDueDate').value,
+        salesStatus: document.getElementById('salesStatus').value,
+        trCode: document.getElementById('trCode').value,
+        remarks: document.getElementById('remarks').value,
+        total_amount: parseFloat(document.getElementById('subTotal').value.replace(/,/g, '')) || 0,
+        total_vat: parseFloat(document.getElementById('vat').value.replace(/,/g, '')) || 0,
+        total_sum_amount: parseFloat(document.getElementById('grandTotal').value.replace(/,/g, '')) || 0,
+        items: items
+    };
+    console.log('saveSales: data', data);
+    fetch('/sales/api/sales/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+    })
+    .then(res => {
+        console.log('saveSales: fetch 응답', res);
+        return res.json();
+    })
+    .then(result => {
+        console.log('saveSales: fetch 결과', result);
+        if (result.success) {
+            alert('저장되었습니다.');
+            window.location.href = '/sales/sales_list';
+        } else {
+            alert(result.message || '저장에 실패했습니다.');
+        }
+    })
+    .catch(error => {
+        console.log('saveSales: fetch 오류', error);
+        alert('저장 중 오류가 발생했습니다.');
+    });
+}
+
+// 행 삭제 함수
+function removeItem(button) {
+    const tr = button.closest('tr');
+    tr.remove();
+    updateTotals();
+}
+
+// 창고코드 옵션 로드 함수
+function loadWarehouseOptionsForItem(selectElement) {
+    fetch('/sales/api/warehouse/options')
+        .then(response => response.json())
+        .then(data => {
+            selectElement.innerHTML = '<option value="">선택</option>';
+            data.forEach(warehouse => {
+                const option = document.createElement('option');
+                option.value = warehouse.code;
+                option.textContent = `${warehouse.code} - ${warehouse.name}`;
+                selectElement.appendChild(option);
+            });
+        })
+        .catch(error => console.error('Error:', error));
+}
+</script>
+{% endblock %} 

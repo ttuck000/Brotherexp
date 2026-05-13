@@ -1,0 +1,554 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="summary-payment-container">
+    <div class="summary-payment-header card-style">
+        <h2 class="summary-title"><i class="fas fa-coins"></i> {{ get_text('Invoice_Summary') }}</h2>
+    </div>
+    <div class="summary-payment-filters oneline fullrow card-style">
+        <label>{{ get_text('period') }}</label>
+        <input type="date" id="startDate" class="form-control">
+        <span class="tilde">~</span>
+        <input type="date" id="endDate" class="form-control">
+        <label>{{ get_text('customer') }}</label>
+        <select id="customerCode" class="form-control">
+            <option value="">{{ get_text('all') }}</option>
+        </select>
+        <label>Balance Status</label>
+        <select id="balanceStatus" class="form-control" style="min-width:130px; max-width:160px;">
+            <option value="">-- All --</option>
+            <option value="ING">ING</option>
+            <option value="COMPLETED">COMPLETED</option>
+        </select>
+        <button type="button" class="btn btn-primary" onclick="searchSummary()">
+            <i class="fas fa-search"></i> {{ get_text('search') }}
+        </button>
+        <button type="button" class="btn btn-success" onclick="downloadExcel()">
+            <i class="fas fa-file-excel"></i> {{ get_text('excel_download') }}
+        </button>
+    </div>
+    <div class="summary-payment-table-wrap card-style">
+        <table class="summary-payment-table bigfont">
+            <thead>
+                <tr>
+                    <th>{{ get_text('customer') }}</th>
+                    <th>{{ get_text('currency') }}</th>
+                    <th>{{ get_text('total_amount') }}</th>
+                    <th>{{ get_text('vat') }}</th>
+                    <th>{{ get_text('sum_amount') }}</th>
+                    <th>{{ get_text('sales_paid_amount') }}</th>
+                    <th>{{ get_text('sales_unpaid_amount') }}</th>
+                    <th>Balance Status</th>
+                </tr>
+            </thead>
+            <tbody id="summaryTableBody"></tbody>
+            <tfoot>
+                <tr id="totalRow" style="display: none;" class="summary-row">
+                    <td colspan="2" class="center"><strong>{{ get_text('total') }}</strong></td>
+                    <td class="right"><strong id="totalAmount">0</strong></td>
+                    <td class="right"><strong id="totalVatAmount">0</strong></td>
+                    <td class="right"><strong id="totalSumAmount">0</strong></td>
+                    <td class="right"><strong id="totalPaidAmount">0</strong></td>
+                    <td class="right text-danger"><strong id="totalUnpaidAmount">0</strong></td>
+                    <td></td>
+                </tr>
+            </tfoot>
+        </table>
+    </div>
+    <div class="summary-payment-pagination" id="pagination"></div>
+    <div class="page-info" id="pageInfo" style="text-align:center; margin-top:6px; font-size:13px; color:#666;"></div>
+</div>
+
+<style>
+    .summary-payment-container {
+        flex: 1;
+        width: 100%;
+        padding: 20px;
+        box-sizing: border-box;
+        background-color: #f8fafc;
+        font-size: 0.9rem;
+    }
+
+    .card-style {
+        background: #fff;
+        border-radius: 14px;
+        box-shadow: 0 4px 24px rgba(26,35,126,0.08), 0 1.5px 6px rgba(0,0,0,0.03);
+        padding: 14px 10px 12px 10px;
+        width: 100%;
+        box-sizing: border-box;
+        margin-bottom: 14px;
+    }
+
+    .summary-payment-header h2.summary-title {
+        font-size: 0.88rem;
+        font-weight: 700;
+        color: #1a237e;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 10px;
+        letter-spacing: -0.5px;
+    }
+
+    .summary-payment-header i.fas {
+        font-size: 1.5em;
+        color: #ffc107;
+    }
+
+    .summary-payment-filters.oneline.fullrow {
+        display: flex;
+        align-items: center;
+        gap: 18px;
+        flex-wrap: wrap;
+        margin-bottom: 18px;
+        width: 100%;
+        background: none;
+        box-shadow: none;
+        border: none;
+        padding: 0;
+    }
+
+    .summary-payment-filters label {
+        margin-bottom: 0;
+        font-size: 0.88rem;
+        font-weight: 600;
+        color: #374151;
+    }
+
+    .summary-payment-filters .form-control {
+        min-width: 120px;
+        max-width: 180px;
+        font-size: 0.88rem;
+        border-radius: 6px;
+        border: 1px solid #d1d5db;
+        background: #f8fafc;
+    }
+
+    .summary-payment-filters .tilde {
+        margin: 0 6px;
+        font-size: 1.2em;
+        color: #007bff;
+    }
+
+    .summary-payment-filters .btn {
+        min-width: 110px;
+        font-size: 0.88rem;
+        margin-left: 0;
+        border-radius: 6px;
+        box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+    }
+
+    .summary-payment-table-wrap {
+        overflow-x: auto;
+        border-radius: 12px;
+        box-shadow: 0 2px 12px rgba(0,0,0,0.07);
+        background: #fff;
+    }
+
+    .summary-payment-table {
+        width: 100%;
+        border-collapse: separate;
+        border-spacing: 0;
+        font-size: 0.83rem;
+        background: #fff;
+        border-radius: 12px;
+        overflow: hidden;
+    }
+
+        .summary-payment-table th,
+        .summary-payment-table td {
+            padding: 7px 8px;
+            border-bottom: 1px solid #e9ecef;
+            text-align: right;
+            white-space: nowrap;
+        }
+
+        .summary-payment-table th {
+            background-color: #f1f5fa;
+            color: #007bff;
+            font-weight: 700;
+            position: sticky;
+            top: 0;
+            z-index: 1;
+            text-align: center;
+            font-size: 0.85rem;
+            border-bottom: 2px solid #007bff;
+        }
+
+        .summary-payment-table td {
+            color: #444;
+            font-size: 0.83rem;
+            background: #fff;
+        }
+
+        .summary-payment-table tbody tr:hover {
+            background: #f6faff;
+        }
+
+        .summary-payment-table .center {
+            text-align: center;
+        }
+
+        .summary-payment-table .right {
+            text-align: right;
+            font-family: 'Courier New', monospace;
+        }
+
+        .summary-payment-table .text-danger {
+            color: #dc3545;
+        }
+
+    .summary-row {
+        background: linear-gradient(90deg, #f8f9fa 0%, #fff 100%);
+        border-top: 2px solid #007bff;
+    }
+
+        .summary-row td {
+            font-weight: 700;
+            color: #2c3e50;
+            padding: 12px 10px;
+            font-size: 1.08em;
+        }
+
+    .summary-payment-pagination {
+        display: flex;
+        justify-content: center;
+        gap: 6px;
+        margin-top: 18px;
+    }
+
+        .summary-payment-pagination button {
+            min-width: 36px;
+            height: 36px;
+            padding: 0 10px;
+            border: 1.5px solid #007bff;
+            background-color: #fff;
+            color: #007bff;
+            border-radius: 6px;
+            font-size: 15px;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+        }
+
+            .summary-payment-pagination button.active {
+                background-color: #007bff;
+                color: #fff;
+                border-color: #007bff;
+            }
+
+            .summary-payment-pagination button:hover:not(.active) {
+                background-color: #f1f5fa;
+            }
+
+            .summary-payment-pagination button:disabled {
+                opacity: 0.5;
+                cursor: not-allowed;
+            }
+
+    .loading {
+        position: relative;
+        opacity: 0.7;
+        pointer-events: none;
+    }
+
+        .loading::after {
+            content: "";
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 16px;
+            height: 16px;
+            margin: -8px 0 0 -8px;
+            border: 2px solid #f3f3f3;
+            border-top: 2px solid #007bff;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+
+    @keyframes spin {
+        0% {
+            transform: rotate(0deg);
+        }
+
+        100% {
+            transform: rotate(360deg);
+        }
+    }
+
+    @media (max-width: 1100px) {
+        .summary-payment-filters.oneline.fullrow {
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+            .summary-payment-filters.oneline.fullrow .form-control {
+                min-width: 90px;
+                max-width: 120px;
+            }
+
+            .summary-payment-filters.oneline.fullrow .btn {
+                min-width: 90px;
+                font-size: 0.95rem;
+            }
+    }
+
+    .summary-payment-table.bigfont th,
+    .summary-payment-table.bigfont td {
+        font-size: 1.1rem;
+        padding: 12px 10px;
+    }
+
+    .summary-payment-table.bigfont th {
+        font-size: 1.15rem;
+    }
+
+    .summary-payment-filters.oneline.fullrow.card-style {
+        margin-bottom: 38px;
+    }
+
+    /* ── Balance Status 배지 ── */
+    .badge-ing {
+        display: inline-block;
+        padding: 4px 14px;
+        border-radius: 20px;
+        background-color: #fff8e1;
+        color: #e65100;
+        font-weight: 700;
+        font-size: 0.92em;
+        border: 1.5px solid #e65100;
+        letter-spacing: 0.5px;
+    }
+
+    .badge-completed {
+        display: inline-block;
+        padding: 4px 14px;
+        border-radius: 20px;
+        background-color: #f0fff4;
+        color: #28a745;
+        font-weight: 700;
+        font-size: 0.92em;
+        border: 1.5px solid #28a745;
+        letter-spacing: 0.5px;
+    }
+</style>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const PAGE_SIZE   = 20;
+let allItems      = [];
+let filteredItems = [];
+let curPage       = 1;
+
+/* ── 고객 목록 ── */
+function loadCustomers() {
+    fetch('/sales/api/customer/options')
+        .then(r => r.json())
+        .then(data => {
+            const select = document.getElementById('customerCode');
+            data.forEach(c => {
+                const opt       = document.createElement('option');
+                opt.value       = c.code;
+                opt.textContent = c.name;
+                select.appendChild(opt);
+            });
+        })
+        .catch(err => console.error('Error:', err));
+}
+
+    /* ── Balance Status 판정 ── */
+    function getBalanceStatus(unpaidAmount) {
+        // 양수(미수금) / 음수(초과납부) 모두 미정산 → ING
+        // 정확히 0 일 때만 → COMPLETED
+        return Math.abs(parseFloat(unpaidAmount) || 0) >= 1 ? 'ING' : 'COMPLETED';
+    }
+
+function formatBalanceBadge(status) {
+    return status === 'ING'
+        ? '<span class="badge-ing">ING</span>'
+        : '<span class="badge-completed">COMPLETED</span>';
+}
+
+/* ── 검색 (전체 로드) ── */
+function searchSummary() {
+    const startDate    = document.getElementById('startDate').value;
+    const endDate      = document.getElementById('endDate').value;
+    const customerCode = document.getElementById('customerCode').value;
+
+    fetch('/sales/api/sales/payment/summary', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            startDate:    startDate,
+            endDate:      endDate,
+            customerCode: customerCode,
+            page:         1,
+            pageSize:     9999
+        })
+    })
+    .then(r => r.json())
+    .then(data => {
+        allItems = (data.items || []).map(item => ({
+            ...item,
+            unpaidAmount:  parseFloat(item.unpaidAmount)  || 0,
+            totalAmount:   parseFloat(item.totalAmount)   || 0,
+            vatAmount:     parseFloat(item.vatAmount)     || 0,
+            sumAmount:     parseFloat(item.sumAmount)     || 0,
+            paidAmount:    parseFloat(item.paidAmount)    || 0,
+            balanceStatus: getBalanceStatus(item.unpaidAmount)
+        }));
+        applyFilterAndRender(1);
+    })
+    .catch(err => console.error('Error:', err));
+}
+
+/* ── Balance Status 필터 적용 ── */
+function applyFilterAndRender(page) {
+    const statusFilter = document.getElementById('balanceStatus').value;
+    filteredItems = statusFilter
+        ? allItems.filter(item => item.balanceStatus === statusFilter)
+        : allItems;
+    renderPage(page);
+}
+
+/* ── 페이지 렌더링 ── */
+function renderPage(page) {
+    curPage = page;
+    const tbody     = document.getElementById('summaryTableBody');
+    tbody.innerHTML = '';
+
+    const total      = filteredItems.length;
+    const totalPages = Math.ceil(total / PAGE_SIZE) || 1;
+    const start      = (page - 1) * PAGE_SIZE;
+    const end        = Math.min(start + PAGE_SIZE, total);
+    const pageData   = filteredItems.slice(start, end);
+
+    if (total === 0) {
+        tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;padding:20px;color:#888;">No data found.</td></tr>`;
+        document.getElementById('totalRow').style.display = 'none';
+        document.getElementById('pagination').innerHTML   = '';
+        document.getElementById('pageInfo').textContent   = '';
+        return;
+    }
+
+    let pgAmount = 0, pgVat = 0, pgSum = 0, pgPaid = 0, pgUnpaid = 0;
+
+    pageData.forEach(item => {
+        pgAmount += item.totalAmount;
+        pgVat    += item.vatAmount;
+        pgSum    += item.sumAmount;
+        pgPaid   += item.paidAmount;
+        pgUnpaid += item.unpaidAmount;
+
+        const row = document.createElement('tr');
+        row.innerHTML = `
+            <td class="center">${item.customerName}</td>
+            <td class="center">${item.currency}</td>
+            <td class="right">${item.totalAmount.toLocaleString()}</td>
+            <td class="right">${item.vatAmount.toLocaleString()}</td>
+            <td class="right">${item.sumAmount.toLocaleString()}</td>
+            <td class="right">${item.paidAmount.toLocaleString()}</td>
+            <td class="right text-danger">${item.unpaidAmount.toLocaleString()}</td>
+            <td class="center">${formatBalanceBadge(item.balanceStatus)}</td>
+        `;
+        tbody.appendChild(row);
+    });
+
+    document.getElementById('totalRow').style.display = '';
+    document.getElementById('totalAmount').textContent       = pgAmount.toLocaleString();
+    document.getElementById('totalVatAmount').textContent    = pgVat.toLocaleString();
+    document.getElementById('totalSumAmount').textContent    = pgSum.toLocaleString();
+    document.getElementById('totalPaidAmount').textContent   = pgPaid.toLocaleString();
+    document.getElementById('totalUnpaidAmount').textContent = pgUnpaid.toLocaleString();
+
+    renderPagination(page, totalPages);
+    document.getElementById('pageInfo').textContent =
+        `Total ${total.toLocaleString()} rows  |  Page ${page} / ${totalPages}`;
+}
+
+/* ── 페이지 버튼 ── */
+function renderPagination(page, totalPages) {
+    const wrap = document.getElementById('pagination');
+    wrap.innerHTML = '';
+    if (totalPages <= 1) return;
+
+    const btn = (label, targetPage, disabled = false, active = false) => {
+        const b = document.createElement('button');
+        b.textContent = label;
+        if (disabled) b.disabled = true;
+        if (active)   b.classList.add('active');
+        b.addEventListener('click', () => renderPage(targetPage));
+        return b;
+    };
+
+    wrap.appendChild(btn('«', 1,         page === 1));
+    wrap.appendChild(btn('‹', page - 1,  page === 1));
+
+    const delta = 2;
+    let prev = null;
+    for (let p = 1; p <= totalPages; p++) {
+        if (p === 1 || p === totalPages || (p >= page - delta && p <= page + delta)) {
+            if (prev !== null && p - prev > 1) {
+                const dots = document.createElement('button');
+                dots.textContent = '…';
+                dots.disabled = true;
+                wrap.appendChild(dots);
+            }
+            wrap.appendChild(btn(p, p, false, p === page));
+            prev = p;
+        }
+    }
+
+    wrap.appendChild(btn('›', page + 1,  page === totalPages));
+    wrap.appendChild(btn('»', totalPages, page === totalPages));
+}
+
+/* ── 엑셀 다운로드 ── */
+function downloadExcel() {
+    const startDate    = document.getElementById('startDate').value;
+    const endDate      = document.getElementById('endDate').value;
+    const customerCode = document.getElementById('customerCode').value;
+
+    fetch('/sales/api/sales/payment/summary/excel', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            startDate:    startDate,
+            endDate:      endDate,
+            customerCode: customerCode
+        })
+    })
+    .then(r => r.blob())
+    .then(blob => {
+        const url = window.URL.createObjectURL(blob);
+        const a   = document.createElement('a');
+        a.href     = url;
+        a.download = `{{ get_text('sales_payment_summary') }}_${startDate}_${endDate}.xlsx`;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        a.remove();
+    })
+    .catch(err => console.error('Error:', err));
+}
+
+function toKoreaDateString(date) {
+    const korea = new Date(date.getTime() + 9 * 60 * 60 * 1000);
+    return korea.toISOString().slice(0, 10);
+}
+
+document.addEventListener('DOMContentLoaded', function () {
+    loadCustomers();
+    const today    = new Date();
+    const firstDay = new Date(today.getFullYear(), today.getMonth() - 1, 1);  // 전월 1일
+    const lastDay  = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+    document.getElementById('startDate').value = toKoreaDateString(firstDay);
+    document.getElementById('endDate').value   = toKoreaDateString(lastDay);
+    searchSummary();
+});
+</script>
+{% endblock %}

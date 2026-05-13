@@ -1,0 +1,132 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">{{ get_text('invoice') }}</h3>
+                    <div class="card-tools">
+                        <button type="button" class="btn btn-primary" onclick="printInvoice()">
+                            <i class="fas fa-print"></i> {{ get_text('print') }}
+                        </button>
+                    </div>
+                </div>
+                <div class="card-body" id="invoiceContent">
+                    <div class="row mb-4">
+                        <div class="col-6">
+                            <h4>{{ get_text('supplier') }}</h4>
+                            <p id="supplierInfo"></p>
+                        </div>
+                        <div class="col-6 text-right">
+                            <h4>{{ get_text('buyer') }}</h4>
+                            <p id="buyerInfo"></p>
+                        </div>
+                    </div>
+                    <div class="row mb-4">
+                        <div class="col-12">
+                            <h5>{{ get_text('invoice') }}</h5>
+                            <p>{{ get_text('write_date') }}: <span id="invoiceDate"></span></p>
+                        </div>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="table table-bordered">
+                            <thead>
+                                <tr>
+                                    <th>{{ get_text('item') }}</th>
+                                    <th>{{ get_text('specification') }}</th>
+                                    <th>{{ get_text('quantity') }}</th>
+                                    <th>{{ get_text('unit_price') }}</th>
+                                    <th>{{ get_text('amount') }}</th>
+                                    <th>{{ get_text('vat') }}</th>
+                                    <th>{{ get_text('remark') }}</th>
+                                </tr>
+                            </thead>
+                            <tbody id="invoiceItems">
+                            </tbody>
+                            <tfoot>
+                                <tr>
+                                    <td colspan="4" class="text-right">{{ get_text('total') }}</td>
+                                    <td id="totalAmount"></td>
+                                    <td id="totalVat"></td>
+                                    <td></td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    @media print {
+        .card-header, .card-tools {
+            display: none !important;
+        }
+        .card {
+            border: none !important;
+        }
+        .card-body {
+            padding: 0 !important;
+        }
+    }
+</style>
+
+<script>
+function printInvoice() {
+    window.print();
+}
+
+function loadInvoiceData(purchaseNo) {
+    fetch(`/api/purchase/invoice/${purchaseNo}`)
+        .then(response => response.json())
+        .then(data => {
+            document.getElementById('supplierInfo').innerHTML = `
+                상호: ${data.supplierName}<br>
+                사업자번호: ${data.supplierBizNo}<br>
+                대표자: ${data.supplierPresident}<br>
+                주소: ${data.supplierAddress}
+            `;
+            
+            document.getElementById('buyerInfo').innerHTML = `
+                상호: ${data.buyerName}<br>
+                사업자번호: ${data.buyerBizNo}<br>
+                대표자: ${data.buyerPresident}<br>
+                주소: ${data.buyerAddress}
+            `;
+            
+            document.getElementById('invoiceDate').textContent = data.invoiceDate;
+            
+            const itemsHtml = data.items.map(item => `
+                <tr>
+                    <td>${item.itemName}</td>
+                    <td>${item.specification}</td>
+                    <td>${item.quantity}</td>
+                    <td>${item.unitPrice.toLocaleString()}</td>
+                    <td>${item.amount.toLocaleString()}</td>
+                    <td>${item.vat.toLocaleString()}</td>
+                    <td>${item.remarks || ''}</td>
+                </tr>
+            `).join('');
+            
+            document.getElementById('invoiceItems').innerHTML = itemsHtml;
+            document.getElementById('totalAmount').textContent = data.totalAmount.toLocaleString();
+            document.getElementById('totalVat').textContent = data.totalVat.toLocaleString();
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('{{ get_text('error_load_invoice') }}');
+        });
+}
+
+// URL에서 purchaseNo 가져오기
+const urlParams = new URLSearchParams(window.location.search);
+const purchaseNo = urlParams.get('purchaseNo');
+if (purchaseNo) {
+    loadInvoiceData(purchaseNo);
+}
+</script>
+{% endblock %} 
