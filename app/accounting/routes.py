@@ -10,7 +10,7 @@ from collections import OrderedDict
 acc = Blueprint('accounting', __name__, url_prefix='/accounting')
 
 # DB connection string (move to config for production)
-CONN_STR = 'DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BIGBOY;UID=brother;PWD=jobgate@m1n;'
+CONN_STR = 'DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BRO_EXPENSE;UID=brother;PWD=jobgate@m1n;'
 
 def fetch_rows_as_dicts(cursor):
     cols = [col[0] for col in cursor.description]
@@ -26,8 +26,26 @@ def _compute_prev_month_start_and_current_month_end():
     current_month_end = first_of_next_month - timedelta(days=1)
     return prev_month_start.isoformat(), current_month_end.isoformat()
 
+def _load_company_options(cursor):
+    """Distinct company values from code_Account for filter dropdowns."""
+    try:
+        cursor.execute("""
+            SELECT DISTINCT company
+            FROM dbo.code_Account
+            WHERE company IS NOT NULL AND LTRIM(RTRIM(company)) <> ''
+            ORDER BY company
+        """)
+        return [
+            {'value': (r[0] or '').strip(), 'label': (r[0] or '').strip()}
+            for r in cursor.fetchall()
+            if (r[0] or '').strip()
+        ]
+    except Exception:
+        current_app.logger.exception("Failed to load company options")
+        return []
+
 def _apply_filters_from_request(base_sql, params, where_clauses, use_defaults=True):
-    qs_cost_center = request.args.get('cost_center')
+    qs_company = request.args.get('company') or request.args.get('cost_center')
     qs_actual_code = request.args.get('actual_code')  # 추가
     qs_billing_start = request.args.get('billing_start')
     qs_billing_end = request.args.get('billing_end')
@@ -35,8 +53,8 @@ def _apply_filters_from_request(base_sql, params, where_clauses, use_defaults=Tr
     qs_key_end = request.args.get('key_end')
 
     # normalize empty / whitespace-only values to None
-    if isinstance(qs_cost_center, str):
-        qs_cost_center = qs_cost_center.strip() or None
+    if isinstance(qs_company, str):
+        qs_company = qs_company.strip() or None
     if isinstance(qs_billing_start, str):
         qs_billing_start = qs_billing_start.strip() or None
     if isinstance(qs_billing_end, str):
@@ -62,10 +80,10 @@ def _apply_filters_from_request(base_sql, params, where_clauses, use_defaults=Tr
         effective_key_start = qs_key_start
         effective_key_end = qs_key_end
 
-    # only add cost_center filter when a non-empty value was provided
-    if qs_cost_center is not None:
+    # company filter (stored in Account_Actual.COST_CENTER column)
+    if qs_company is not None:
         where_clauses.append("COST_CENTER = ?")
-        params.append(qs_cost_center)
+        params.append(qs_company)
 
     if qs_actual_code is not None:  # 추가
         where_clauses.append("Actual_Code = ?")
@@ -138,6 +156,7 @@ def account_actual_list():
     conn = None
     cursor = None
     items = []
+    company_options = []
     
     # 페이징 파라미터 처리
     page = request.args.get('page', 1, type=int)
@@ -163,7 +182,8 @@ def account_actual_list():
                     "LEFT JOIN code_vendor_expense v "
                     "  ON a.PARTNER = v.vd_code AND a.PARTNER IS NOT NULL "
                     "LEFT JOIN code_Account ac "
-                    "  ON a.Actual_Code = ac.account_code AND a.Actual_Code IS NOT NULL")
+                    "  ON a.Actual_Code = ac.account_code AND a.Actual_Code IS NOT NULL "
+                    "  AND LTRIM(RTRIM(ISNULL(a.COST_CENTER, N''))) = LTRIM(RTRIM(ISNULL(ac.company, N'')))")
         where_clauses = []
         params = []
         # apply filters and use defaults for billing only; key_date has no default
@@ -209,6 +229,8 @@ def account_actual_list():
 
         cursor.execute(base_sql, params)
         items = fetch_rows_as_dicts(cursor)
+
+        company_options = _load_company_options(cursor)
 
         # 템플릿에서 사용하는 키가 DB 컬럼명 대소문자/스네이크/캠멜 형태로 섞여 있을 수 있으므로
         # 화면에 보일 'PAYMENT_METHOD'와 'partner_name' 키를 항상 존재하도록 정규화합니다.
@@ -273,6 +295,7 @@ def account_actual_list():
         current_app.logger.error(f"Error fetching account actual list: {e}")
         items = []
         pagination_info = None
+        company_options = []
     finally:
         if cursor:
             try: cursor.close()
@@ -292,10 +315,66 @@ def account_actual_list():
         total_before_vat=total_before_vat,    # ← 추가
         total_vat=total_vat,                  # ← 추가
         total_wht=total_wht,                  # ← 추가
+        company_options=company_options,
         # key defaults intentionally empty
         key_start_default='',
         key_end_default=''
     )
+
+
+@acc.route('/actual/account-codes')
+@login_required
+def account_actual_code_options():
+    """Return account codes filtered by selected company."""
+    company = (request.args.get('company') or '').strip()
+    lang = session.get('language', 'en')
+    name_col = 'name_ko' if lang == 'ko' else ('name_th' if lang == 'th' else 'name_en')
+
+    conn = None
+    cursor = None
+    try:
+        conn = pyodbc.connect(CONN_STR)
+        cursor = conn.cursor()
+        if company:
+            cursor.execute(
+                f"""
+                SELECT account_code, {name_col}
+                FROM dbo.code_Account
+                WHERE company = ?
+                ORDER BY account_code
+                """,
+                (company,)
+            )
+        else:
+            cursor.execute(
+                f"""
+                SELECT account_code, {name_col}
+                FROM dbo.code_Account
+                ORDER BY account_code
+                """
+            )
+        rows = cursor.fetchall()
+        data = []
+        for r in rows:
+            code = (r[0] or '').strip()
+            name = (r[1] or '').strip()
+            if code:
+                data.append({'code': code, 'name': name, 'children': []})
+        return jsonify(data)
+    except Exception as e:
+        current_app.logger.error(f"Failed to load account codes by company: {e}")
+        return jsonify([]), 500
+    finally:
+        if cursor:
+            try:
+                cursor.close()
+            except Exception:
+                pass
+        if conn:
+            try:
+                conn.close()
+            except Exception:
+                pass
 
 # CREATE - /accounting/actual/add
 @acc.route('/actual/options')
@@ -324,8 +403,8 @@ def account_options():
 def account_actual_add():
     if request.method == 'POST':
         id_val          = request.form.get('id')
-        cost_center     = request.form.get('cost_center')
-        actual_type     = request.form.get('actual_type')
+        cost_center     = request.form.get('company') or request.form.get('cost_center')
+        actual_type     = 'EXPENSE'  # 실적 등록은 비용만 허용 (new 화면과 동일)
         actual_code     = request.form.get('actual_code')
         billing_date    = request.form.get('billing_date') or None
         key_date        = date.today().isoformat()
@@ -343,6 +422,7 @@ def account_actual_add():
         partner         = request.form.get('partner') or None
         partner_account = request.form.get('partner_account') or None
         payment_method  = request.form.get('payment_method') or None  # 새로 추가
+        atype           = (request.form.get('atype') or '').strip() or None
         remark          = request.form.get('remark')
         created_by      = getattr(current_user, 'username', None) or str(current_user.get_id() or '')
         create_date     = datetime.now()
@@ -353,12 +433,12 @@ def account_actual_add():
             INSERT INTO Account_Actual (
                 ID, COST_CENTER, Actual_TYPE, Actual_Code, BILLING_DATE, KEY_DATE,
                 BEFORE_VAT_AMT, VAT_TYPE, VAT_RATE, VAT_AMOUNT, WHT_RATE, WHT_AMOUNT,
-                PAYMENT, payer, partner, partner_account, payment_method, REMARK, created_by, create_date
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                PAYMENT, payer, partner, partner_account, payment_method, [type], REMARK, created_by, create_date
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, (
             id_val, cost_center, actual_type, actual_code, billing_date, key_date,
             before_vat_amt, vat_type, vat_rate, vat_amount, wht_rate, wht_amount,
-            payment, payer, partner, partner_account, payment_method, remark, created_by, create_date
+            payment, payer, partner, partner_account, payment_method, atype, remark, created_by, create_date
         ))
         conn.commit()
         cursor.close()
@@ -371,6 +451,7 @@ def account_actual_add():
     # GET: compute next id and provide defaults
     next_id = ''
     default_wht_rate = 0
+    company_options = []
     try:
         conn = pyodbc.connect(CONN_STR)
         cursor = conn.cursor()
@@ -382,6 +463,21 @@ def account_actual_add():
         except Exception:
             # if ID not integer, fall back to empty
             next_id = ''
+        try:
+            cursor.execute("""
+                SELECT DISTINCT company
+                FROM dbo.code_Account
+                WHERE company IS NOT NULL AND LTRIM(RTRIM(company)) <> ''
+                ORDER BY company
+            """)
+            company_options = [
+                {'value': (r[0] or '').strip(), 'label': (r[0] or '').strip()}
+                for r in cursor.fetchall()
+                if (r[0] or '').strip()
+            ]
+        except Exception:
+            current_app.logger.exception("Failed to load company options for account actual new")
+            company_options = []
         cursor.close()
         conn.close()
     except Exception as e:
@@ -390,7 +486,8 @@ def account_actual_add():
 
     return render_template('accounting/actual/new.html',
                            next_id=next_id,
-                           default_wht_rate=default_wht_rate)
+                           default_wht_rate=default_wht_rate,
+                           company_options=company_options)
 
 # EDIT - /accounting/actual/edit/<id_val>
 @acc.route('/actual/edit/<id_val>', methods=['GET', 'POST'])
@@ -400,7 +497,7 @@ def account_actual_edit(id_val):
     cursor = conn.cursor()
 
     if request.method == 'POST':
-        cost_center     = request.form.get('cost_center')
+        cost_center     = request.form.get('company') or request.form.get('cost_center')
         actual_type     = request.form.get('actual_type')
         actual_code     = request.form.get('actual_code')
         billing_date    = request.form.get('billing_date') or None
@@ -419,18 +516,19 @@ def account_actual_edit(id_val):
         partner         = request.form.get('partner') or None
         partner_account = request.form.get('partner_account') or None
         payment_method  = request.form.get('payment_method') or None  # 새로 추가
+        atype           = (request.form.get('atype') or '').strip() or None
         remark          = request.form.get('remark')
 
         cursor.execute("""
             UPDATE Account_Actual
             SET COST_CENTER=?, Actual_TYPE=?, Actual_Code=?, BILLING_DATE=?, KEY_DATE=?,
                 BEFORE_VAT_AMT=?, VAT_TYPE=?, VAT_RATE=?, VAT_AMOUNT=?, WHT_RATE=?, WHT_AMOUNT=?,
-                PAYMENT=?, payer=?, partner=?, partner_account=?, payment_method=?, REMARK=?
+                PAYMENT=?, payer=?, partner=?, partner_account=?, payment_method=?, [type]=?, REMARK=?
             WHERE ID=?
         """, (
             cost_center, actual_type, actual_code, billing_date, key_date,
             before_vat_amt, vat_type, vat_rate, vat_amount, wht_rate, wht_amount,
-            payment, payer, partner, partner_account, payment_method, remark, id_val
+            payment, payer, partner, partner_account, payment_method, atype, remark, id_val
         ))
         conn.commit()
         cursor.close()
@@ -503,7 +601,7 @@ def account_actual_excel():
             'ID', 'Cost Center', 'Actual Type', 'Actual Code',
             'Billing Date', 'Key Date', 'Before VAT', 'VAT Amount', 'WHT Amount',
             'Payment', 'VAT Type', 'VAT Rate', 'WHT Rate',
-            'Payer', 'Partner', 'Partner Account', 'Payment Method', 'Remark', 'Created By'
+            'Payer', 'Partner', 'Partner Account', 'Payment Method', 'Type', 'Remark', 'Created By'
         ]
         for c, h in enumerate(headers):
             ws.write(0, c, h, header_fmt)
@@ -583,8 +681,9 @@ def account_actual_excel():
             ws.write(r_idx, 14, r.get('partner_name') or r.get('partner') or '')
             ws.write(r_idx, 15, r.get('partner_account') or '')
             ws.write(r_idx, 16, r.get('payment_method') or '')  # 새로 추가
-            ws.write(r_idx, 17, r.get('REMARK') or '')
-            ws.write(r_idx, 18, r.get('created_by') or '')
+            ws.write(r_idx, 17, r.get('type') or r.get('TYPE') or '')
+            ws.write(r_idx, 18, r.get('REMARK') or '')
+            ws.write(r_idx, 19, r.get('created_by') or '')
 
         workbook.close()
         output.seek(0)
@@ -763,6 +862,7 @@ def account_actual_report():
             g['subtotal_kcc']        = sums['subtotal_kcc']
             g['subtotal_bulk']       = sums['subtotal_bulk']
 
+    company_options = _load_company_options(cursor)
     cursor.close()
     conn.close()
 
@@ -778,6 +878,7 @@ def account_actual_report():
         total_pages=(total_count + per_page - 1) // per_page,
         extra_query=extra_query,
         request_args=request.args,
+        company_options=company_options,
         billing_start_default=billing_start_default,
         billing_end_default=billing_end_default,
         key_start_default='',

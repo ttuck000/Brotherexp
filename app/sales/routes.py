@@ -19,7 +19,7 @@ from app.sales import bp as sales
 @sales.route('/sales_list')
 @login_required
 def sales_list():
-    conn = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BIGBOY;UID=brother;PWD=jobgate@m1n;')
+    conn = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BRO_EXPENSE;UID=brother;PWD=jobgate@m1n;')
     cursor = conn.cursor()
     
     # Get sales list
@@ -58,7 +58,7 @@ def sales_list():
 @sales.route('/sales_list2')
 @login_required
 def sales_list2():
-    conn = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BIGBOY;UID=brother;PWD=jobgate@m1n;')
+    conn = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BRO_EXPENSE;UID=brother;PWD=jobgate@m1n;')
     cursor = conn.cursor()
     
     # Get sales list
@@ -97,7 +97,7 @@ def sales_list2():
 @sales.route('/sales_detail/<sales_no>')
 @login_required
 def sales_detail(sales_no):
-    conn = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BIGBOY;UID=brother;PWD=jobgate@m1n;')
+    conn = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BRO_EXPENSE;UID=brother;PWD=jobgate@m1n;')
     cursor = conn.cursor()
     
     # Get sales details
@@ -122,7 +122,7 @@ def sales_payment():
         payment_amount = request.form['payment_amount']
         payment_method = request.form['payment_method']
         
-        conn = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BIGBOY;UID=brother;PWD=jobgate@m1n;')
+        conn = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BRO_EXPENSE;UID=brother;PWD=jobgate@m1n;')
         cursor = conn.cursor()
         
         # Record payment
@@ -146,7 +146,7 @@ def sales_payment():
         flash('Payment recorded successfully')
         return redirect(url_for('sales.sales_payment'))
     
-    conn = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BIGBOY;UID=brother;PWD=jobgate@m1n;')
+    conn = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BRO_EXPENSE;UID=brother;PWD=jobgate@m1n;')
     cursor = conn.cursor()
     
     # Get unpaid sales
@@ -176,7 +176,7 @@ def sales_payment_summary():
     end_date = request.args.get('end_date')
     customer_code = request.args.get('customer_code')
     
-    conn = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BIGBOY;UID=brother;PWD=jobgate@m1n;')
+    conn = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BRO_EXPENSE;UID=brother;PWD=jobgate@m1n;')
     cursor = conn.cursor()
     
     query = """
@@ -227,7 +227,7 @@ def api_sales_search():
     page = int(request.args.get('page', 1))
     per_page = int(request.args.get('per_page', 20))
 
-    conn = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BIGBOY;UID=brother;PWD=jobgate@m1n;')
+    conn = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BRO_EXPENSE;UID=brother;PWD=jobgate@m1n;')
     cursor = conn.cursor()
 
     query = '''
@@ -360,7 +360,7 @@ def sales_new2():
 @sales.route('/api/customer/options')   # 추가: 프론트엔드의 /sales/api/customer/options 호출을 허용
 @login_required
 def sales_vendor_options():
-    conn = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BIGBOY;UID=brother;PWD=jobgate@m1n;')
+    conn = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BRO_EXPENSE;UID=brother;PWD=jobgate@m1n;')
     cursor = conn.cursor()
     cursor.execute('SELECT vd_code, vd_name FROM code_vendor ORDER BY vd_name')
     rows = cursor.fetchall()
@@ -369,7 +369,7 @@ def sales_vendor_options():
 @sales.route('/api/warehouse/options')
 @login_required
 def warehouse_options():
-    conn = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BIGBOY;UID=brother;PWD=jobgate@m1n;')
+    conn = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BRO_EXPENSE;UID=brother;PWD=jobgate@m1n;')
     cursor = conn.cursor()
     cursor.execute('SELECT WH_CODE, WH_NAME FROM code_warehouse ORDER BY WH_NAME')
     rows = cursor.fetchall()
@@ -378,7 +378,7 @@ def warehouse_options():
 @sales.route('/api/currencies')
 @login_required
 def currency_options():
-    conn = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BIGBOY;UID=brother;PWD=jobgate@m1n;')
+    conn = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BRO_EXPENSE;UID=brother;PWD=jobgate@m1n;')
     cursor = conn.cursor()
     cursor.execute('SELECT currency_code, currency_name FROM code_currency ORDER BY currency_code')
     rows = cursor.fetchall()
@@ -387,7 +387,7 @@ def currency_options():
 @sales.route('/api/sales/item/options')
 @login_required
 def sales_item_options():
-    conn = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BIGBOY;UID=brother;PWD=jobgate@m1n;')
+    conn = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BRO_EXPENSE;UID=brother;PWD=jobgate@m1n;')
     cursor = conn.cursor()
     cursor.execute('SELECT ItemCode, ItemName FROM ItemMaster ORDER BY ItemCode')
     rows = cursor.fetchall()
@@ -396,7 +396,7 @@ def sales_item_options():
 @sales.route('/api/sales/item/detail/<item_code>')
 @login_required
 def sales_item_detail(item_code):
-    conn = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BIGBOY;UID=brother;PWD=jobgate@m1n;')
+    conn = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BRO_EXPENSE;UID=brother;PWD=jobgate@m1n;')
     cursor = conn.cursor()
     cursor.execute('SELECT ItemCode, ItemName, Spec, unit, salesprice FROM ItemMaster WHERE ItemCode = ?', (item_code,))
     row = cursor.fetchone()
@@ -414,7 +414,7 @@ def sales_item_detail(item_code):
 @sales.route('/api/sales/generate-no')
 @login_required
 def generate_sales_no():
-    conn = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BIGBOY;UID=brother;PWD=jobgate@m1n;')
+    conn = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BRO_EXPENSE;UID=brother;PWD=jobgate@m1n;')
     cursor = conn.cursor()
     today = datetime.now().strftime('%Y%m%d')
     
@@ -446,7 +446,7 @@ def generate_sales_no():
 def get_transaction_codes():
     types = request.args.get('types', '')
     type_list = [t.strip() for t in types.split(',') if t.strip()]
-    conn = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BIGBOY;UID=brother;PWD=jobgate@m1n;')
+    conn = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BRO_EXPENSE;UID=brother;PWD=jobgate@m1n;')
     cursor = conn.cursor()
     if type_list:
         placeholders = ','.join(['?'] * len(type_list))
@@ -460,7 +460,7 @@ def get_transaction_codes():
 @login_required
 def register_sales():
     data = request.get_json()
-    conn = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BIGBOY;UID=brother;PWD=jobgate@m1n;')
+    conn = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BRO_EXPENSE;UID=brother;PWD=jobgate@m1n;')
     cursor = conn.cursor()
     try:
         # 매출번호 중복 체크
@@ -565,7 +565,7 @@ def sales_excel_download():
         excel_title = '매출 목록'
         filename = f'매출_목록_{datetime.now().strftime("%Y%m%d")}.xlsx'
 
-    conn = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BIGBOY;UID=brother;PWD=jobgate@m1n;')
+    conn = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BRO_EXPENSE;UID=brother;PWD=jobgate@m1n;')
     cursor = conn.cursor()
     query = '''
         SELECT
@@ -723,7 +723,7 @@ def sales_edit(sales_no):
 @sales.route('/api/sales/detail/<sales_no>')
 @login_required
 def api_sales_detail(sales_no):
-    conn = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BIGBOY;UID=brother;PWD=jobgate@m1n;')
+    conn = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BRO_EXPENSE;UID=brother;PWD=jobgate@m1n;')
     cursor = conn.cursor()
     
     # Get master data
@@ -785,7 +785,7 @@ def api_sales_detail(sales_no):
 @sales.route('/api/sales/payment/exist/<sales_no>')
 @login_required
 def sales_payment_exist(sales_no):
-    conn = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BIGBOY;UID=brother;PWD=jobgate@m1n;')
+    conn = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BRO_EXPENSE;UID=brother;PWD=jobgate@m1n;')
     cursor = conn.cursor()
     cursor.execute('SELECT COUNT(*) FROM sales_payment WHERE sales_no = ?', (sales_no,))
     count = cursor.fetchone()[0]
@@ -795,7 +795,7 @@ def sales_payment_exist(sales_no):
 @login_required
 def update_sales():
     data = request.get_json()
-    conn = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BIGBOY;UID=brother;PWD=jobgate@m1n;')
+    conn = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BRO_EXPENSE;UID=brother;PWD=jobgate@m1n;')
     cursor = conn.cursor()
     try:
         # 1. sales_master 수정 (tr_code 포함)
@@ -920,7 +920,7 @@ def sales_invoice():
 @sales.route('/api/sales/invoice/<sales_no>')
 @login_required
 def api_sales_invoice(sales_no):
-    conn = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BIGBOY;UID=brother;PWD=jobgate@m1n;')
+    conn = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BRO_EXPENSE;UID=brother;PWD=jobgate@m1n;')
     cursor = conn.cursor()
     # 매출 마스터 + 거래처 정보 (컬럼명 실제 DB에 맞게 수정)
     cursor.execute("""
@@ -960,7 +960,7 @@ def api_sales_invoice(sales_no):
 @sales.route('/sales_list_detail/<sales_no>')
 @login_required
 def sales_list_detail(sales_no):
-    conn = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BIGBOY;UID=brother;PWD=jobgate@m1n;')
+    conn = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BRO_EXPENSE;UID=brother;PWD=jobgate@m1n;')
     cursor = conn.cursor()
     # 마스터+거래처 정보
     cursor.execute("""
@@ -1009,7 +1009,7 @@ def api_sales_list_detail():
     per_page = int(data.get('itemsPerPage', 15))
     po_no = data.get('poNo')
 
-    conn = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BIGBOY;UID=brother;PWD=jobgate@m1n;')
+    conn = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BRO_EXPENSE;UID=brother;PWD=jobgate@m1n;')
     cursor = conn.cursor()
 
     query = '''
@@ -1073,7 +1073,7 @@ def api_sales_list_detail():
     items = []
     for row in rows:
         # sales_detail에서 금액 정보 집계 (매출관리와 동일하게)
-        conn2 = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BIGBOY;UID=brother;PWD=jobgate@m1n;')
+        conn2 = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BRO_EXPENSE;UID=brother;PWD=jobgate@m1n;')
         cursor2 = conn2.cursor()
         cursor2.execute('''
             SELECT
@@ -1178,7 +1178,7 @@ def api_sales_list_detail_excel():
         excel_title = '매출 상세 목록'
         filename = f'매출_상세_목록_{datetime.now().strftime("%Y%m%d")}.xlsx'
 
-    conn = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BIGBOY;UID=brother;PWD=jobgate@m1n;')
+    conn = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BRO_EXPENSE;UID=brother;PWD=jobgate@m1n;')
     cursor = conn.cursor()
 
     query = '''
@@ -1351,7 +1351,7 @@ def sales_api_sales_payment_list():
     page = int(data.get('page', 1))
     per_page = int(data.get('itemsPerPage', 15))
 
-    conn = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BIGBOY;UID=brother;PWD=jobgate@m1n;')
+    conn = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BRO_EXPENSE;UID=brother;PWD=jobgate@m1n;')
     cursor = conn.cursor()
 
     # 첫 SELECT 조건 - 수금된 건들을 sales_no별로 집계
@@ -1469,7 +1469,7 @@ def sales_api_sales_payment_list():
     items = []
     for row in rows:
         # sales_detail에서 금액 정보 집계 (매출관리와 동일하게)
-        conn2 = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BIGBOY;UID=brother;PWD=jobgate@m1n;')
+        conn2 = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BRO_EXPENSE;UID=brother;PWD=jobgate@m1n;')
         cursor2 = conn2.cursor()
         cursor2.execute('''
             SELECT
@@ -1587,7 +1587,7 @@ def api_sales_payment_summary():
     page          = int(data.get('page', 1))
     page_size     = int(data.get('pageSize', 20))
 
-    conn   = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BIGBOY;UID=brother;PWD=jobgate@m1n;')
+    conn   = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BRO_EXPENSE;UID=brother;PWD=jobgate@m1n;')
     cursor = conn.cursor()
 
     query = '''
@@ -1680,7 +1680,7 @@ def api_sales_payment_summary_excel():
         excel_title = '수금현황집계'
         filename    = f'수금현황집계_{datetime.now().strftime("%Y%m%d")}.xlsx'
 
-    conn   = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BIGBOY;UID=brother;PWD=jobgate@m1n;')
+    conn   = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BRO_EXPENSE;UID=brother;PWD=jobgate@m1n;')
     cursor = conn.cursor()
 
     query = '''

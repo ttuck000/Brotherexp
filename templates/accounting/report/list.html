@@ -1,263 +1,412 @@
 <!DOCTYPE html>
 <html lang="{{ session.get('language', 'ko') }}">
+
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>{{ get_text('account_actual_report') or 'Account Actual Report' }}</title>
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/product_code.css') }}">
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
-  <style>
-    .content-area { flex: 1; padding: 40px 0; width: 100%; box-sizing: border-box; max-width:1200px; margin:0 auto; }
-    .form-container { background:#fff; border-radius:8px; padding:20px; box-shadow:0 2px 8px rgba(0,0,0,0.05); }
-    h2 { font-size:22px; margin-bottom:16px; border-bottom:2px solid #007bff; padding-bottom:8px; color:#2c3e50; }
-    .search-section { padding:16px; border:1px solid #e9ecef; border-radius:8px; margin-bottom:16px; }
-    .search-form { display:flex; gap:16px; align-items:flex-end; flex-wrap:wrap; }
-    .form-group label { display:block; margin-bottom:6px; font-weight:500; }
-    .form-group input, .form-group select { padding:8px 10px; border:1px solid #ced4da; border-radius:4px; }
-    .button-section { display:flex; gap:8px; margin-bottom:16px; }
-    .btn { padding:8px 14px; border-radius:4px; border:none; cursor:pointer; color:#fff; }
-    .btn-new { background:#28a745; }
-    .btn-excel { background:#0d6efd; }
-    .report-table{width:100%;border-collapse:collapse;margin-top:8px;}
-    .report-table th, .report-table td { padding:12px; border-bottom:1px solid #dee2e6; font-size:13px; text-align:left; }
-    .report-table thead th { background:#f8f9fa; font-weight:600; color:#08306b; }
-    .group-header td{background:#f8fbff;font-weight:700;color:#0b4da0;border-top:2px solid #e6f0ff;}
-    .group-total td{background:#fcfeff;font-weight:700;color:#0b3b78;border-top:1px dashed #e6eef8;}
-      .numeric {
-          text-align: right;
-          font-variant-numeric: tabular-nums;
-          direction: ltr;
-      }
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ get_text('account_actual_report') or 'Account Actual Report' }} - MES 시스템</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/product_code.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+    <style>
+        .content-area {
+            flex: 1;
+            padding: 40px 0 40px 0;
+            width: 100%;
+            box-sizing: border-box;
+        }
 
-      th.numeric, td.numeric {
-          text-align: right;
-      }
-    .muted{color:#6c757d;font-size:12px;}
-  </style>
+        .form-container {
+            background-color: #fff;
+            border-radius: 8px;
+            padding: 30px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        h2 {
+            font-size: 22px;
+            margin-bottom: 25px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #007bff;
+            color: #2c3e50;
+        }
+
+        .button-section {
+            margin: 20px 0;
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            align-items: flex-end;
+        }
+
+        .btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 4px;
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease-in-out;
+            min-width: 80px;
+            text-decoration: none;
+            display: inline-block;
+            text-align: center;
+            box-sizing: border-box;
+        }
+
+        .btn-add {
+            background-color: #28a745;
+            color: white;
+        }
+
+        .btn-edit {
+            background-color: #007bff;
+            color: white;
+        }
+
+        .btn:hover {
+            transform: translateY(-1px);
+        }
+
+        .btn-add:hover {
+            background-color: #218838;
+        }
+
+        .btn-edit:hover {
+            background-color: #0056b3;
+        }
+
+        .report-filters {
+            margin-bottom: 20px;
+            padding: 16px;
+            border: 1px solid #e9ecef;
+            border-radius: 8px;
+            background: #fafbfc;
+        }
+
+        .filter-grid {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 16px 20px;
+            align-items: flex-end;
+        }
+
+        /* 회사/코스트센터: 한 줄에서 약 1/3 폭 (스크린샷과 유사) */
+        .filter-field--narrow {
+            flex: 0 1 30%;
+            max-width: 280px;
+            min-width: 160px;
+        }
+
+        .filter-field--narrow select {
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        .filter-field--grow {
+            flex: 1 1 220px;
+            min-width: 200px;
+        }
+
+        .filter-actions {
+            flex: 0 0 auto;
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-left: auto;
+            align-items: flex-end;
+        }
+
+        .filter-field label {
+            display: block;
+            margin-bottom: 6px;
+            font-weight: 500;
+            font-size: 13px;
+            color: #556;
+        }
+
+        .filter-field input[type="date"],
+        .filter-field select {
+            padding: 8px 10px;
+            border: 1px solid #ced4da;
+            border-radius: 4px;
+            font-size: 13px;
+            min-width: 0;
+        }
+
+        .filter-field .date-range {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .filter-field .date-range input[type="date"] {
+            flex: 1 1 130px;
+            min-width: 130px;
+        }
+
+        .account-grid {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+
+        .account-grid th,
+        .account-grid td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #dee2e6;
+            font-size: 13px;
+        }
+
+        .account-grid th {
+            background-color: #f8f9fa;
+            font-weight: 600;
+            color: #495057;
+        }
+
+        .account-grid tr:hover td {
+            background-color: #f8f9fa;
+        }
+
+        .account-grid td.numeric,
+        .account-grid th.numeric {
+            text-align: right;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .group-header td {
+            background: #f8fbff;
+            font-weight: 700;
+            color: #0b4da0;
+            border-top: 2px solid #e6f0ff;
+        }
+
+        .group-total td {
+            background: #fcfeff;
+            font-weight: 700;
+            color: #0b3b78;
+            border-top: 1px dashed #e6eef8;
+        }
+
+        .report-pagination {
+            display: flex;
+            justify-content: center;
+            gap: 6px;
+            margin-top: 24px;
+            flex-wrap: wrap;
+            list-style: none;
+            padding: 0;
+        }
+
+        .report-pagination li {
+            display: inline-block;
+        }
+
+        .report-pagination a {
+            padding: 6px 12px;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            text-decoration: none;
+            color: #495057;
+            font-size: 13px;
+        }
+
+        .report-pagination a:hover {
+            background: #f8f9fa;
+        }
+
+        .report-pagination li.active a {
+            background: #007bff;
+            color: #fff;
+            border-color: #007bff;
+        }
+
+        .report-pagination li.disabled a {
+            opacity: 0.45;
+            pointer-events: none;
+        }
+    </style>
 </head>
+
 <body>
+    {% include 'nav.html' %}
 
-{% extends "base.html" %}
+    <main class="content-area">
+        <div class="form-container">
+            <h2>{{ get_text('account_actual_report') or 'Account Actual Report' }}</h2>
 
-{% block content %}
-<div class="container-fluid mt-4">
-    <div class="row justify-content-center">
-        <div class="col-12 col-xl-11">
-            <h2 class="mb-4" style="font-weight:700;color:#2a4365;font-size:1.5rem;">
-                <i class="fas fa-file-invoice-dollar me-2"></i>{{ get_text('account_actual_report') or 'Account Actual Report' }}
-            </h2>
-
-            <div class="card shadow-sm mb-4 rounded-4">
-                <div class="card-body bg-light rounded-4">
-                    <form class="row g-3 align-items-end" id="searchForm" method="get" action="{{ url_for('accounting.account_actual_report') }}" style="font-size:0.875rem;">
-                        <div class="col-md-3">
-                            <label for="search_cost_center" class="form-label">{{ get_text('cost_center') or 'Cost Center' }}</label>
-                            <select id="search_cost_center" name="cost_center" class="form-select">
-                                <option value="">{{ get_text('all') or '전체' }}</option>
-                                {% if cost_center_options %}
-                                {% for opt in cost_center_options %}
-                                <option value="{{ opt.value }}" {% if request_args.get('cost_center')==opt.value %}selected{% endif %}>{{ opt.label }}</option>
-                                {% endfor %}
-                                {% else %}
-                                <option value="RECYCLE" {% if request_args.get('cost_center')=='RECYCLE' %}selected{% endif %}>RECYCLE</option>
-                                <option value="INJECTION" {% if request_args.get('cost_center')=='INJECTION' %}selected{% endif %}>INJECTION</option>
-                                {% endif %}
-                            </select>
+            <form id="searchForm" method="get" action="{{ url_for('accounting.account_actual_report') }}" class="report-filters">
+                <div class="filter-grid">
+                    <div class="filter-field filter-field--narrow">
+                        <label for="search_company">{{ get_text('company') or 'Company' }}</label>
+                        <select id="search_company" name="company">
+                            <option value="">{{ get_text('all') or '전체' }}</option>
+                            {% for opt in company_options or [] %}
+                            <option value="{{ opt.value }}" {% if (request_args.get('company') or request_args.get('cost_center')) == opt.value %}selected{% endif %}>{{ opt.label }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="filter-field filter-field--grow">
+                        <label for="billing_start">{{ get_text('billing_date') or 'Billing Date' }}</label>
+                        <div class="date-range">
+                            <input type="date" id="billing_start" name="billing_start" value="{{ request_args.get('billing_start', billing_start_default) }}">
+                            <input type="date" id="billing_end" name="billing_end" value="{{ request_args.get('billing_end', billing_end_default) }}">
                         </div>
-                        <div class="col-md-3">
-                            <label class="form-label">{{ get_text('billing_date') or 'Billing Date' }}</label>
-                            <div class="d-flex gap-2">
-                                <input type="date" id="billing_start" name="billing_start" class="form-control" value="{{ request_args.get('billing_start', billing_start_default) }}">
-                                <input type="date" id="billing_end" name="billing_end" class="form-control" value="{{ request_args.get('billing_end', billing_end_default) }}">
-                            </div>
+                    </div>
+                    <div class="filter-field filter-field--grow">
+                        <label for="key_start">{{ get_text('key_date') or 'Key Date' }}</label>
+                        <div class="date-range">
+                            <input type="date" id="key_start" name="key_start" value="{{ request_args.get('key_start', key_start_default) }}">
+                            <input type="date" id="key_end" name="key_end" value="{{ request_args.get('key_end', key_end_default) }}">
                         </div>
-                        <div class="col-md-3">
-                            <label class="form-label">{{ get_text('key_date') or 'Key Date' }}</label>
-                            <div class="d-flex gap-2">
-                                <input type="date" id="key_start" name="key_start" class="form-control" value="{{ request_args.get('key_start', key_start_default) }}">
-                                <input type="date" id="key_end" name="key_end" class="form-control" value="{{ request_args.get('key_end', key_end_default) }}">
-                            </div>
-                        </div>
-                        <div class="col-md-3 d-flex gap-2 justify-content-end">
-                            <button type="submit" class="btn btn-primary px-4" style="font-size:0.875rem;">
-                                <i class="fas fa-search me-1"></i>{{ get_text('search') or 'Search' }}
-                            </button>
-                            <a href="#" id="exportExcel" class="btn btn-secondary px-4" style="font-size:0.875rem;">
-                                <i class="fas fa-file-excel me-1"></i>{{ get_text('excel_download') or 'Excel' }}
-                            </a>
-                        </div>
-                    </form>
+                    </div>
+                    <div class="filter-actions">
+                        <button type="submit" class="btn btn-add">{{ get_text('search') or 'Search' }}</button>
+                        <a href="#" id="exportExcel" class="btn btn-edit">{{ get_text('excel_download') or 'Excel' }}</a>
+                    </div>
                 </div>
-            </div>
+            </form>
 
-            <div class="card shadow rounded-4">
-                <div class="card-body">
-                    <div class="table-responsive">
-                        <table class="table table-bordered table-hover align-middle mb-0 rounded-4 overflow-hidden" style="font-size:0.875rem;">
-                            <thead class="table-primary text-center">
-                                <tr>
-                                    <th style="width:120px;">{{ get_text('key_date') or 'Key Date' }}</th>
-                                    <th>{{ get_text('actual_type') or 'Expense Type' }}</th>
-                                    <th>{{ get_text('billing_date') or 'Billing Date' }}</th>
-                                    <th>{{ get_text('payer') or 'Payer' }}</th>
-                                    <th>{{ get_text('partner') or 'Partner' }}</th>
-                                    <th>{{ get_text('payment_method') or 'Payment Method' }}</th>  <!-- 추가 -->
-                                    <th class="numeric" style="text-align:center;">
-                                        {{ get_text('before_vat_amount') or 'Before VAT' }}
-                                    </th>
-                                    <th class="numeric" style="text-align:center;">
-                                        {{ get_text('vat_amount') or 'VAT Amount' }}
-                                    </th>
-                                    <th class="numeric" style="text-align:center;">
-                                        {{ get_text('wht_amount') or 'WHT Amount' }}
-                                    </th>
-                                    <th class="numeric" style="text-align:center;">
-                                        {{ get_text('payment') or 'Payment' }}
-                                    </th>
-                                    <!-- Payment Method가 KCC인 행의 결제금액 -->
-                                    <th class="numeric" style="text-align:center;">KCC</th>
-                                    <!-- Payment Method가 Bulk인 행의 결제금액 -->
-                                    <th class="numeric" style="text-align:center;">Bulk</th>
-                                    <th>{{ get_text('remark') or 'Remark' }}</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% if grouped_items %}
-                                {# KCC/Bulk 전체 합계용 namespace #}
-                                {% set gc = namespace(kcc=0, bulk=0) %}
-                                {% for group in grouped_items %}
-                                <!-- group header -->
-                                <tr class="group-header"><td colspan="13">{{ group.type }}</td></tr>
+            <table class="account-grid">
+                <thead>
+                    <tr>
+                        <th style="width:120px;">{{ get_text('key_date') or 'Key Date' }}</th>
+                        <th>{{ get_text('actual_type') or 'Expense Type' }}</th>
+                        <th>{{ get_text('billing_date') or 'Billing Date' }}</th>
+                        <th>{{ get_text('payer') or 'Payer' }}</th>
+                        <th>{{ get_text('partner') or 'Partner' }}</th>
+                        <th>{{ get_text('payment_method') or 'Payment Method' }}</th>
+                        <th class="numeric">{{ get_text('before_vat_amount') or 'Before VAT' }}</th>
+                        <th class="numeric">{{ get_text('vat_amount') or 'VAT Amount' }}</th>
+                        <th class="numeric">{{ get_text('wht_amount') or 'WHT Amount' }}</th>
+                        <th class="numeric">{{ get_text('payment') or 'Payment' }}</th>
+                        <th class="numeric">KCC</th>
+                        <th class="numeric">Bulk</th>
+                        <th>{{ get_text('remark') or 'Remark' }}</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% if grouped_items %}
+                    {% set gc = namespace(kcc=0, bulk=0) %}
+                    {% for group in grouped_items %}
+                    <tr class="group-header"><td colspan="13">{{ group.type }}</td></tr>
 
-                                {# 그룹 내 KCC/Bulk 소계 누산 #}
-                                {% set ns = namespace(kcc=0, bulk=0) %}
-                                {% for row in group.rows %}
-                                {% if row.PAYMENT_METHOD == 'KCC' %}
-                                {% set ns.kcc = ns.kcc + (row.PAYMENT | float(0)) %}
-                                {% endif %}
-                                {% if row.PAYMENT_METHOD == 'BULK' %}
-                                {% set ns.bulk = ns.bulk + (row.PAYMENT | float(0)) %}
-                                {% endif %}
-                                <tr>
-                                    <td>{{ row.KEY_DATE or '' }}</td>
-                                    <td>{{ row.Actual_TYPE or '' }}</td>
-                                    <td>{{ row.BILLING_DATE or '' }}</td>
-                                    <td>{{ row.payer or '' }}</td>
-                                    <td>{{ row.partner or '' }}</td>
-                                    <td>{{ row.PAYMENT_METHOD or '' }}</td>
-                                    <td class="numeric">{{ fmt_money(row.BEFORE_VAT_AMT) }}</td>
-                                    <td class="numeric">{{ fmt_money(row.VAT_AMOUNT) }}</td>
-                                    <td class="numeric">{{ fmt_money(row.WHT_AMOUNT) }}</td>
-                                    <td class="numeric">{{ fmt_money(row.PAYMENT) }}</td>
-                                    <!-- PAYMENT_METHOD가 KCC이면 결제금액 표시, 아니면 빈칸 -->
-                                    <td class="numeric">{{ fmt_money(row.PAYMENT) if row.PAYMENT_METHOD == 'KCC' else '' }}</td>
-                                    <!-- PAYMENT_METHOD가 Bulk이면 결제금액 표시, 아니면 빈칸 -->
-                                    <td class="numeric">{{ fmt_money(row.PAYMENT) if row.PAYMENT_METHOD == 'BULK' else '' }}</td>
-                                    <td>{{ row.REMARK or '' }}</td>
-                                </tr>
-                                {% endfor %}
-                                {% set gc.kcc = gc.kcc + ns.kcc %}
-                                {% set gc.bulk = gc.bulk + ns.bulk %}
-                                <!-- group total -->
-                                <tr class="group-total">
-                                    <td colspan="6" style="text-align:right;">{{ group.type }} {{ get_text('subtotal') or 'Subtotal' }}</td>
-                                    <td class="numeric">{{ fmt_money(group.subtotal_before_vat) if group.subtotal_before_vat is defined else '-' }}</td>
-                                    <td class="numeric">{{ fmt_money(group.subtotal_vat) }}</td>
-                                    <td class="numeric">{{ fmt_money(group.subtotal_wht) }}</td>
-                                    <td class="numeric">{{ fmt_money(group.subtotal_payment) }}</td>
-                                    <td class="numeric">{{ fmt_money(ns.kcc) }}</td>
-                                    <td class="numeric">{{ fmt_money(ns.bulk) }}</td>
-                                    <td></td>
-                                </tr>
-                                {% endfor %}
-
-                                {# Grand Total #}
-                                {% if grand_before is defined %}
-                                <tr style="background:#f1f7ff;font-weight:800;">
-                                    <td colspan="6" style="text-align:right;">{{ get_text('grand_total') or 'GRAND TOTAL' }}</td>
-                                    <td class="numeric">{{ fmt_money(grand_before) }}</td>
-                                    <td class="numeric">{{ fmt_money(grand_vat) }}</td>
-                                    <td class="numeric">{{ fmt_money(grand_wht) }}</td>
-                                    <td class="numeric">{{ fmt_money(grand_payment) }}</td>
-                                    <td class="numeric">{{ fmt_money(gc.kcc) }}</td>
-                                    <td class="numeric">{{ fmt_money(gc.bulk) }}</td>
-                                    <td></td>
-                                </tr>
-                                {% else %}
-                                {% if grouped_items and grouped_items|length > 0 and grouped_items[0].subtotal_before_vat is not none %}
-                                {% set grand_before = grouped_items|sum(attribute='subtotal_before_vat') %}
-                                {% else %}
-                                {% set grand_before = 0 %}
-                                {% endif %}
-                                {% set grand_vat = grouped_items|sum(attribute='subtotal_vat') %}
-                                {% set grand_wht = grouped_items|sum(attribute='subtotal_wht') %}
-                                {% set grand_payment = grouped_items|sum(attribute='subtotal_payment') %}
-                                <tr style="background:#f1f7ff;font-weight:800;">
-                                    <td colspan="6" style="text-align:right;">{{ get_text('grand_total') or 'GRAND TOTAL' }}</td>
-                                    <td class="numeric">{{ fmt_money(grand_before) }}</td>
-                                    <td class="numeric">{{ fmt_money(grand_vat) }}</td>
-                                    <td class="numeric">{{ fmt_money(grand_wht) }}</td>
-                                    <td class="numeric">{{ fmt_money(grand_payment) }}</td>
-                                    <td class="numeric">{{ fmt_money(gc.kcc) }}</td>
-                                    <td class="numeric">{{ fmt_money(gc.bulk) }}</td>
-                                    <td></td>
-                                </tr>
-                                {% endif %}
-                                {% else %}
-                                <!-- no records -->
-                                <tr><td colspan="13" style="text-align:center;padding:18px;">{{ get_text('no_records') or 'No records found.' }}</td></tr>
-                                {% endif %}
-                            </tbody>
-                        </table>
-                    </div>
-                    {# 페이징 영역 #}
-                    {% if total_pages and total_pages > 1 %}
-                    <div class="d-flex justify-content-center mt-4">
-                        <nav>
-                            <ul class="pagination">
-                                <li class="page-item {% if page <= 1 %}disabled{% endif %}">
-                                    <a class="page-link" href="?page={{ page-1 }}{{ extra_query }}" tabindex="-1">&laquo;</a>
-                                </li>
-                                {% for p in range(1, total_pages+1) %}
-                                <li class="page-item {% if p == page %}active{% endif %}">
-                                    <a class="page-link" href="?page={{ p }}{{ extra_query }}">{{ p }}</a>
-                                </li>
-                                {% endfor %}
-                                <li class="page-item {% if page >= total_pages %}disabled{% endif %}">
-                                    <a class="page-link" href="?page={{ page+1 }}{{ extra_query }}">&raquo;</a>
-                                </li>
-                            </ul>
-                        </nav>
-                    </div>
+                    {% set ns = namespace(kcc=0, bulk=0) %}
+                    {% for row in group.rows %}
+                    {% if row.PAYMENT_METHOD == 'KCC' %}
+                    {% set ns.kcc = ns.kcc + (row.PAYMENT | float(0)) %}
                     {% endif %}
-                </div>
-            </div>
+                    {% if row.PAYMENT_METHOD == 'BULK' %}
+                    {% set ns.bulk = ns.bulk + (row.PAYMENT | float(0)) %}
+                    {% endif %}
+                    <tr>
+                        <td>{{ row.KEY_DATE or '' }}</td>
+                        <td>{{ row.Actual_TYPE or '' }}</td>
+                        <td>{{ row.BILLING_DATE or '' }}</td>
+                        <td>{{ row.payer or '' }}</td>
+                        <td>{{ row.partner or '' }}</td>
+                        <td>{{ row.PAYMENT_METHOD or '' }}</td>
+                        <td class="numeric">{{ fmt_money(row.BEFORE_VAT_AMT) }}</td>
+                        <td class="numeric">{{ fmt_money(row.VAT_AMOUNT) }}</td>
+                        <td class="numeric">{{ fmt_money(row.WHT_AMOUNT) }}</td>
+                        <td class="numeric">{{ fmt_money(row.PAYMENT) }}</td>
+                        <td class="numeric">{{ fmt_money(row.PAYMENT) if row.PAYMENT_METHOD == 'KCC' else '' }}</td>
+                        <td class="numeric">{{ fmt_money(row.PAYMENT) if row.PAYMENT_METHOD == 'BULK' else '' }}</td>
+                        <td>{{ row.REMARK or '' }}</td>
+                    </tr>
+                    {% endfor %}
+                    {% set gc.kcc = gc.kcc + ns.kcc %}
+                    {% set gc.bulk = gc.bulk + ns.bulk %}
+                    <tr class="group-total">
+                        <td colspan="6" style="text-align:right;">{{ group.type }} {{ get_text('subtotal') or 'Subtotal' }}</td>
+                        <td class="numeric">{{ fmt_money(group.subtotal_before_vat) if group.subtotal_before_vat is defined else '-' }}</td>
+                        <td class="numeric">{{ fmt_money(group.subtotal_vat) }}</td>
+                        <td class="numeric">{{ fmt_money(group.subtotal_wht) }}</td>
+                        <td class="numeric">{{ fmt_money(group.subtotal_payment) }}</td>
+                        <td class="numeric">{{ fmt_money(ns.kcc) }}</td>
+                        <td class="numeric">{{ fmt_money(ns.bulk) }}</td>
+                        <td></td>
+                    </tr>
+                    {% endfor %}
+
+                    {% if grand_before is defined %}
+                    <tr style="background:#f1f7ff;font-weight:800;">
+                        <td colspan="6" style="text-align:right;">{{ get_text('grand_total') or 'GRAND TOTAL' }}</td>
+                        <td class="numeric">{{ fmt_money(grand_before) }}</td>
+                        <td class="numeric">{{ fmt_money(grand_vat) }}</td>
+                        <td class="numeric">{{ fmt_money(grand_wht) }}</td>
+                        <td class="numeric">{{ fmt_money(grand_payment) }}</td>
+                        <td class="numeric">{{ fmt_money(gc.kcc) }}</td>
+                        <td class="numeric">{{ fmt_money(gc.bulk) }}</td>
+                        <td></td>
+                    </tr>
+                    {% else %}
+                    {% if grouped_items and grouped_items|length > 0 and grouped_items[0].subtotal_before_vat is not none %}
+                    {% set grand_before = grouped_items|sum(attribute='subtotal_before_vat') %}
+                    {% else %}
+                    {% set grand_before = 0 %}
+                    {% endif %}
+                    {% set grand_vat = grouped_items|sum(attribute='subtotal_vat') %}
+                    {% set grand_wht = grouped_items|sum(attribute='subtotal_wht') %}
+                    {% set grand_payment = grouped_items|sum(attribute='subtotal_payment') %}
+                    <tr style="background:#f1f7ff;font-weight:800;">
+                        <td colspan="6" style="text-align:right;">{{ get_text('grand_total') or 'GRAND TOTAL' }}</td>
+                        <td class="numeric">{{ fmt_money(grand_before) }}</td>
+                        <td class="numeric">{{ fmt_money(grand_vat) }}</td>
+                        <td class="numeric">{{ fmt_money(grand_wht) }}</td>
+                        <td class="numeric">{{ fmt_money(grand_payment) }}</td>
+                        <td class="numeric">{{ fmt_money(gc.kcc) }}</td>
+                        <td class="numeric">{{ fmt_money(gc.bulk) }}</td>
+                        <td></td>
+                    </tr>
+                    {% endif %}
+                    {% else %}
+                    <tr><td colspan="13" style="text-align:center;padding:18px;">{{ get_text('no_records') or 'No records found.' }}</td></tr>
+                    {% endif %}
+                </tbody>
+            </table>
+
+            {% if total_pages and total_pages > 1 %}
+            <nav aria-label="Pagination">
+                <ul class="report-pagination">
+                    <li class="{% if page <= 1 %}disabled{% endif %}">
+                        <a href="?page={{ page - 1 }}{{ extra_query }}" tabindex="-1">&laquo;</a>
+                    </li>
+                    {% for p in range(1, total_pages + 1) %}
+                    <li class="{% if p == page %}active{% endif %}">
+                        <a href="?page={{ p }}{{ extra_query }}">{{ p }}</a>
+                    </li>
+                    {% endfor %}
+                    <li class="{% if page >= total_pages %}disabled{% endif %}">
+                        <a href="?page={{ page + 1 }}{{ extra_query }}">&raquo;</a>
+                    </li>
+                </ul>
+            </nav>
+            {% endif %}
         </div>
-    </div>
-</div>
-{% endblock %}
+    </main>
 
-{% block scripts %}
-<script>
-  document.getElementById('exportExcel')?.addEventListener('click', function (e) {
-    console.log('엑셀 다운로드 클릭됨');
-    e.preventDefault();
-    const params = new URLSearchParams();
-    const cost_center = document.getElementById('search_cost_center')?.value;
-    const billing_start = document.getElementById('billing_start')?.value;
-    const billing_end = document.getElementById('billing_end')?.value;
-    const key_start = document.getElementById('key_start')?.value;
-    const key_end = document.getElementById('key_end')?.value;
+    <script>
+        document.getElementById('exportExcel')?.addEventListener('click', function (e) {
+            e.preventDefault();
+            const params = new URLSearchParams();
+            const company = document.getElementById('search_company')?.value;
+            const billing_start = document.getElementById('billing_start')?.value;
+            const billing_end = document.getElementById('billing_end')?.value;
+            const key_start = document.getElementById('key_start')?.value;
+            const key_end = document.getElementById('key_end')?.value;
 
-    if (cost_center) params.append('cost_center', cost_center);
-    if (billing_start) params.append('billing_start', billing_start);
-    if (billing_end) params.append('billing_end', billing_end);
-    if (key_start) params.append('key_start', key_start);
-    if (key_end) params.append('key_end', key_end);
+            if (company) params.append('company', company);
+            if (billing_start) params.append('billing_start', billing_start);
+            if (billing_end) params.append('billing_end', billing_end);
+            if (key_start) params.append('key_start', key_start);
+            if (key_end) params.append('key_end', key_end);
 
-    const url = '{{ url_for("accounting.account_actual_report_excel") }}' + (params.toString() ? ('?' + params.toString()) : '');
-    window.location.href = url;
-  });
-</script>
-{% endblock %}
+            const url = '{{ url_for("accounting.account_actual_report_excel") }}' + (params.toString() ? ('?' + params.toString()) : '');
+            window.location.href = url;
+        });
+    </script>
+</body>
+
+</html>

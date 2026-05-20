@@ -117,8 +117,10 @@ body {
 }
 
 .logo-image img {
-    height: 28px;
+    display: block;
+    max-height: 48px;
     width: auto;
+    max-width: 140px;
     object-fit: contain;
 }
 
@@ -156,7 +158,9 @@ body {
     pointer-events: none;
 }
 
-.submenu.open {
+.submenu.open,
+.nav-item:hover > .submenu,
+.nav-item:focus-within > .submenu {
     opacity: 1;
     visibility: visible;
     transform: translateY(0);

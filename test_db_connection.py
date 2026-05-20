@@ -94,7 +94,7 @@ def test_connection_string():
     conn_str = (
         "DRIVER={ODBC Driver 17 for SQL Server};" +
         "SERVER=118.67.132.208,1433;" +
-        "DATABASE=BIGBOY;" +
+        "DATABASE=BRO_EXPENSE;" +
         "UID=brother;" +
         "PWD=jobgate@m1n;" +
         "TrustServerCertificate=yes"
@@ -136,7 +136,7 @@ def test_alternative_connections():
         conn_str_windows = (
             "DRIVER={ODBC Driver 17 for SQL Server};" +
             "SERVER=118.67.132.208,1433;" +
-            "DATABASE=BIGBOY;" +
+            "DATABASE=BRO_EXPENSE;" +
             "Trusted_Connection=yes;" +
             "TrustServerCertificate=yes"
         )
@@ -162,7 +162,7 @@ def test_alternative_connections():
             conn_str = (
                 f"DRIVER={{{driver}}};" +
                 "SERVER=118.67.132.208,1433;" +
-                "DATABASE=BIGBOY;" +
+                "DATABASE=BRO_EXPENSE;" +
                 "UID=brother;" +
                 "PWD=jobgate@m1n;" +
                 "TrustServerCertificate=yes"
@@ -237,7 +237,7 @@ def create_alternative_config():
             "conn_str": (
                 "DRIVER={ODBC Driver 17 for SQL Server};" +
                 "SERVER=118.67.132.208,1433;" +
-                "DATABASE=BIGBOY;" +
+                "DATABASE=BRO_EXPENSE;" +
                 "Trusted_Connection=yes;" +
                 "TrustServerCertificate=yes"
             )
@@ -247,7 +247,7 @@ def create_alternative_config():
             "conn_str": (
                 "DRIVER={ODBC Driver 17 for SQL Server};" +
                 "SERVER=118.67.132.208,1433;" +
-                "DATABASE=BIGBOY;" +
+                "DATABASE=BRO_EXPENSE;" +
                 "UID=brother;" +
                 "PWD=jobgate@m1n;" +
                 "TrustServerCertificate=yes;" +
@@ -260,7 +260,7 @@ def create_alternative_config():
             "conn_str": (
                 "DRIVER={ODBC Driver 17 for SQL Server};" +
                 "SERVER=118.67.132.208,1433;" +
-                "DATABASE=BIGBOY;" +
+                "DATABASE=BRO_EXPENSE;" +
                 "UID=brother;" +
                 "PWD=jobgate@m1n;" +
                 "TrustServerCertificate=yes;" +

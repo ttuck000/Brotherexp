@@ -31,12 +31,6 @@
             color: #2c3e50;
         }
 
-        .button-section {
-            margin: 20px 0;
-            display: flex;
-            gap: 8px;
-        }
-
         .btn {
             padding: 8px 16px;
             border: none;
@@ -131,6 +125,76 @@
             .account-grid input[type="checkbox"] {
                 margin: 0;
             }
+
+        .search-panel {
+            background: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 8px;
+            padding: 16px 18px;
+            margin-bottom: 16px;
+        }
+
+        .search-form {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 14px 20px;
+            align-items: flex-end;
+        }
+
+        .search-field label {
+            display: block;
+            font-size: 13px;
+            font-weight: 500;
+            color: #495057;
+            margin-bottom: 6px;
+        }
+
+        .search-field select {
+            padding: 7px 10px;
+            border: 1px solid #ced4da;
+            border-radius: 4px;
+            font-size: 13px;
+            min-width: 200px;
+            max-width: 280px;
+        }
+
+        .btn-search {
+            background-color: #007bff;
+            color: white;
+        }
+
+        .btn-search:hover {
+            background-color: #0056b3;
+        }
+
+        .btn-reset {
+            background-color: #6c757d;
+            color: white;
+            text-decoration: none;
+        }
+
+        .btn-reset:hover {
+            background-color: #545b62;
+            color: white;
+        }
+
+        .search-actions {
+            margin-left: auto;
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            align-items: flex-end;
+        }
+
+        .search-actions .btn {
+            text-decoration: none;
+        }
+
+        .empty-row td {
+            text-align: center;
+            color: #6c757d;
+            padding: 28px;
+        }
     </style>
 </head>
 
@@ -141,25 +205,48 @@
         <div class="form-container">
             <h2>{{ get_text('account_list') or 'Account Code List' }}</h2>
 
-            <div class="button-section">
-                <button class="btn btn-add" onclick="location.href='{{ url_for('base.account_list') }}'">
-                    {{ get_text('add_account') or 'Add Account' }}
-                </button>
-                <button class="btn btn-edit" id="editBtn">{{ get_text('edit') or 'Edit' }}</button>
-                <button class="btn btn-delete" id="deleteBtn">{{ get_text('delete') or 'Delete' }}</button>
-                <button class="btn btn-edit" id="hierarchyBtn">{{ get_text('account_hierarchy') or 'Hierarchy' }}</button>
-            </div>
+            <form class="search-panel" method="get" action="{{ url_for('base.account_list') }}" id="searchForm">
+                <div class="search-form">
+                    <div class="search-field">
+                        <label for="company">{{ get_text('company') or 'Company' }}</label>
+                        <select id="company" name="company">
+                            <option value="">{{ get_text('all') or 'All' }}</option>
+                            {% for c in company_options %}
+                            <option value="{{ c.value }}" {% if filters.company == c.value %}selected{% endif %}>
+                                {{ c.label }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="search-field">
+                        <button type="submit" class="btn btn-search">
+                            <i class="fas fa-search"></i> {{ get_text('search') or 'Search' }}
+                        </button>
+                        <a href="{{ url_for('base.account_list') }}" class="btn btn-reset" style="margin-left:6px;">
+                            {{ get_text('reset') or 'Reset' }}
+                        </a>
+                    </div>
+                    <div class="search-actions">
+                        <a class="btn btn-add" href="{{ url_for('base.account_add') }}">
+                            {{ get_text('add_account') or 'Add Account' }}
+                        </a>
+                        <button type="button" class="btn btn-edit" id="editBtn">{{ get_text('edit') or 'Edit' }}</button>
+                        <button type="button" class="btn btn-delete" id="deleteBtn">{{ get_text('delete') or 'Delete' }}</button>
+                        <button type="button" class="btn btn-edit" id="hierarchyBtn" style="display:none;">{{ get_text('account_hierarchy') or 'Hierarchy' }}</button>
+                    </div>
+                </div>
+            </form>
 
             <table class="account-grid">
                 <thead>
                     <tr>
                         <th><input type="checkbox" id="selectAll"></th>
                         <th class="sortable" data-column="0" data-type="number">{{ get_text('number') or 'ID' }}</th>
-                        <th class="sortable" data-column="1" data-type="number">{{ get_text('account_code') or 'Account Code' }}</th>
-                        <th class="sortable" data-column="2" data-type="text">{{ get_text('account_name_en') or 'Account Name (EN)' }}</th>
-                        <th class="sortable" data-column="3" data-type="text">{{ get_text('account_name_th') or 'Account Name (TH)' }}</th>
-                        <th class="sortable" data-column="4" data-type="text">{{ get_text('account_name_ko') or 'Account Name (KO)' }}</th>
-                        <th class="sortable" data-column="5" data-type="number">{{ get_text('parent_code') or 'Parent Code' }}</th>
+                        <th class="sortable" data-column="1" data-type="text">{{ get_text('company') or 'Company' }}</th>
+                        <th class="sortable" data-column="2" data-type="number">{{ get_text('account_code') or 'Account Code' }}</th>
+                        <th class="sortable" data-column="3" data-type="text">{{ get_text('account_name_en') or 'Account Name (EN)' }}</th>
+                        <th class="sortable" data-column="4" data-type="text">{{ get_text('account_name_th') or 'Account Name (TH)' }}</th>
+                        <th class="sortable" data-column="5" data-type="text">{{ get_text('account_name_ko') or 'Account Name (KO)' }}</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -167,11 +254,15 @@
                     <tr>
                         <td><input type="checkbox" class="account-select" value="{{ account[0] }}"></td>
                         <td>{{ account[0] }}</td>
-                        <td>{{ account[4] }}</td>
-                        <td>{{ account[1] }}</td>
+                        <td>{{ account[1] or '' }}</td>
+                        <td>{{ account[5] }}</td>
                         <td>{{ account[2] }}</td>
                         <td>{{ account[3] }}</td>
-                        <td>{{ account[5] or '' }}</td>
+                        <td>{{ account[4] }}</td>
+                    </tr>
+                    {% else %}
+                    <tr class="empty-row">
+                        <td colspan="7">{{ get_text('no_data_found') or '—' }}</td>
                     </tr>
                     {% endfor %}
                 </tbody>
@@ -319,10 +410,17 @@
                 });
             });
             
-            // 페이지 로드 시 Account Code(두 번째 sortable 컬럼) 기준 오름차순 정렬
+            // 페이지 로드 시 Company -> Account Code 순으로 오름차순 정렬
             window.addEventListener('DOMContentLoaded', function() {
-                const accountCodeHeader = headers[1]; // Account Code 컬럼
-                if (accountCodeHeader) {
+                const companyHeader = headers[1]; // Company 컬럼
+                const accountCodeHeader = headers[2]; // Account Code 컬럼
+                // stable sort를 이용해 2차(account_code) -> 1차(company) 순으로 적용
+                if (accountCodeHeader && companyHeader) {
+                    sortTable(accountCodeHeader, 'asc');
+                    sortTable(companyHeader, 'asc');
+                } else if (companyHeader) {
+                    sortTable(companyHeader, 'asc');
+                } else if (accountCodeHeader) {
                     sortTable(accountCodeHeader, 'asc');
                 }
             });

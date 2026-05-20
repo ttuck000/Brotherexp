@@ -10,7 +10,7 @@ class Config:
         "mssql+pyodbc:///?odbc_connect=" +
         "DRIVER={ODBC Driver 17 for SQL Server};" +
         "SERVER=118.67.132.208,1433;" +
-        "DATABASE=BIGBOY;" +
+        "DATABASE=BRO_EXPENSE;" +
         "UID=brother;" +
         "PWD=jobgate@m1n;" +
         "TrustServerCertificate=yes;" +
@@ -23,7 +23,7 @@ class Config:
         "mssql+pyodbc:///?odbc_connect=" +
         "DRIVER={SQL Server Native Client 11.0};" +
         "SERVER=118.67.132.208,1433;" +
-        "DATABASE=BIGBOY;" +
+        "DATABASE=BRO_EXPENSE;" +
         "UID=brother;" +
         "PWD=jobgate@m1n;" +
         "TrustServerCertificate=yes;" +
@@ -61,7 +61,7 @@ class Config:
     PYODBC_CONN_STR = (
         "DRIVER={ODBC Driver 17 for SQL Server};" +
         "SERVER=118.67.132.208,1433;" +
-        "DATABASE=BIGBOY;" +
+        "DATABASE=BRO_EXPENSE;" +
         "UID=brother;" +
         "PWD=jobgate@m1n;" +
         "TrustServerCertificate=yes;" +
@@ -88,4 +88,3 @@ config = {
     'testing': TestingConfig,
     'default': DevelopmentConfig
 }
-

@@ -5,7 +5,7 @@ from app.auth.routes import login_required
 import pyodbc
 from datetime import datetime
 
-DB = 'DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BIGBOY;UID=brother;PWD=jobgate@m1n;'
+DB = 'DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BRO_EXPENSE;UID=brother;PWD=jobgate@m1n;'
 
 @production.route('/production')
 @login_required

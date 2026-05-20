@@ -10,7 +10,7 @@ acc = Blueprint('accounting', __name__)
 @acc.route('/')
 @login_required
 def account_actual_list():
-    conn = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BIGBOY;UID=brother;PWD=jobgate@m1n;')
+    conn = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BRO_EXPENSE;UID=brother;PWD=jobgate@m1n;')
     cursor = conn.cursor()
     cursor.execute("SELECT * FROM Account_Actual")
     items = cursor.fetchall()
@@ -39,7 +39,7 @@ def account_actual_add():
         account       = request.form['account']
         remark        = request.form['remark']
 
-        conn = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BIGBOY;UID=brother;PWD=jobgate@m1n;')
+        conn = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BRO_EXPENSE;UID=brother;PWD=jobgate@m1n;')
         cursor = conn.cursor()
         cursor.execute("""
             INSERT INTO Account_Actual (
@@ -64,7 +64,7 @@ def account_actual_add():
 @acc.route('/account_actual/edit/<id_val>', methods=['GET', 'POST'])
 @login_required
 def account_actual_edit(id_val):
-    conn = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BIGBOY;UID=brother;PWD=jobgate@m1n;')
+    conn = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BRO_EXPENSE;UID=brother;PWD=jobgate@m1n;')
     cursor = conn.cursor()
 
     if request.method == 'POST':

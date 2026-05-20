@@ -15,7 +15,7 @@ from . import bp as purchase
 
 def get_db_connection():
     conn = pyodbc.connect(
-        'DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BIGBOY;UID=brother;PWD=jobgate@m1n;'
+        'DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BRO_EXPENSE;UID=brother;PWD=jobgate@m1n;'
     )
     # Try to set connection decoding but avoid raising on invalid bytes.
     # Preferred: replace invalid sequences instead of failing, and fall back safely.

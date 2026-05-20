@@ -9,17 +9,12 @@
                 <div class="card-body bg-light rounded-4">
                     <form class="row gx-0 align-items-end" id="searchForm" method="get" action="{{ url_for('accounting.account_actual_list') }}" style="font-size:0.875rem;">
                         <div class="col-md-1">
-                            <label for="search_cost_center" class="form-label">{{ get_text('cost_center') or 'Cost Center' }}</label>
-                            <select id="search_cost_center" name="cost_center" class="form-select search-half">
+                            <label for="search_company" class="form-label">{{ get_text('company') or 'Company' }}</label>
+                            <select id="search_company" name="company" class="form-select search-half">
                                 <option value="">{{ get_text('all') or '전체' }}</option>
-                                {% if cost_center_options %}
-                                {% for opt in cost_center_options %}
-                                <option value="{{ opt.value }}" {% if request_args.get('cost_center')==opt.value %}selected{% endif %}>{{ opt.label }}</option>
+                                {% for opt in company_options or [] %}
+                                <option value="{{ opt.value }}" {% if (request_args.get('company') or request_args.get('cost_center')) == opt.value %}selected{% endif %}>{{ opt.label }}</option>
                                 {% endfor %}
-                                {% else %}
-                                <option value="RECYCLE" {% if request_args.get('cost_center')=='RECYCLE' %}selected{% endif %}>RECYCLE</option>
-                                <option value="INJECTION" {% if request_args.get('cost_center')=='INJECTION' %}selected{% endif %}>INJECTION</option>
-                                {% endif %}
                             </select>
                         </div>
 
@@ -28,7 +23,7 @@
                             <div class="input-group">
                                 <input type="text" id="search_actual_code" name="actual_code" class="form-control search-half" value="{{ request_args.get('actual_code', '') }}" readonly>
                                 <button type="button" class="btn btn-success" id="btnActualCodeHierarchy">
-                                    {{ get_text('hierarchy') or 'Hierarchy' }}
+                                    {{ get_text('search') or 'Search' }}
                                 </button>
                                 <button type="button" class="btn btn-primary btn-sm ms-1" id="btnActualCodeReset" title="{{ get_text('reset') or 'Reset' }}" aria-label="{{ get_text('reset') or 'Reset' }}">
                                     <i class="fas fa-undo"></i>
@@ -68,7 +63,7 @@
                                 <tr>
                                     <th class="text-center"><input type="checkbox" id="selectAll"></th>
                                     <th class="text-center numeric">{{ get_text('id') or 'ID' }}</th>
-                                    <th class="text-center">{{ get_text('cost_center') or 'Cost Center' }}</th>
+                                    <th class="text-center">{{ get_text('company') or 'Company' }}</th>
                                     <th class="text-center">{{ get_text('actual_type') or 'Actual Type' }}</th>
                                     <th class="text-center">{{ get_text('actual_code') or 'Actual Code' }}</th>
                                     <th class="text-center">{{ get_text('account_name') or 'Account Name' }}</th>
@@ -88,6 +83,7 @@
                                     <th class="text-center">{{ get_text('payment_method') or 'Payment Method' }}</th>
                                     <th class="text-center">{{ get_text('partner') or 'Partner' }}</th>
                                     <th class="text-center">{{ get_text('partner_account') or 'Partner Account' }}</th>
+                                    <th class="text-center">{{ get_text('type') or 'Type' }}</th>
                                     <th class="text-center">{{ get_text('remark') or 'Remark' }}</th>
                                     <th class="text-center">{{ get_text('created_by') or 'Created By' }}</th>
                                 </tr>
@@ -123,13 +119,14 @@
                                         {{ item.partner_name or item.PARTNER_NAME or item.partner }}
                                     </td>
                                     <td class="text-start">{{ item.PARTNER_ACCOUNT or item.partner_account }}</td>
+                                    <td class="text-start">{% if 'type' in item %}{{ item['type'] }}{% elif 'TYPE' in item %}{{ item['TYPE'] }}{% endif %}</td>
                                     <td class="text-start">{{ item.REMARK }}</td>
                                     <td class="text-center">{{ item.created_by }}</td>
 
                                 </tr>
                                 {% endfor %}
                                 {% else %}
-                                <tr><td colspan="21" class="text-center py-3">{{ get_text('no_records') or 'No records found.' }}</td></tr>
+                                <tr><td colspan="22" class="text-center py-3">{{ get_text('no_records') or 'No records found.' }}</td></tr>
                                 {% endif %}
                             </tbody>
                             <tfoot>
@@ -139,7 +136,7 @@
                                     <td class="text-end numeric">{{ fmt_money(total_vat) }}</td>
                                     <td class="text-end numeric">{{ fmt_money(total_wht) }}</td>
                                     <td class="text-end numeric">{{ fmt_money(total_payment) }}</td>
-                                    <td colspan="9"></td>
+                                    <td colspan="10"></td>
                                 </tr>
                             </tfoot>
                         </table>
@@ -267,9 +264,16 @@ document.addEventListener('DOMContentLoaded', function() {
     const billingEnd = document.getElementById('billing_end');
     const keyStart = document.getElementById('key_start');
     const keyEnd = document.getElementById('key_end');
+    const searchCompany = document.getElementById('search_company');
 
     if (billingStart && !billingStart.value) billingStart.value = "{{ billing_start_default }}" || firstDay;
     if (billingEnd && !billingEnd.value) billingEnd.value = "{{ billing_end_default }}" || lastDayStr;
+
+    // company 변경 시 actual_code 초기화
+    searchCompany?.addEventListener('change', function() {
+        const actualCodeInput = document.getElementById('search_actual_code');
+        if (actualCodeInput) actualCodeInput.value = '';
+    });
 
 
     // select all
@@ -282,13 +286,13 @@ document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('excelDownload')?.addEventListener('click', function(e){
         e.preventDefault();
         const params = new URLSearchParams();
-        const cost_center = document.getElementById('search_cost_center')?.value;
+        const company = document.getElementById('search_company')?.value;
         const billing_start = billingStart?.value;
         const billing_end = billingEnd?.value;
         const key_start = keyStart?.value;
         const key_end = keyEnd?.value;
 
-        if (cost_center) params.append('cost_center', cost_center);
+        if (company) params.append('company', company);
         if (billing_start) params.append('billing_start', billing_start);
         if (billing_end) params.append('billing_end', billing_end);
         if (key_start) params.append('key_start', key_start);
@@ -434,7 +438,10 @@ document.addEventListener('DOMContentLoaded', function() {
         async function loadTree() {
             treeContainer.innerHTML = '<div class="text-muted py-3 text-center">{{ get_text("loading") or "Loading..." }}</div>';
             try {
-                const res = await fetch('{{ url_for("base.account_hierarchy_api") }}', { credentials:'same-origin', headers:{'X-Requested-With':'XMLHttpRequest'} });
+                const selectedCompany = document.getElementById('search_company')?.value || '';
+                const endpoint = '{{ url_for("accounting.account_actual_code_options") }}';
+                const url = selectedCompany ? `${endpoint}?company=${encodeURIComponent(selectedCompany)}` : endpoint;
+                const res = await fetch(url, { credentials:'same-origin', headers:{'X-Requested-With':'XMLHttpRequest'} });
                 if (!res.ok) throw new Error('status ' + res.status);
                 const contentType = res.headers.get('content-type') || '';
                 const text = await res.text();

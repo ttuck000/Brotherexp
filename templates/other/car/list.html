@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html lang="{{ session.get('language', 'ko') }}">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ get_text('car_management') }} - BROTHER MIS</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/product_code.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+    <style>
+        .content-area {
+            flex: 1;
+            padding: 40px 0;
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        .form-container {
+            background-color: #fff;
+            border-radius: 8px;
+            padding: 30px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        h2 {
+            font-size: 22px;
+            margin-bottom: 25px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #007bff;
+            color: #2c3e50;
+        }
+
+        .btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 4px;
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease-in-out;
+            min-width: 80px;
+            text-decoration: none;
+            display: inline-block;
+            text-align: center;
+            box-sizing: border-box;
+        }
+
+        .btn-add {
+            background-color: #28a745;
+            color: white;
+        }
+
+        .btn-add:hover {
+            background-color: #218838;
+            color: white;
+        }
+
+        .btn-excel {
+            background-color: #17a2b8;
+            color: white;
+        }
+
+        .btn-excel:hover {
+            background-color: #138496;
+        }
+
+        .btn-report {
+            background-color: #007bff;
+            color: white;
+        }
+
+        .btn-report:hover {
+            background-color: #0056b3;
+        }
+
+        .account-grid {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+
+        .account-grid th,
+        .account-grid td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #dee2e6;
+            font-size: 13px;
+            vertical-align: top;
+        }
+
+        .account-grid th {
+            background-color: #f8f9fa;
+            font-weight: 600;
+            color: #495057;
+            white-space: nowrap;
+        }
+
+        .account-grid tr:hover {
+            background-color: #f8f9fa;
+        }
+
+        .account-grid input[type="checkbox"] {
+            margin: 0;
+            cursor: pointer;
+        }
+
+        .account-grid th.col-check,
+        .account-grid td.col-check {
+            width: 40px;
+            text-align: center;
+        }
+
+        .flash-msg {
+            padding: 10px 14px;
+            border-radius: 6px;
+            margin-bottom: 16px;
+            font-size: 13px;
+        }
+
+        .flash-msg.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .flash-msg.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .flash-msg.warning {
+            background: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffeeba;
+        }
+
+        .empty-row td {
+            text-align: center;
+            color: #6c757d;
+            padding: 28px;
+        }
+
+        .search-panel {
+            background: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 8px;
+            padding: 16px 18px;
+            margin-bottom: 8px;
+        }
+
+        .search-form {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 14px 20px;
+            align-items: flex-end;
+        }
+
+        .search-field label {
+            display: block;
+            font-size: 13px;
+            font-weight: 500;
+            color: #495057;
+            margin-bottom: 6px;
+        }
+
+        .search-field input[type="date"],
+        .search-field input[type="text"],
+        .search-field select {
+            padding: 7px 10px;
+            border: 1px solid #ced4da;
+            border-radius: 4px;
+            font-size: 13px;
+            box-sizing: border-box;
+        }
+
+        .search-field input[type="date"] {
+            width: 150px;
+        }
+
+        .search-field select {
+            min-width: 220px;
+            max-width: 320px;
+        }
+
+        .search-field input[type="text"]#driver {
+            width: 140px;
+        }
+
+        .date-range {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .date-range span {
+            color: #6c757d;
+            font-size: 13px;
+        }
+
+        .btn-search {
+            background-color: #007bff;
+            color: white;
+        }
+
+        .btn-search:hover {
+            background-color: #0056b3;
+        }
+
+        .btn-reset {
+            background-color: #6c757d;
+            color: white;
+        }
+
+        .btn-reset:hover {
+            background-color: #545b62;
+        }
+
+        .search-actions {
+            margin-left: auto;
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            align-items: flex-end;
+        }
+
+        .search-actions .btn {
+            white-space: nowrap;
+        }
+    </style>
+</head>
+<body>
+    {% include 'nav.html' %}
+
+    <main class="content-area">
+        <div class="form-container">
+            <h2>{{ get_text('car_management') }}</h2>
+
+            {% with messages = get_flashed_messages(with_categories=true) %}
+            {% for category, message in messages %}
+            <div class="flash-msg {{ category }}">
+                {{ get_text(message) if message.startswith('car_') else message }}
+            </div>
+            {% endfor %}
+            {% endwith %}
+
+            <form class="search-panel" method="get" action="{{ url_for('other.car_management') }}" id="searchForm">
+                <div class="search-form">
+                    <div class="search-field">
+                        <label>{{ get_text('car_use_date') }} ({{ get_text('date_from') }} / {{ get_text('end_date') or get_text('to') }})</label>
+                        <div class="date-range">
+                            <input type="date" id="use_date_from" name="use_date_from"
+                                   value="{{ filters.use_date_from }}" required>
+                            <span>~</span>
+                            <input type="date" id="use_date_to" name="use_date_to"
+                                   value="{{ filters.use_date_to }}" required>
+                        </div>
+                    </div>
+                    <div class="search-field">
+                        <label for="company">{{ get_text('company') }}</label>
+                        <select id="company" name="company">
+                            <option value="">{{ get_text('all') }}</option>
+                            {% for c in company_options %}
+                            <option value="{{ c.value }}" {% if filters.company == c.value %}selected{% endif %}>
+                                {{ c.label }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="search-field">
+                        <label for="vehicle_code">{{ get_text('car_vehicle_select') }}</label>
+                        <select id="vehicle_code" name="vehicle_code">
+                            <option value="">{{ get_text('all') }}</option>
+                            {% for v in vehicles %}
+                            <option value="{{ v.code }}" {% if filters.vehicle_code == v.code %}selected{% endif %}>
+                                {{ v.label }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="search-field">
+                        <label for="driver">{{ get_text('car_driver') }}</label>
+                        <input type="text" id="driver" name="driver" maxlength="200"
+                               value="{{ filters.driver }}"
+                               placeholder="{{ get_text('car_driver_id_placeholder') }}"
+                               autocomplete="username">
+                    </div>
+                    <div class="search-field">
+                        <button type="submit" class="btn btn-search">
+                            <i class="fas fa-search"></i> {{ get_text('search') }}
+                        </button>
+                        <a href="{{ url_for('other.car_management') }}" class="btn btn-reset" style="margin-left:6px;">
+                            {{ get_text('reset') }}
+                        </a>
+                    </div>
+                    <div class="search-actions">
+                        <a class="btn btn-excel" href="{{ url_for('other.car_schedule') }}" style="background:#5c6bc0;color:#fff;">
+                            <i class="fas fa-calendar-alt"></i> {{ get_text('car_schedule') }}
+                        </a>
+                        <a class="btn btn-add" href="{{ url_for('other.car_new') }}">
+                            {{ get_text('new_register') }}
+                        </a>
+                        <button type="button" class="btn btn-excel" id="excelDownload">
+                            <i class="fas fa-file-excel"></i> {{ get_text('excel_download') }}
+                        </button>
+                        <button type="button" class="btn btn-report" id="reportBtn">
+                            <i class="fas fa-file-alt"></i> {{ get_text('car_report') }}
+                        </button>
+                    </div>
+                </div>
+            </form>
+
+            <table class="account-grid">
+                <thead>
+                    <tr>
+                        <th class="col-check">
+                            <input type="checkbox" id="selectAll" title="{{ get_text('select') }}">
+                        </th>
+                        <th>{{ get_text('number') }}</th>
+                        <th>{{ get_text('car_submitted_at') }}</th>
+                        <th>{{ get_text('car_use_date') }}</th>
+                        <th>{{ get_text('car_use_date_to') }}</th>
+                        <th>{{ get_text('company') }}</th>
+                        <th>{{ get_text('car_all_day') }}</th>
+                        <th>{{ get_text('car_time_from') }}</th>
+                        <th>{{ get_text('car_time_to') }}</th>
+                        <th>{{ get_text('car_vehicle_select') }}</th>
+                        <th>{{ get_text('car_location') }}</th>
+                        <th>{{ get_text('car_requester') }}</th>
+                        <th>{{ get_text('car_driver') }}</th>
+                        <th>{{ get_text('car_remark') }}</th>
+                        <th>{{ get_text('car_approved') }}</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in items %}
+                    <tr>
+                        <td class="col-check">
+                            <input type="checkbox" class="car-select" value="{{ row.ID }}">
+                        </td>
+                        <td>{{ row.ID }}</td>
+                        <td>{{ row.SubmittedAt.strftime('%Y-%m-%d %H:%M') if row.SubmittedAt else '' }}</td>
+                        <td>{{ row.UseDate.strftime('%Y-%m-%d') if row.UseDate else '' }}</td>
+                        <td>{{ row.usedateto.strftime('%Y-%m-%d') if row.usedateto else '' }}</td>
+                        <td>{{ row.Company or '' }}</td>
+                        <td>{% if row.is_allday %}{{ get_text('car_all_day') }}{% endif %}</td>
+                        <td>{% if not row.is_allday and row.TimeFrom %}{{ row.TimeFrom.strftime('%H:%M') }}{% endif %}</td>
+                        <td>{% if not row.is_allday and row.TimeTo %}{{ row.TimeTo.strftime('%H:%M') }}{% endif %}</td>
+                        <td>{{ row.VehicleLabel }}</td>
+                        <td>{{ row.Location }}</td>
+                        <td>{{ row.UserName }}</td>
+                        <td>{{ row.DriverName or '' }}</td>
+                        <td>{{ row.Remark or '' }}</td>
+                        <td>{{ row.Approved or '' }}</td>
+                    </tr>
+                    {% else %}
+                    <tr class="empty-row">
+                        <td colspan="15">{{ get_text('car_list_empty') or '—' }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </main>
+
+    <script>
+        (function () {
+            var selectAll = document.getElementById('selectAll');
+            var excelBtn = document.getElementById('excelDownload');
+            var reportBtn = document.getElementById('reportBtn');
+            var reportBase = '{{ url_for("other.car_report", req_id=0) }}'.replace('/0', '/');
+            var selectOneMsg = {{ get_text('car_select_one_for_report')|tojson }};
+
+            function getSelectedIds() {
+                var ids = [];
+                document.querySelectorAll('.car-select:checked').forEach(function (el) {
+                    ids.push(el.value);
+                });
+                return ids;
+            }
+
+            if (selectAll) {
+                selectAll.addEventListener('change', function () {
+                    document.querySelectorAll('.car-select').forEach(function (cb) {
+                        cb.checked = selectAll.checked;
+                    });
+                });
+            }
+
+            if (excelBtn) {
+                excelBtn.addEventListener('click', function () {
+                    var form = document.getElementById('searchForm');
+                    var params = new URLSearchParams(new FormData(form));
+                    var qs = params.toString();
+                    window.location.href = '{{ url_for("other.car_excel") }}' + (qs ? ('?' + qs) : '');
+                });
+            }
+
+            if (reportBtn) {
+                reportBtn.addEventListener('click', function () {
+                    var ids = getSelectedIds();
+                    if (ids.length !== 1) {
+                        alert(selectOneMsg);
+                        return;
+                    }
+                    window.open(reportBase + ids[0], '_blank');
+                });
+            }
+        })();
+    </script>
+</body>
+</html>

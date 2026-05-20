@@ -13,7 +13,7 @@ from app.inventory import bp as inventory
 @inventory.route('/inventory_status')
 @login_required
 def inventory_status():
-    conn = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BIGBOY;UID=brother;PWD=jobgate@m1n;')
+    conn = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BRO_EXPENSE;UID=brother;PWD=jobgate@m1n;')
     cursor = conn.cursor()
     
     # Get inventory status
@@ -37,7 +37,7 @@ def inventory_check():
         actual_quantity = request.form['actual_quantity']
         check_date = datetime.now()
         
-        conn = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BIGBOY;UID=brother;PWD=jobgate@m1n;')
+        conn = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BRO_EXPENSE;UID=brother;PWD=jobgate@m1n;')
         cursor = conn.cursor()
         
         # Get current stock
@@ -66,7 +66,7 @@ def inventory_check():
         flash('Inventory check completed successfully')
         return redirect(url_for('inventory.inventory_check'))
     
-    conn = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BIGBOY;UID=brother;PWD=jobgate@m1n;')
+    conn = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BRO_EXPENSE;UID=brother;PWD=jobgate@m1n;')
     cursor = conn.cursor()
     cursor.execute("SELECT * FROM item_code")
     items = cursor.fetchall()
@@ -82,7 +82,7 @@ def stock_status():
     item_code = request.args.get('item_code')
     transaction_date = request.args.get('transaction_date')
     
-    conn = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BIGBOY;UID=brother;PWD=jobgate@m1n;')
+    conn = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BRO_EXPENSE;UID=brother;PWD=jobgate@m1n;')
     cursor = conn.cursor()
     
     query = """
@@ -158,7 +158,7 @@ def inventory_audit_detail_list_page():
 @login_required
 def warehouse_options():
     try:
-        conn = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BIGBOY;UID=brother;PWD=jobgate@m1n;')
+        conn = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BRO_EXPENSE;UID=brother;PWD=jobgate@m1n;')
         cursor = conn.cursor()
         cursor.execute('SELECT WH_CODE, WH_NAME FROM code_warehouse ORDER BY WH_NAME')
         rows = cursor.fetchall()
@@ -170,7 +170,7 @@ def warehouse_options():
 @inventory.route('/api/inventory/item/options')
 @login_required
 def inventory_item_options():
-    conn = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BIGBOY;UID=brother;PWD=jobgate@m1n;')
+    conn = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BRO_EXPENSE;UID=brother;PWD=jobgate@m1n;')
     cursor = conn.cursor()
     cursor.execute('SELECT ItemCode, ItemName FROM ItemMaster ORDER BY ItemCode')
     rows = cursor.fetchall()
@@ -180,7 +180,7 @@ def inventory_item_options():
 @login_required
 def inventory_item_detail(item_code):
     warehouse_code = request.args.get('warehouse_code')
-    conn = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BIGBOY;UID=brother;PWD=jobgate@m1n;')
+    conn = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BRO_EXPENSE;UID=brother;PWD=jobgate@m1n;')
     cursor = conn.cursor()
     cursor.execute('SELECT ItemCode, ItemName, Spec, unit FROM ItemMaster WHERE ItemCode = ?', (item_code,))
     row = cursor.fetchone()
@@ -221,7 +221,7 @@ def inventory_audit_register_save():
     items = data.get('items', [])
     username = current_user.username if hasattr(current_user, 'username') else 'system'
     now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-    conn = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BIGBOY;UID=brother;PWD=jobgate@m1n;')
+    conn = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BRO_EXPENSE;UID=brother;PWD=jobgate@m1n;')
     cursor = conn.cursor()
     try:
         print('[실사마스터 입력값]', audit_date, warehouse_code, remarks, username, now)
@@ -282,7 +282,7 @@ def inventory_audit_list_api():
     page = int(request.args.get('page', 1))
     page_size = int(request.args.get('pageSize', 20))
     offset = (page - 1) * page_size
-    conn = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BIGBOY;UID=brother;PWD=jobgate@m1n;')
+    conn = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BRO_EXPENSE;UID=brother;PWD=jobgate@m1n;')
     cursor = conn.cursor()
     # 전체 행 수 구하기
     count_query = '''
@@ -343,7 +343,7 @@ def inventory_audit_list_api():
 @login_required
 def delete_inventory_audit(audit_id):
     try:
-        conn = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BIGBOY;UID=brother;PWD=jobgate@m1n;')
+        conn = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BRO_EXPENSE;UID=brother;PWD=jobgate@m1n;')
         cursor = conn.cursor()
         
         # 먼저 상세 데이터 삭제
@@ -364,7 +364,7 @@ def delete_inventory_audit(audit_id):
 @login_required
 def inventory_audit_detail(audit_id):
     try:
-        conn = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BIGBOY;UID=brother;PWD=jobgate@m1n;')
+        conn = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BRO_EXPENSE;UID=brother;PWD=jobgate@m1n;')
         cursor = conn.cursor()
         
         # 마스터 데이터 조회 (창고명 포함)
@@ -403,7 +403,7 @@ def inventory_audit_detail(audit_id):
 @login_required
 def inventory_audit_items(audit_id):
     try:
-        conn = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BIGBOY;UID=brother;PWD=jobgate@m1n;')
+        conn = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BRO_EXPENSE;UID=brother;PWD=jobgate@m1n;')
         cursor = conn.cursor()
         
         # 상세 데이터 조회 (품목마스터 정보 포함)
@@ -475,7 +475,7 @@ def inventory_audit_update():
     username = current_user.username if hasattr(current_user, 'username') else 'system'
     now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     
-    conn = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BIGBOY;UID=brother;PWD=jobgate@m1n;')
+    conn = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BRO_EXPENSE;UID=brother;PWD=jobgate@m1n;')
     cursor = conn.cursor()
     
     try:
@@ -522,7 +522,7 @@ def inventory_audit_update():
 @login_required
 def apply_inventory_audit(audit_id):
     try:
-        conn = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BIGBOY;UID=brother;PWD=jobgate@m1n;')
+        conn = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BRO_EXPENSE;UID=brother;PWD=jobgate@m1n;')
         cursor = conn.cursor()
         # 1. 마스터/상세 데이터 조회
         cursor.execute('SELECT id, warehouse_code, audit_date FROM inventory_audit_master WHERE id = ?', (audit_id,))
@@ -586,7 +586,7 @@ def apply_inventory_audit(audit_id):
 @login_required
 def cancel_apply_inventory_audit(audit_id):
     try:
-        conn = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BIGBOY;UID=brother;PWD=jobgate@m1n;')
+        conn = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BRO_EXPENSE;UID=brother;PWD=jobgate@m1n;')
         cursor = conn.cursor()
         # 1. 마스터 정보 조회
         cursor.execute('SELECT warehouse_code, audit_date FROM inventory_audit_master WHERE id = ?', (audit_id,))
@@ -634,7 +634,7 @@ def cancel_apply_inventory_audit(audit_id):
 @login_required
 def inventory_audit_edit_api(audit_id):
     try:
-        conn = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BIGBOY;UID=brother;PWD=jobgate@m1n;')
+        conn = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BRO_EXPENSE;UID=brother;PWD=jobgate@m1n;')
         cursor = conn.cursor()
         # 마스터 데이터 조회
         cursor.execute('''
@@ -685,7 +685,7 @@ def inventory_audit_detail_list_api():
         item_code = request.args.get('item_code', '').strip()
         item_name = request.args.get('item_name', '').strip()
         warehouse_code = request.args.get('warehouse_code', '').strip()
-        conn = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BIGBOY;UID=brother;PWD=jobgate@m1n;')
+        conn = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BRO_EXPENSE;UID=brother;PWD=jobgate@m1n;')
         cursor = conn.cursor()
         query = '''
             SELECT 
@@ -756,7 +756,7 @@ def inventory_audit_detail_list_excel():
     start_idx = (page - 1) * page_size
     end_idx = start_idx + page_size
     try:
-        conn = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BIGBOY;UID=brother;PWD=jobgate@m1n;')
+        conn = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BRO_EXPENSE;UID=brother;PWD=jobgate@m1n;')
         cursor = conn.cursor()
         cursor.execute('''
             SELECT 
@@ -826,7 +826,7 @@ def inventory_stock_list_api():
     item_code = request.args.get('item_code', '').strip()
     item_name = request.args.get('item_name', '').strip()
     warehouse_code = request.args.get('warehouse_code', '').strip()
-    conn = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BIGBOY;UID=brother;PWD=jobgate@m1n;')
+    conn = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BRO_EXPENSE;UID=brother;PWD=jobgate@m1n;')
     cursor = conn.cursor()
     query = '''
      		select
@@ -887,7 +887,7 @@ def inventory_stock_list_excel():
         item_name = request.args.get('item_name', '').strip()
         warehouse_code = request.args.get('warehouse_code', '').strip()
         
-        conn = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BIGBOY;UID=brother;PWD=jobgate@m1n;')
+        conn = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BRO_EXPENSE;UID=brother;PWD=jobgate@m1n;')
         cursor = conn.cursor()
         query = '''
             SELECT
@@ -963,7 +963,7 @@ def inventory_transaction_list_api():
         item_name = request.args.get('item_name', '').strip()
         warehouse_code = request.args.get('warehouse_code', '').strip()
         
-        conn = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BIGBOY;UID=brother;PWD=jobgate@m1n;')
+        conn = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BRO_EXPENSE;UID=brother;PWD=jobgate@m1n;')
         cursor = conn.cursor()
         
         query = '''
@@ -1053,7 +1053,7 @@ def inventory_transaction_list_excel():
         item_name = request.args.get('item_name', '').strip()
         warehouse_code = request.args.get('warehouse_code', '').strip()
         
-        conn = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BIGBOY;UID=brother;PWD=jobgate@m1n;')
+        conn = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BRO_EXPENSE;UID=brother;PWD=jobgate@m1n;')
         cursor = conn.cursor()
         
         query = '''
@@ -1197,7 +1197,7 @@ def inbound_transaction_list():
         # note: item_name filter removed because ItemName/ItemDesc not returned
         warehouse_code = request.args.get('warehouse_code', '').strip()
 
-        conn = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BIGBOY;UID=brother;PWD=jobgate@m1n;')
+        conn = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BRO_EXPENSE;UID=brother;PWD=jobgate@m1n;')
         cursor = conn.cursor()
         query = """
             SELECT TransId,
@@ -1272,7 +1272,7 @@ def inbound_transaction_create():
         out_qty = safe_float(data.get('OutQty', 0))
         remarks = safe_str(data.get('Remarks')) or ''
 
-        conn = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BIGBOY;UID=brother;PWD=jobgate@m1n;')
+        conn = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BRO_EXPENSE;UID=brother;PWD=jobgate@m1n;')
         cursor = conn.cursor()
 
         # 현재 잔액(마지막 트랜잭션 기준) 조회
@@ -1338,7 +1338,7 @@ def inbound_transaction_list_excel():
         item_code = request.args.get('item_code', '').strip()
         warehouse_code = request.args.get('warehouse_code', '').strip()
 
-        conn = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BIGBOY;UID=brother;PWD=jobgate@m1n;')
+        conn = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BRO_EXPENSE;UID=brother;PWD=jobgate@m1n;')
         cursor = conn.cursor()
         query = """
             SELECT
@@ -1423,7 +1423,7 @@ def outbound_transaction_list():
         # note: item_name filter removed if not returned by query
         warehouse_code = request.args.get('warehouse_code', '').strip()
 
-        conn = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BIGBOY;UID=brother;PWD=jobgate@m1n;')
+        conn = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BRO_EXPENSE;UID=brother;PWD=jobgate@m1n;')
         cursor = conn.cursor()
         query = """
             SELECT TransId,
@@ -1497,7 +1497,7 @@ def outbound_transaction_create():
         out_qty = safe_float(data.get('OutQty', 0))
         remarks = safe_str(data.get('Remarks')) or ''
 
-        conn = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BIGBOY;UID=brother;PWD=jobgate@m1n;')
+        conn = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BRO_EXPENSE;UID=brother;PWD=jobgate@m1n;')
         cursor = conn.cursor()
 
         # 현재 잔액(마지막 트랜잭션 기준) 조회
@@ -1563,7 +1563,7 @@ def outbound_transaction_list_excel():
         item_code = request.args.get('item_code', '').strip()
         warehouse_code = request.args.get('warehouse_code', '').strip()
 
-        conn = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BIGBOY;UID=brother;PWD=jobgate@m1n;')
+        conn = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BRO_EXPENSE;UID=brother;PWD=jobgate@m1n;')
         cursor = conn.cursor()
         query = """
             SELECT

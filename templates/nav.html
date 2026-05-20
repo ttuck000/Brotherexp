@@ -69,7 +69,19 @@
                         </ul>
                     </li>
 
-                    <li class="nav-item">
+                    <li class="nav-item has-submenu">
+                        <a href="{{ url_for('other.car_management') }}" class="nav-link nav-link--has-submenu">
+                            <i class="fas fa-folder-open"></i>
+                            <span>{{ get_text('other_management') }}</span>
+                            <i class="fas fa-chevron-down arrow-icon"></i>
+                        </a>
+                        <ul class="submenu">
+                            <li><a href="{{ url_for('other.car_management') }}"><i class="fas fa-car"></i> {{ get_text('car_management') }}</a></li>
+                            <li><a href="{{ url_for('other.car_schedule') }}"><i class="fas fa-calendar-alt"></i> {{ get_text('car_schedule') }}</a></li>
+                        </ul>
+                    </li>
+
+                    <li class="nav-item nav-item--hidden" style="display: none;" aria-hidden="true">
                         <a href="#" class="nav-link">
                             <i class="fas fa-shopping-cart"></i>
                             <span>{{ get_text('purchase_management') }}</span>
@@ -85,7 +97,7 @@
                         </ul>
                     </li>
 
-                    <li class="nav-item">
+                    <li class="nav-item nav-item--hidden" style="display: none;" aria-hidden="true">
                         <a href="#" class="nav-link">
                             <i class="fas fa-chart-line"></i>
                             <span>{{ get_text('sales_management') }}</span>
@@ -101,7 +113,7 @@
                         </ul>
                     </li>
 
-                    <li class="nav-item">
+                    <li class="nav-item nav-item--hidden" style="display: none;" aria-hidden="true">
                         <a href="#" class="nav-link">
                             <i class="fas fa-boxes"></i>
                             <span>{{ get_text('production_management') }}</span>
@@ -113,7 +125,7 @@
                         </ul>
                     </li>
 
-                    <li class="nav-item">
+                    <li class="nav-item nav-item--hidden" style="display: none;" aria-hidden="true">
                         <a href="#" class="nav-link">
                             <i class="fas fa-boxes"></i>
                             <span>{{ get_text('inventory_management') }}</span>
@@ -146,7 +158,7 @@
 
             </nav>
             <div class="logo-image">
-                <img src="{{ url_for('static', filename='images/bigboy-logo.jpg') }}" alt="Big Boy Logo">
+                <img src="{{ url_for('static', filename='images/big_brother_group.png') }}" alt="Big Brother Group">
             </div>
         </div>
     </header>
@@ -158,6 +170,7 @@
             position: sticky;
             top: 0;
             z-index: 1000;
+            padding: 0;
         }
 
         .nav-container {
@@ -171,16 +184,18 @@
             position: relative;
         }
 
-        .logo {
-            justify-self: start;
-        }
-
-        .main-nav {
-            justify-self: center;
-        }
-
         .logo-image {
-            justify-self: end;
+            display: flex;
+            align-items: center;
+            margin-left: 12px;
+        }
+
+        .logo-image img {
+            display: block;
+            max-height: 48px;
+            width: auto;
+            max-width: 140px;
+            object-fit: contain;
         }
 
         .logo-link {
@@ -205,6 +220,17 @@
 
         .nav-item {
             position: relative;
+        }
+
+        /* 서브메뉴와 본문 사이 간격에서 mouseleave 되지 않도록 */
+        .nav-item.has-submenu::after {
+            content: '';
+            position: absolute;
+            left: 0;
+            right: 0;
+            top: 100%;
+            height: 10px;
+            z-index: 99998;
         }
 
         .nav-link {
@@ -250,9 +276,9 @@
             box-shadow: 0 4px 20px rgba(0,0,0,0.15);
             min-width: 220px;
             padding: 8px;
-            margin-top: 4px;
+            margin-top: 0;
+            padding-top: 4px;
 
-            /* 변경: display 대신 visibility/opacity로 토글, 포인트 허용 및 높은 z-index 보장 */
             opacity: 0;
             visibility: hidden;
             transform: translateY(-10px);
@@ -270,9 +296,12 @@
             pointer-events: auto;      /* 보일 때는 클릭 허용 */
         }
 
-        /* 기존 :hover 방식과 병행 가능(보조) */
-        .nav-item:hover .submenu {
-            /* 기존 동작 유지하되, JS와 충돌하지 않게 open 클래스 우선 사용 */
+        .nav-item:hover > .submenu,
+        .nav-item:focus-within > .submenu {
+            opacity: 1;
+            visibility: visible;
+            transform: translateY(0);
+            pointer-events: auto;
         }
 
         .submenu li a {
@@ -325,7 +354,8 @@
                 transform: translateX(-50%) translateY(-10px);
             }
 
-            .nav-item:hover .submenu {
+            .nav-item:hover > .submenu,
+            .nav-item:focus-within > .submenu {
                 transform: translateX(-50%) translateY(0);
             }
         }
@@ -423,6 +453,15 @@
                         }
                     }, 50);
                 });
+                if (link.classList.contains('nav-link--has-submenu')) {
+                    link.addEventListener('click', (e) => {
+                        if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+                        if (window.matchMedia('(hover: none)').matches) {
+                            e.preventDefault();
+                            submenu.classList.toggle('open');
+                        }
+                    });
+                }
             }
 
             // 드롭다운 내부 링크 포커스/블러 처리

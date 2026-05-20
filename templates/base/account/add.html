@@ -152,9 +152,19 @@
         <div class="form-container">
             <div class="page-title">{{ get_text('add_account') }}</div>
             <form id="newForm" method="POST" action="{{ url_for('base.account_add') }}">
+                {% if csrf_token is defined %}
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                {% endif %}
 
                 <div class="form-row">
+                    <div class="form-col">
+                        <div class="form-group">
+                            <label for="company" class="required">{{ get_text('company') or 'Company' }}</label>
+                            <select id="company" name="company" required>
+                                <option value="">{{ get_text('select_company') or 'Select company' }}</option>
+                            </select>
+                        </div>
+                    </div>
                     <div class="form-col">
                         <div class="form-group">
                             <label for="accountCode" class="required">{{ get_text('account_code') }}</label>
@@ -162,10 +172,19 @@
                             <div id="codeCheckResult" class="check-result"></div>
                         </div>
                     </div>
+                </div>
+
+                <div class="form-row">
                     <div class="form-col">
                         <div class="form-group">
-                            <label for="accountName" class="required">{{ get_text('account_name') }}</label>
-                            <input type="text" id="accountName" name="account_name" maxlength="50" required placeholder="{{ get_text('enter_account_name') }}">
+                            <label for="nameEn" class="required">{{ get_text('account_name_en') or 'Account Name (EN)' }}</label>
+                            <input type="text" id="nameEn" name="name_en" maxlength="100" required placeholder="{{ get_text('enter_account_name') }}">
+                        </div>
+                    </div>
+                    <div class="form-col">
+                        <div class="form-group">
+                            <label for="nameTh">{{ get_text('account_name_th') or 'Account Name (TH)' }}</label>
+                            <input type="text" id="nameTh" name="name_th" maxlength="100" placeholder="{{ get_text('enter_account_name') }}">
                         </div>
                     </div>
                 </div>
@@ -173,41 +192,8 @@
                 <div class="form-row">
                     <div class="form-col">
                         <div class="form-group">
-                            <label for="location">{{ get_text('location') }}</label>
-                            <input type="text" id="location" name="location" maxlength="100">
-                        </div>
-                    </div>
-                    <div class="form-col">
-                        <div class="form-group">
-                            <label for="manager">{{ get_text('manager') }}</label>
-                            <input type="text" id="manager" name="manager" maxlength="50">
-                        </div>
-                    </div>
-                </div>
-
-                <div class="form-row">
-                    <div class="form-col">
-                        <div class="form-group">
-                            <label for="phone">{{ get_text('phone') }}</label>
-                            <input type="tel" id="phone" name="phone" maxlength="20">
-                        </div>
-                    </div>
-                    <div class="form-col">
-                        <div class="form-group">
-                            <label for="usage">{{ get_text('usage') }}</label>
-                            <select id="usage" name="usage">
-                                <option value="Y">{{ get_text('use') }}</option>
-                                <option value="N">{{ get_text('not_use') }}</option>
-                            </select>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="form-row">
-                    <div class="form-col">
-                        <div class="form-group">
-                            <label for="remarks">{{ get_text('remarks') }}</label>
-                            <textarea id="remarks" name="remarks" maxlength="200"></textarea>
+                            <label for="nameKo">{{ get_text('account_name_ko') or 'Account Name (KO)' }}</label>
+                            <input type="text" id="nameKo" name="name_ko" maxlength="100" placeholder="{{ get_text('enter_account_name') }}">
                         </div>
                     </div>
                 </div>
@@ -222,11 +208,35 @@
 
 <script>
         let isCodeValid = false;
+        let codeCheckResult = null;
 
         document.addEventListener('DOMContentLoaded', function() {
             const accountCodeInput = document.getElementById('accountCode');
-            const codeCheckResult = document.getElementById('codeCheckResult');
+            codeCheckResult = document.getElementById('codeCheckResult');
             const form = document.getElementById('newForm');
+            const companyInput = document.getElementById('company');
+            const nameEnInput = document.getElementById('nameEn');
+
+            async function loadCompanyOptions() {
+                try {
+                    const response = await fetch('/account/company-options', {
+                        headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                    });
+                    if (!response.ok) {
+                        throw new Error('Failed to load company options');
+                    }
+                    const data = await response.json();
+                    data.forEach(function(company) {
+                        const option = document.createElement('option');
+                        option.value = company;
+                        option.textContent = company;
+                        companyInput.appendChild(option);
+                    });
+                } catch (error) {
+                    console.error('Failed to load company list:', error);
+                }
+            }
+            loadCompanyOptions();
 
             // 창고코드 입력 필드에서 포커스가 벗어날 때 중복 체크
             accountCodeInput.addEventListener('blur', function() {
@@ -245,7 +255,8 @@
                 e.preventDefault();
 
                 // 필수 필드 검증
-                const accountName = document.getElementById('accountName').value.trim();
+                const company = companyInput.value.trim();
+                const nameEn = nameEnInput.value.trim();
 
                 if (!accountCodeInput.value.trim()) {
                     alert('{{ get_text("please_enter_account_code") }}');
@@ -253,9 +264,15 @@
                     return;
                 }
 
-                if (!accountName) {
+                if (!company) {
+                    alert('{{ get_text("please_enter_company") or "Please enter company" }}');
+                    companyInput.focus();
+                    return;
+                }
+
+                if (!nameEn) {
                     alert('{{ get_text("please_enter_account_name") }}');
-                    document.getElementById('accountName').focus();
+                    nameEnInput.focus();
                     return;
                 }
 

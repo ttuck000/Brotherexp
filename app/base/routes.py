@@ -13,7 +13,7 @@ from datetime import datetime
 @base.route('/item_code')
 @login_required
 def item_code():
-    conn = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BIGBOY;UID=brother;PWD=jobgate@m1n;')
+    conn = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BRO_EXPENSE;UID=brother;PWD=jobgate@m1n;')
     cursor = conn.cursor()
     cursor.execute("SELECT * FROM ItemMaster")
     items = cursor.fetchall()
@@ -29,7 +29,7 @@ def item_code_add():
         item_unit = request.form['item_unit']
         item_price = request.form['item_price']
         
-        conn = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BIGBOY;UID=brother;PWD=jobgate@m1n;')
+        conn = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BRO_EXPENSE;UID=brother;PWD=jobgate@m1n;')
         cursor = conn.cursor()
         cursor.execute("INSERT INTO ItemMaster (item_code, item_name, item_spec, item_unit, item_price) VALUES (?, ?, ?, ?, ?)",
                       (item_code, item_name, item_spec, item_unit, item_price))
@@ -49,7 +49,7 @@ def item_code_new():
 @login_required
 def item_code_edit(code):
     try:
-        conn = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BIGBOY;UID=brother;PWD=jobgate@m1n;')
+        conn = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BRO_EXPENSE;UID=brother;PWD=jobgate@m1n;')
         cursor = conn.cursor()
         cursor.execute("SELECT ItemCode, ItemName, Spec, unit, purchasePrice, salesprice, usage, remarks FROM ItemMaster WHERE ItemCode = ?", (code,))
         row = cursor.fetchone()
@@ -93,7 +93,7 @@ def item_code_edit(code):
 @login_required
 def item_options():
     try:
-        conn   = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BIGBOY;UID=brother;PWD=jobgate@m1n;')
+        conn   = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BRO_EXPENSE;UID=brother;PWD=jobgate@m1n;')
         cursor = conn.cursor()
         cursor.execute("SELECT ItemCode, ItemName FROM ItemMaster WHERE usage = 'Y' ORDER BY ItemCode")
         rows = cursor.fetchall()
@@ -108,7 +108,7 @@ def item_options():
 @base.route('/warehouse')
 @login_required
 def warehouse():
-    conn = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BIGBOY;UID=brother;PWD=jobgate@m1n;')
+    conn = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BRO_EXPENSE;UID=brother;PWD=jobgate@m1n;')
     cursor = conn.cursor()
     cursor.execute("SELECT * FROM code_warehouse")
     warehouses = cursor.fetchall()
@@ -120,7 +120,7 @@ def warehouse_search():
     code = request.args.get('warehouseCode', '').strip()
     name = request.args.get('warehouseName', '').strip()
     
-    conn = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BIGBOY;UID=brother;PWD=jobgate@m1n;')
+    conn = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BRO_EXPENSE;UID=brother;PWD=jobgate@m1n;')
     cursor = conn.cursor()
     
     query = "SELECT * FROM code_warehouse WHERE 1=1"
@@ -149,7 +149,7 @@ def warehouse_add():
         usage = request.form.get('usage', 'Y')
         remarks = request.form.get('remarks', '')
         
-        conn = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BIGBOY;UID=brother;PWD=jobgate@m1n;')
+        conn = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BRO_EXPENSE;UID=brother;PWD=jobgate@m1n;')
         cursor = conn.cursor()
         cursor.execute("""
             INSERT INTO code_warehouse 
@@ -166,7 +166,7 @@ def warehouse_add():
 @base.route('/warehouse/edit/<code>', methods=['GET', 'POST'])
 @login_required
 def warehouse_edit(code):
-    conn = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BIGBOY;UID=brother;PWD=jobgate@m1n;')
+    conn = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BRO_EXPENSE;UID=brother;PWD=jobgate@m1n;')
     cursor = conn.cursor()
 
     if request.method == 'POST':
@@ -197,7 +197,7 @@ def warehouse_edit(code):
 @base.route('/check_warehouse_code/<code>')
 @login_required
 def check_warehouse_code(code):
-    conn = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BIGBOY;UID=brother;PWD=jobgate@m1n;')
+    conn = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BRO_EXPENSE;UID=brother;PWD=jobgate@m1n;')
     cursor = conn.cursor()
     cursor.execute("SELECT COUNT(*) as count FROM code_warehouse WHERE WH_CODE = ?", (code,))
     result = cursor.fetchone()
@@ -211,7 +211,7 @@ def warehouse_delete():
     if not codes:
         return jsonify({"success": False, "error": "No codes provided"})
     try:
-        conn = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BIGBOY;UID=brother;PWD=jobgate@m1n;')
+        conn = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BRO_EXPENSE;UID=brother;PWD=jobgate@m1n;')
         cursor = conn.cursor()
         query = f"DELETE FROM code_warehouse WHERE WH_CODE IN ({','.join(['?']*len(codes))})"
         cursor.execute(query, codes)
@@ -223,7 +223,7 @@ def warehouse_delete():
 @base.route('/warehouse/excel')
 @login_required
 def warehouse_excel():
-    conn = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BIGBOY;UID=brother;PWD=jobgate@m1n;')
+    conn = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BRO_EXPENSE;UID=brother;PWD=jobgate@m1n;')
     cursor = conn.cursor()
     cursor.execute("SELECT WH_CODE, WH_NAME, WH_LOCATION, WH_MANAGER, WH_PHONE, usage, remarks FROM code_warehouse")
     rows = cursor.fetchall()
@@ -263,7 +263,7 @@ def customer_redirect():
 @base.route('/customer_code')
 @login_required
 def customer_code():
-    conn = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BIGBOY;UID=brother;PWD=jobgate@m1n;')
+    conn = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BRO_EXPENSE;UID=brother;PWD=jobgate@m1n;')
     cursor = conn.cursor()
 
     code = request.args.get('customerCode', '').strip()
@@ -319,7 +319,7 @@ def customer_code_add():
 @base.route('/customer_code/check/<code>')
 @login_required
 def check_customer_code(code):
-    conn = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BIGBOY;UID=brother;PWD=jobgate@m1n;')
+    conn = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BRO_EXPENSE;UID=brother;PWD=jobgate@m1n;')
     cursor = conn.cursor()
     
     cursor.execute("SELECT COUNT(*) FROM dbo.CODE_VENDOR WHERE vd_code = ?", (code,))
@@ -330,7 +330,7 @@ def check_customer_code(code):
 @base.route('/customer_code/detail/<code>')
 @login_required
 def customer_code_detail(code):
-    conn = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BIGBOY;UID=brother;PWD=jobgate@m1n;')
+    conn = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BRO_EXPENSE;UID=brother;PWD=jobgate@m1n;')
     cursor = conn.cursor()
     
     cursor.execute("SELECT * FROM dbo.CODE_VENDOR WHERE vd_code = ?", (code,))
@@ -361,7 +361,7 @@ def customer_code_detail(code):
 @base.route('/customer_code/edit/<code>')
 @login_required
 def customer_code_edit(code):
-    conn = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BIGBOY;UID=brother;PWD=jobgate@m1n;')
+    conn = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BRO_EXPENSE;UID=brother;PWD=jobgate@m1n;')
     cursor = conn.cursor()
     
     cursor.execute("SELECT * FROM dbo.CODE_VENDOR WHERE vd_code = ?", (code,))
@@ -375,7 +375,7 @@ def customer_code_edit(code):
 @base.route('/customer_code/save', methods=['POST'])
 @login_required
 def save_customer_code():
-    conn = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BIGBOY;UID=brother;PWD=jobgate@m1n;')
+    conn = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BRO_EXPENSE;UID=brother;PWD=jobgate@m1n;')
     cursor = conn.cursor()
     
     data = request.get_json()
@@ -402,7 +402,7 @@ def save_customer_code():
 @base.route('/customer_code/update', methods=['POST'])
 @login_required
 def update_customer_code():
-    conn = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BIGBOY;UID=brother;PWD=jobgate@m1n;')
+    conn = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BRO_EXPENSE;UID=brother;PWD=jobgate@m1n;')
     cursor = conn.cursor()
     
     data = request.get_json()
@@ -430,7 +430,7 @@ def update_customer_code():
 @base.route('/customer_code/delete', methods=['POST'])
 @login_required
 def delete_customer_code():
-    conn = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BIGBOY;UID=brother;PWD=jobgate@m1n;')
+    conn = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BRO_EXPENSE;UID=brother;PWD=jobgate@m1n;')
     cursor = conn.cursor()
     
     data = request.get_json()
@@ -457,7 +457,7 @@ def customer_financial(vendor_code):
 def get_customer_financial(vendor_code):
     """거래처별 재무정보 조회"""
     try:
-        conn = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BIGBOY;UID=brother;PWD=jobgate@m1n;')
+        conn = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BRO_EXPENSE;UID=brother;PWD=jobgate@m1n;')
         cursor = conn.cursor()
         
         cursor.execute("""
@@ -493,7 +493,7 @@ def save_customer_financial():
         vendor_code = data.get('vendor_code')
         fiscal_year = data.get('fiscal_year')
         
-        conn = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BIGBOY;UID=brother;PWD=jobgate@m1n;')
+        conn = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BRO_EXPENSE;UID=brother;PWD=jobgate@m1n;')
         cursor = conn.cursor()
         
         # 중복 체크
@@ -544,7 +544,7 @@ def save_customer_financial():
 def delete_customer_financial(financial_id):
     """거래처 재무정보 삭제"""
     try:
-        conn = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BIGBOY;UID=brother;PWD=jobgate@m1n;')
+        conn = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BRO_EXPENSE;UID=brother;PWD=jobgate@m1n;')
         cursor = conn.cursor()
         
         cursor.execute("DELETE FROM dbo.VENDOR_FINANCIAL WHERE id = ?", (financial_id,))
@@ -574,7 +574,7 @@ def currency_code_new():
 @base.route('/currency_code/edit/<code>')
 @login_required
 def currency_code_edit(code):
-    conn = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BIGBOY;UID=brother;PWD=jobgate@m1n;')
+    conn = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BRO_EXPENSE;UID=brother;PWD=jobgate@m1n;')
     cursor = conn.cursor()
     cursor.execute("SELECT * FROM dbo.code_currency WHERE currency_code = ?", (code,))
     currency = cursor.fetchone()
@@ -586,7 +586,7 @@ def currency_code_edit(code):
 @login_required
 def currency_list():
     try:
-        conn = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BIGBOY;UID=brother;PWD=jobgate@m1n;')
+        conn = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BRO_EXPENSE;UID=brother;PWD=jobgate@m1n;')
         cursor = conn.cursor()
         cursor.execute("SELECT * FROM dbo.code_currency")
         currencies = cursor.fetchall()
@@ -610,7 +610,7 @@ def currency_search():
     code = request.args.get('code', '').strip()
     name = request.args.get('name', '').strip()
     
-    conn = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BIGBOY;UID=brother;PWD=jobgate@m1n;')
+    conn = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BRO_EXPENSE;UID=brother;PWD=jobgate@m1n;')
     cursor = conn.cursor()
     
     query = "SELECT * FROM dbo.code_currency WHERE 1=1"
@@ -650,7 +650,7 @@ def currency_edit(code):
 @base.route('/currency/detail/<code>')
 @login_required
 def currency_detail(code):
-    conn = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BIGBOY;UID=brother;PWD=jobgate@m1n;')
+    conn = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BRO_EXPENSE;UID=brother;PWD=jobgate@m1n;')
     cursor = conn.cursor()
     cursor.execute("SELECT * FROM dbo.code_currency WHERE currency_code = ?", (code,))
     currency = cursor.fetchone()
@@ -673,7 +673,7 @@ def currency_save():
     data = request.get_json()
     
     try:
-        conn = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BIGBOY;UID=brother;PWD=jobgate@m1n;')
+        conn = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BRO_EXPENSE;UID=brother;PWD=jobgate@m1n;')
         cursor = conn.cursor()
         
         cursor.execute("""
@@ -696,7 +696,7 @@ def currency_update():
     data = request.get_json()
     
     try:
-        conn = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BIGBOY;UID=brother;PWD=jobgate@m1n;')
+        conn = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BRO_EXPENSE;UID=brother;PWD=jobgate@m1n;')
         cursor = conn.cursor()
         
         cursor.execute("""
@@ -720,7 +720,7 @@ def currency_delete():
     codes = data.get('codes', [])
     
     try:
-        conn = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BIGBOY;UID=brother;PWD=jobgate@m1n;')
+        conn = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BRO_EXPENSE;UID=brother;PWD=jobgate@m1n;')
         cursor = conn.cursor()
         
         for code in codes:
@@ -733,7 +733,7 @@ def currency_delete():
 @base.route('/api/currencies')
 @login_required
 def api_currencies():
-    conn = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BIGBOY;UID=brother;PWD=jobgate@m1n;')
+    conn = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BRO_EXPENSE;UID=brother;PWD=jobgate@m1n;')
     cursor = conn.cursor()
     cursor.execute("SELECT * FROM dbo.code_currency WHERE usage = 'Y'")
     currencies = cursor.fetchall()
@@ -756,7 +756,7 @@ def unit():
 @base.route('/unit/options')
 @login_required
 def unit_options():
-    conn = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BIGBOY;UID=brother;PWD=jobgate@m1n;')
+    conn = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BRO_EXPENSE;UID=brother;PWD=jobgate@m1n;')
     cursor = conn.cursor()
     cursor.execute("SELECT unit_code, unit_name FROM dbo.code_unit WHERE usage = 'Y'")
     rows = cursor.fetchall()
@@ -772,7 +772,7 @@ def unit_options():
 @login_required
 def unit_code():
     try:
-        conn = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BIGBOY;UID=brother;PWD=jobgate@m1n;')
+        conn = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BRO_EXPENSE;UID=brother;PWD=jobgate@m1n;')
         cursor = conn.cursor()
         cursor.execute("SELECT * FROM dbo.code_unit")
         units = cursor.fetchall()
@@ -801,7 +801,7 @@ def unit_code_search():
     name = request.args.get('name', '').strip()
     
     try:
-        conn = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BIGBOY;UID=brother;PWD=jobgate@m1n;')
+        conn = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BRO_EXPENSE;UID=brother;PWD=jobgate@m1n;')
         cursor = conn.cursor()
         
         query = "SELECT * FROM dbo.code_unit WHERE 1=1"
@@ -838,7 +838,7 @@ def unit_code_new():
 @login_required
 def unit_code_edit(code):
     try:
-        conn = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BIGBOY;UID=brother;PWD=jobgate@m1n;')
+        conn = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BRO_EXPENSE;UID=brother;PWD=jobgate@m1n;')
         cursor = conn.cursor()
         cursor.execute("SELECT * FROM dbo.code_unit WHERE unit_code = ?", (code,))
         unit = cursor.fetchone()
@@ -857,7 +857,7 @@ def unit_code_edit(code):
 @login_required
 def unit_code_list():
     try:
-        conn = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BIGBOY;UID=brother;PWD=jobgate@m1n;')
+        conn = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BRO_EXPENSE;UID=brother;PWD=jobgate@m1n;')
         cursor = conn.cursor()
         cursor.execute("SELECT * FROM dbo.code_unit")
         units = cursor.fetchall()
@@ -878,7 +878,7 @@ def unit_code_list():
 @login_required
 def unit_code_detail(code):
     try:
-        conn = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BIGBOY;UID=brother;PWD=jobgate@m1n;')
+        conn = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BRO_EXPENSE;UID=brother;PWD=jobgate@m1n;')
         cursor = conn.cursor()
         cursor.execute("SELECT * FROM dbo.code_unit WHERE unit_code = ?", (code,))
         unit = cursor.fetchone()
@@ -916,7 +916,7 @@ def unit_code_save():
         remark = data.get('remark', '').strip()
 
         # 중복 체크
-        conn = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BIGBOY;UID=brother;PWD=jobgate@m1n;')
+        conn = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BRO_EXPENSE;UID=brother;PWD=jobgate@m1n;')
         cursor = conn.cursor()
         
         cursor.execute("SELECT COUNT(*) FROM dbo.code_unit WHERE unit_code = ?", (code,))
@@ -948,7 +948,7 @@ def unit_code_update():
         if not data or not data.get('code') or not data.get('name'):
             return jsonify({'success': False, 'error': 'Required fields are missing'}), 400
             
-        conn = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BIGBOY;UID=brother;PWD=jobgate@m1n;')
+        conn = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BRO_EXPENSE;UID=brother;PWD=jobgate@m1n;')
         cursor = conn.cursor()
         
         cursor.execute("""
@@ -980,7 +980,7 @@ def unit_code_delete():
     codes = data.get('codes', [])
     
     try:
-        conn = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BIGBOY;UID=brother;PWD=jobgate@m1n;')
+        conn = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BRO_EXPENSE;UID=brother;PWD=jobgate@m1n;')
         cursor = conn.cursor()
         
         for code in codes:
@@ -993,7 +993,7 @@ def unit_code_delete():
 @base.route('/unit_code/check/<code>')
 @login_required
 def check_unit_code(code):
-    conn = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BIGBOY;UID=brother;PWD=jobgate@m1n;')
+    conn = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BRO_EXPENSE;UID=brother;PWD=jobgate@m1n;')
     cursor = conn.cursor()
     
     cursor.execute("SELECT COUNT(*) FROM dbo.code_unit WHERE unit_code = ?", (code,))
@@ -1007,7 +1007,7 @@ def transaction_type():
     code = request.args.get('transactionCode', '').strip()
     name = request.args.get('transactionName', '').strip()
     
-    conn = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BIGBOY;UID=brother;PWD=jobgate@m1n;')
+    conn = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BRO_EXPENSE;UID=brother;PWD=jobgate@m1n;')
     cursor = conn.cursor()
     
     query = "SELECT TR_CODE, TR_NAME, TR_DIV, USAGE, REMARKS FROM CODE_TRANSACTION WHERE 1=1"
@@ -1053,7 +1053,7 @@ def transaction_type_add():
             return jsonify({"success": False, "error": "Required fields are missing"}), 400
             
         try:
-            conn = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BIGBOY;UID=brother;PWD=jobgate@m1n;')
+            conn = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BRO_EXPENSE;UID=brother;PWD=jobgate@m1n;')
             cursor = conn.cursor()
             
             # 중복 체크
@@ -1077,7 +1077,7 @@ def transaction_type_add():
 @base.route('/transaction_type/edit/<code>', methods=['GET', 'POST'])
 @login_required
 def transaction_type_edit(code):
-    conn = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BIGBOY;UID=brother;PWD=jobgate@m1n;')
+    conn = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BRO_EXPENSE;UID=brother;PWD=jobgate@m1n;')
     cursor = conn.cursor()
     
     if request.method == 'POST':
@@ -1108,7 +1108,7 @@ def transaction_type_edit(code):
 @base.route('/transaction_type/detail/<code>')
 @login_required
 def transaction_type_detail(code):
-    conn = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BIGBOY;UID=brother;PWD=jobgate@m1n;')
+    conn = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BRO_EXPENSE;UID=brother;PWD=jobgate@m1n;')
     cursor = conn.cursor()
     cursor.execute("SELECT TR_CODE, TR_NAME, TR_DIV, USAGE, REMARKS FROM CODE_TRANSACTION WHERE TR_CODE = ?", (code,))
     row = cursor.fetchone()
@@ -1135,7 +1135,7 @@ def transaction_type_update():
     remarks = data.get('remarks', '')
 
     try:
-        conn = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BIGBOY;UID=brother;PWD=jobgate@m1n;')
+        conn = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BRO_EXPENSE;UID=brother;PWD=jobgate@m1n;')
         cursor = conn.cursor()
         cursor.execute("""
             UPDATE CODE_TRANSACTION 
@@ -1150,7 +1150,7 @@ def transaction_type_update():
 @base.route('/check_transaction_type_code/<code>')
 @login_required
 def check_transaction_type_code(code):
-    conn = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BIGBOY;UID=brother;PWD=jobgate@m1n;')
+    conn = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BRO_EXPENSE;UID=brother;PWD=jobgate@m1n;')
     cursor = conn.cursor()
     cursor.execute("SELECT COUNT(*) as count FROM CODE_TRANSACTION WHERE TR_CODE = ?", (code,))
     result = cursor.fetchone()
@@ -1164,7 +1164,7 @@ def transaction_type_delete():
     if not codes:
         return jsonify({"success": False, "error": "No codes provided"})
     try:
-        conn = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BIGBOY;UID=brother;PWD=jobgate@m1n;')
+        conn = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BRO_EXPENSE;UID=brother;PWD=jobgate@m1n;')
         cursor = conn.cursor()
         query = f"DELETE FROM CODE_TRANSACTION WHERE TR_CODE IN ({','.join(['?']*len(codes))})"
         cursor.execute(query, codes)
@@ -1178,7 +1178,7 @@ def transaction_type_delete():
 def transaction_type_excel():
     import pandas as pd
     from io import BytesIO
-    conn = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BIGBOY;UID=brother;PWD=jobgate@m1n;')
+    conn = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BRO_EXPENSE;UID=brother;PWD=jobgate@m1n;')
     cursor = conn.cursor()
     cursor.execute("SELECT TR_CODE, TR_NAME, TR_DIV, USAGE, REMARKS FROM CODE_TRANSACTION")
     rows = cursor.fetchall()
@@ -1251,7 +1251,7 @@ def item_save():
     remarks = data.get('remarks')
 
     try:
-        conn = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BIGBOY;UID=brother;PWD=jobgate@m1n;')
+        conn = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BRO_EXPENSE;UID=brother;PWD=jobgate@m1n;')
         cursor = conn.cursor()
         cursor.execute(
             "INSERT INTO ItemMaster (ItemCode, ItemName, Spec, unit, purchasePrice, salesprice, usage, remarks) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
@@ -1268,7 +1268,7 @@ def item_check_duplicate():
     code = request.args.get('code')
     if not code:
         return jsonify({"isDuplicate": False})
-    conn = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BIGBOY;UID=brother;PWD=jobgate@m1n;')
+    conn = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BRO_EXPENSE;UID=brother;PWD=jobgate@m1n;')
     cursor = conn.cursor()
     cursor.execute("SELECT COUNT(*) FROM ItemMaster WHERE ItemCode = ?", (code,))
     count = cursor.fetchone()[0]
@@ -1279,7 +1279,7 @@ def item_check_duplicate():
 def item_search():
     code = request.args.get('code', '').strip()
     name = request.args.get('name', '').strip()
-    conn = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BIGBOY;UID=brother;PWD=jobgate@m1n;')
+    conn = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BRO_EXPENSE;UID=brother;PWD=jobgate@m1n;')
     cursor = conn.cursor()
     query = "SELECT ItemCode, ItemName, Spec, unit, purchasePrice, salesprice, usage, remarks FROM ItemMaster WHERE 1=1"
     params = []
@@ -1313,7 +1313,7 @@ def item_delete():
     if not codes:
         return jsonify({"success": False, "error": "No codes provided"})
     try:
-        conn = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BIGBOY;UID=brother;PWD=jobgate@m1n;')
+        conn = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BRO_EXPENSE;UID=brother;PWD=jobgate@m1n;')
         cursor = conn.cursor()
         query = f"DELETE FROM ItemMaster WHERE ItemCode IN ({','.join(['?']*len(codes))})"
         cursor.execute(query, codes)
@@ -1325,7 +1325,7 @@ def item_delete():
 @base.route('/item/detail/<code>')
 @login_required
 def item_detail(code):
-    conn = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BIGBOY;UID=brother;PWD=jobgate@m1n;')
+    conn = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BRO_EXPENSE;UID=brother;PWD=jobgate@m1n;')
     cursor = conn.cursor()
     cursor.execute("SELECT ItemCode, ItemName, Spec, unit, purchasePrice, salesprice, usage, remarks FROM ItemMaster WHERE ItemCode = ?", (code,))
     row = cursor.fetchone()
@@ -1357,7 +1357,7 @@ def item_update():
     remarks = data.get('remarks')
 
     try:
-        conn = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BIGBOY;UID=brother;PWD=jobgate@m1n;')
+        conn = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BRO_EXPENSE;UID=brother;PWD=jobgate@m1n;')
         cursor = conn.cursor()
         cursor.execute(
             "UPDATE ItemMaster SET ItemName=?, Spec=?, unit=?, purchasePrice=?, salesprice=?, usage=?, remarks=? WHERE ItemCode=?",
@@ -1416,7 +1416,7 @@ def item_excel():
     h = headers.get(lang, headers['ko'])
     
     try:
-        conn = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BIGBOY;UID=brother;PWD=jobgate@m1n;')
+        conn = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BRO_EXPENSE;UID=brother;PWD=jobgate@m1n;')
         cursor = conn.cursor()
         cursor.execute("SELECT ItemCode, ItemName, Spec, unit, purchasePrice, salesprice, usage, remarks FROM ItemMaster ORDER BY ItemCode")
         rows = cursor.fetchall()
@@ -1509,7 +1509,7 @@ def item_excel():
 def customer_code_excel():
     import pandas as pd
     from io import BytesIO
-    conn = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BIGBOY;UID=brother;PWD=jobgate@m1n;')
+    conn = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BRO_EXPENSE;UID=brother;PWD=jobgate@m1n;')
     cursor = conn.cursor()
     cursor.execute("SELECT vd_code, vd_name, vd_biz_number, vd_tax_id, vd_president, vd_kind, vd_item, vd_phone, vd_address, vd_charger, vd_charger_phone, usage, createuser, createdate, updateuser, updatedate FROM code_vendor")
     rows = cursor.fetchall()
@@ -1553,11 +1553,102 @@ def customer_code_excel():
 @base.route('/account_list')
 @login_required
 def account_list():
-    conn = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BIGBOY;UID=brother;PWD=jobgate@m1n;')
+    company_filter = (request.args.get('company') or '').strip()
+    conn = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BRO_EXPENSE;UID=brother;PWD=jobgate@m1n;')
     cursor = conn.cursor()
-    cursor.execute("SELECT * FROM dbo.code_Account")
+
+    sql = """
+        SELECT id, company, name_en, name_th, name_ko, account_code
+        FROM dbo.code_Account
+        WHERE 1=1
+    """
+    params = []
+    if company_filter:
+        sql += " AND LTRIM(RTRIM(ISNULL(company, N''))) = ?"
+        params.append(company_filter)
+    sql += " ORDER BY company, account_code"
+    cursor.execute(sql, params)
     accounts = cursor.fetchall()
-    return render_template('base/account/list.html', accounts=accounts)
+
+    cursor.execute("""
+        SELECT DISTINCT company
+        FROM dbo.code_Account
+        WHERE company IS NOT NULL AND LTRIM(RTRIM(company)) <> ''
+        ORDER BY company
+    """)
+    company_options = [
+        {'value': (r[0] or '').strip(), 'label': (r[0] or '').strip()}
+        for r in cursor.fetchall()
+        if (r[0] or '').strip()
+    ]
+    if company_filter and company_filter not in {o['value'] for o in company_options}:
+        company_filter = ''
+
+    cursor.close()
+    conn.close()
+    return render_template(
+        'base/account/list.html',
+        accounts=accounts,
+        company_options=company_options,
+        filters={'company': company_filter},
+    )
+
+
+@base.route('/account_add', methods=['GET', 'POST'])
+@login_required
+def account_add():
+    if request.method == 'GET':
+        return render_template('base/account/add.html')
+
+    account_code = (request.form.get('account_code') or '').strip()
+    company = (request.form.get('company') or '').strip()
+    name_en = (request.form.get('name_en') or '').strip()
+    name_th = (request.form.get('name_th') or '').strip()
+    name_ko = (request.form.get('name_ko') or '').strip()
+
+    if not account_code or not company or not name_en:
+        flash('Account Code, Company, Name(EN) are required.', 'error')
+        return render_template('base/account/add.html'), 400
+
+    conn = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BRO_EXPENSE;UID=brother;PWD=jobgate@m1n;')
+    cursor = conn.cursor()
+
+    cursor.execute("SELECT COUNT(1) FROM dbo.code_Account WHERE account_code = ?", (account_code,))
+    exists = cursor.fetchone()[0] > 0
+    if exists:
+        cursor.close()
+        conn.close()
+        flash('Account code already exists.', 'error')
+        return render_template('base/account/add.html'), 409
+
+    cursor.execute(
+        """
+        INSERT INTO dbo.code_Account (company, name_en, name_th, name_ko, account_code)
+        VALUES (?, ?, ?, ?, ?)
+        """,
+        (company, name_en, name_th, name_ko, account_code)
+    )
+    conn.commit()
+    cursor.close()
+    conn.close()
+
+    return redirect(url_for('base.account_list'))
+
+
+@base.route('/check_account_code/<account_code>')
+@login_required
+def check_account_code(account_code):
+    code = (account_code or '').strip()
+    if not code:
+        return jsonify({'available': False})
+
+    conn = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BRO_EXPENSE;UID=brother;PWD=jobgate@m1n;')
+    cursor = conn.cursor()
+    cursor.execute("SELECT COUNT(1) FROM dbo.code_Account WHERE account_code = ?", (code,))
+    exists = cursor.fetchone()[0] > 0
+    cursor.close()
+    conn.close()
+    return jsonify({'available': not exists})
 
 @base.route('/account/hierarchy')
 @login_required
@@ -1573,16 +1664,20 @@ def account_hierarchy_api():
     """
     try:
         from flask import session, current_app
-        conn = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BIGBOY;UID=brother;PWD=jobgate@m1n;')
+        conn = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BRO_EXPENSE;UID=brother;PWD=jobgate@m1n;')
         cursor = conn.cursor()
-        # load all name variants and parent relationship
-        cursor.execute("SELECT account_code, NAME_KO, NAME_EN, NAME_TH, parent_account_code FROM dbo.code_Account ORDER BY account_code")
+        # parent_account_code 컬럼이 제거되어 계층은 현재 flat 목록으로 반환
+        cursor.execute("""
+            SELECT account_code, name_ko, name_en, name_th
+            FROM dbo.code_Account
+            ORDER BY account_code
+        """)
         rows = cursor.fetchall()
 
         lang = (session.get('language') or 'ko').lower()
 
         def pick_name(row):
-            # row: (account_code, NAME_KO, NAME_EN, NAME_TH, parent_account_code)
+            # row: (account_code, name_ko, name_en, name_th)
             name_ko = row[1] or ''
             name_en = row[2] or ''
             name_th = row[3] or ''
@@ -1595,22 +1690,15 @@ def account_hierarchy_api():
             # default fallback
             return name_en or name_ko or name_th or ''
 
-        # build nodes dict
+        # build nodes dict (flat: parent 없음)
         nodes = {}
         for r in rows:
             code = r[0]
             name = pick_name(r)
-            parent = r[4] if r[4] is not None else None
-            nodes[code] = {'code': code, 'name': name, 'parent': parent, 'children': []}
+            nodes[code] = {'code': code, 'name': name, 'parent': None, 'children': []}
 
-        # attach children to parents
-        roots = []
-        for node in nodes.values():
-            parent = node['parent']
-            if parent and parent in nodes:
-                nodes[parent]['children'].append(node)
-            else:
-                roots.append(node)
+        # flat 목록을 roots로 사용
+        roots = list(nodes.values())
 
         cursor.close()
         conn.close()
@@ -1621,12 +1709,35 @@ def account_hierarchy_api():
         return jsonify([]), 500
 
 
+@base.route('/account/company-options')
+@login_required
+def account_company_options():
+    """Return distinct company values for account add form."""
+    try:
+        conn = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BRO_EXPENSE;UID=brother;PWD=jobgate@m1n;')
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT DISTINCT company
+            FROM dbo.code_Account
+            WHERE company IS NOT NULL AND LTRIM(RTRIM(company)) <> ''
+            ORDER BY company
+        """)
+        companies = [row[0] for row in cursor.fetchall()]
+        cursor.close()
+        conn.close()
+        return jsonify(companies)
+    except Exception as e:
+        from flask import current_app
+        current_app.logger.error(f"Failed to load account company options: {e}")
+        return jsonify([]), 500
+
+
 # --- Customer Code Expense routes (aliases that reuse existing handlers) ---
 @base.route('/customer_code_expense')
 @login_required
 def customer_code_expense():
     from flask import current_app
-    conn = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BIGBOY;UID=brother;PWD=jobgate@m1n;')
+    conn = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BRO_EXPENSE;UID=brother;PWD=jobgate@m1n;')
     cursor = conn.cursor()
 
     code = request.args.get('customerCode', '').strip()
@@ -1691,7 +1802,7 @@ def customer_code_expense_new():
 @base.route('/customer_code_expense/check/<code>')
 @login_required
 def check_customer_code_expense(code):
-    conn = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BIGBOY;UID=brother;PWD=jobgate@m1n;')
+    conn = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BRO_EXPENSE;UID=brother;PWD=jobgate@m1n;')
     cursor = conn.cursor()
     cursor.execute("SELECT COUNT(*) FROM dbo.CODE_VENDOR_expense WHERE vd_code = ?", (code,))
     exists = cursor.fetchone()[0] > 0
@@ -1712,7 +1823,7 @@ def customer_code_expense_edit(code):
     try:
         # 재사용: 기존 edit 핸들러는 render_template('base/customer_code/edit.html')
         # 여기서는 expense 전용 템플릿을 사용하기 위해 DB 쿼리만 재사용
-        conn = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BIGBOY;UID=brother;PWD=jobgate@m1n;')
+        conn = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BRO_EXPENSE;UID=brother;PWD=jobgate@m1n;')
         cursor = conn.cursor()
         cursor.execute("SELECT * FROM dbo.CODE_VENDOR WHERE vd_code = ?", (code,))
         vendor = cursor.fetchone()
@@ -1730,7 +1841,7 @@ def customer_code_expense_edit(code):
 def save_customer_code_expense():
     data = request.get_json()
     try:
-        conn = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BIGBOY;UID=brother;PWD=jobgate@m1n;')
+        conn = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BRO_EXPENSE;UID=brother;PWD=jobgate@m1n;')
         cursor = conn.cursor()
         cursor.execute("""
             INSERT INTO dbo.CODE_VENDOR_expense (
@@ -1803,7 +1914,7 @@ def delete_customer_financial_expense(financial_id):
 def api_get_vendor_expense_accounts(vd_code):
     """Return accounts for given vd_code from dbo.code_vendor_expense_acc"""
     try:
-        conn = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BIGBOY;UID=brother;PWD=jobgate@m1n;')
+        conn = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BRO_EXPENSE;UID=brother;PWD=jobgate@m1n;')
         cursor = conn.cursor()
         cursor.execute("SELECT bank, vd_account, is_master, remark FROM dbo.code_vendor_expense_acc WHERE vd_code = ?", (vd_code,))
         rows = cursor.fetchall()
@@ -1838,7 +1949,7 @@ def api_save_vendor_expense_accounts():
     try:
         conn = pyodbc.connect(
             'DRIVER={ODBC Driver 17 for SQL Server};'
-            'SERVER=118.67.132.208;DATABASE=BIGBOY;UID=brother;PWD=jobgate@m1n;'
+            'SERVER=118.67.132.208;DATABASE=BRO_EXPENSE;UID=brother;PWD=jobgate@m1n;'
         )
         cursor = conn.cursor()
 
@@ -1911,7 +2022,7 @@ def customer_code_expense_excel():
 
         conn = pyodbc.connect(
             'DRIVER={ODBC Driver 17 for SQL Server};'
-            'SERVER=118.67.132.208;DATABASE=BIGBOY;UID=brother;PWD=jobgate@m1n;'
+            'SERVER=118.67.132.208;DATABASE=BRO_EXPENSE;UID=brother;PWD=jobgate@m1n;'
         )
         cursor = conn.cursor()
 
@@ -1989,7 +2100,7 @@ def business_cost_list():
 
         conn = pyodbc.connect(
             'DRIVER={ODBC Driver 17 for SQL Server};'
-            'SERVER=118.67.132.208;DATABASE=BIGBOY;UID=brother;PWD=jobgate@m1n;'
+            'SERVER=118.67.132.208;DATABASE=BRO_EXPENSE;UID=brother;PWD=jobgate@m1n;'
         )
         cursor = conn.cursor()
 
@@ -2044,7 +2155,7 @@ def business_cost_excel():
 
         conn = pyodbc.connect(
             'DRIVER={ODBC Driver 17 for SQL Server};'
-            'SERVER=118.67.132.208;DATABASE=BIGBOY;UID=brother;PWD=jobgate@m1n;'
+            'SERVER=118.67.132.208;DATABASE=BRO_EXPENSE;UID=brother;PWD=jobgate@m1n;'
         )
         cursor = conn.cursor()
 
@@ -2141,7 +2252,7 @@ def process_line_list():
     product_line = request.args.get('product_line', '').strip()
 
     try:
-        conn   = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BIGBOY;UID=brother;PWD=jobgate@m1n;')
+        conn   = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BRO_EXPENSE;UID=brother;PWD=jobgate@m1n;')
         cursor = conn.cursor()
 
         query  = """SELECT id, company_code, process, product_line,
@@ -2193,7 +2304,7 @@ def process_line_list():
 @login_required
 def process_line_detail(row_id):
     try:
-        conn   = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BIGBOY;UID=brother;PWD=jobgate@m1n;')
+        conn   = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BRO_EXPENSE;UID=brother;PWD=jobgate@m1n;')
         cursor = conn.cursor()
         cursor.execute(
             """SELECT id, company_code, process, product_line,
@@ -2224,7 +2335,7 @@ def process_line_detail(row_id):
 def process_line_save():
     data = request.get_json()
     try:
-        conn   = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BIGBOY;UID=brother;PWD=jobgate@m1n;')
+        conn   = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BRO_EXPENSE;UID=brother;PWD=jobgate@m1n;')
         cursor = conn.cursor()
         cursor.execute(
             """INSERT INTO dbo.code_product_line
@@ -2255,7 +2366,7 @@ def process_line_update():
     data   = request.get_json()
     row_id = data.get('id')
     try:
-        conn   = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BIGBOY;UID=brother;PWD=jobgate@m1n;')
+        conn   = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BRO_EXPENSE;UID=brother;PWD=jobgate@m1n;')
         cursor = conn.cursor()
         cursor.execute(
             """UPDATE dbo.code_product_line
@@ -2290,7 +2401,7 @@ def process_line_delete():
     if not ids:
         return jsonify({'success': False, 'error': 'No ids provided'})
     try:
-        conn   = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BIGBOY;UID=brother;PWD=jobgate@m1n;')
+        conn   = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BRO_EXPENSE;UID=brother;PWD=jobgate@m1n;')
         cursor = conn.cursor()
         placeholders = ','.join(['?'] * len(ids))
         cursor.execute(f"DELETE FROM dbo.code_product_line WHERE id IN ({placeholders})", ids)

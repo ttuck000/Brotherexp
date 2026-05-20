@@ -6,6 +6,14 @@ from .models import User
 from app.auth.models import User
 from werkzeug.security import generate_password_hash, check_password_hash
 
+
+@auth.before_request
+def _auth_ui_thai():
+    """로그인·회원가입 화면 라벨 기본 태국어"""
+    if request.endpoint in ('auth.login', 'auth.signup'):
+        session['language'] = 'th'
+
+
 # 로그인
 @auth.route('/login', methods=['GET', 'POST'])
 def login():
@@ -22,7 +30,7 @@ def login():
             session['role'] = getattr(user, 'role', None)  # role 필드가 있다면
             return redirect(url_for('home'))
         else:
-            flash('Invalid username or password')
+            flash('auth_invalid_credentials')
     
     return render_template('auth/login.html')
 
@@ -43,13 +51,13 @@ def signup():
         
         # SQLAlchemy로 중복 확인 및 생성
         if User.query.filter_by(username=username).first():
-            flash('Username already exists')
+            flash('auth_username_exists')
             return redirect(url_for('auth.signup'))
         hashed_password = generate_password_hash(password)
         new_user = User(username=username, password=hashed_password, email=email)
         db.session.add(new_user)
         db.session.commit()
-        flash('Registration successful')
+        flash('auth_registration_success')
         return redirect(url_for('auth.login'))
     
     return render_template('auth/signup.html')

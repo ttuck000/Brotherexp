@@ -55,7 +55,7 @@ def dashboard_sales():
 @dashboard.route('/inventory')
 @login_required
 def dashboard_inventory():
-    conn   = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BIGBOY;UID=brother;PWD=jobgate@m1n;')
+    conn   = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=118.67.132.208;DATABASE=BRO_EXPENSE;UID=brother;PWD=jobgate@m1n;')
     cursor = conn.cursor()
 
     # 아이템별 최신 BalanceQty (WarehouseCode별 최신 트랜잭션)

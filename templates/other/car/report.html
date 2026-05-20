@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="{{ session.get('language', 'ko') }}">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ get_text('car_report_title') }} #{{ item.ID }}</title>
+    <style>
+        @page { size: A4; margin: 12mm; }
+        body {
+            font-family: "Malgun Gothic", "Segoe UI", Arial, sans-serif;
+            font-size: 13px;
+            color: #222;
+            margin: 0;
+            padding: 0;
+            background: #f0f2f5;
+        }
+        .no-print {
+            text-align: center;
+            padding: 16px;
+            background: #fff;
+            border-bottom: 1px solid #dee2e6;
+        }
+        .no-print button {
+            margin: 0 6px;
+            padding: 8px 18px;
+            border: none;
+            border-radius: 4px;
+            font-size: 13px;
+            cursor: pointer;
+        }
+        .btn-print { background: #007bff; color: #fff; }
+        .btn-close { background: #6c757d; color: #fff; }
+        .report-sheet {
+            max-width: 210mm;
+            margin: 24px auto;
+            background: #fff;
+            padding: 28px 32px;
+            box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+        }
+        .report-header {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            margin-bottom: 20px;
+            padding-bottom: 14px;
+            border-bottom: 2px solid #007bff;
+        }
+        .report-header img.logo {
+            height: 56px;
+            width: auto;
+            max-width: 160px;
+            object-fit: contain;
+            flex-shrink: 0;
+        }
+        .report-header h1 {
+            margin: 0;
+            font-size: 20px;
+            color: #2c3e50;
+        }
+        .report-header .meta {
+            font-size: 12px;
+            color: #6c757d;
+            margin-top: 4px;
+        }
+        .report-body {
+            display: grid;
+            grid-template-columns: 1fr 220px;
+            gap: 24px;
+            align-items: start;
+        }
+        @media (max-width: 640px) {
+            .report-body { grid-template-columns: 1fr; }
+        }
+        .field-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        .field-table th,
+        .field-table td {
+            border: 1px solid #ced4da;
+            padding: 10px 12px;
+            vertical-align: top;
+        }
+        .field-table th {
+            width: 32%;
+            background: #f8f9fa;
+            font-weight: 600;
+            text-align: left;
+            color: #495057;
+        }
+        .vehicle-photo {
+            border: 1px solid #dee2e6;
+            border-radius: 6px;
+            overflow: hidden;
+            background: #f8f9fa;
+        }
+        .vehicle-photo img {
+            width: 100%;
+            height: auto;
+            display: block;
+        }
+        .vehicle-photo .caption {
+            padding: 8px 10px;
+            font-size: 12px;
+            font-weight: 600;
+            text-align: center;
+            border-top: 1px solid #dee2e6;
+        }
+        .sign-row {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 36px;
+            gap: 24px;
+        }
+        .sign-box {
+            flex: 1;
+            text-align: center;
+            font-size: 12px;
+        }
+        .sign-line {
+            border-top: 1px solid #333;
+            margin-top: 48px;
+            padding-top: 6px;
+        }
+        @media print {
+            body { background: #fff; }
+            .no-print { display: none; }
+            .report-sheet {
+                margin: 0;
+                box-shadow: none;
+                max-width: none;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="no-print">
+        <button type="button" class="btn-print" onclick="window.print()">{{ get_text('print') or 'Print' }}</button>
+        <button type="button" class="btn-close" onclick="window.close()">{{ get_text('close') or 'Close' }}</button>
+    </div>
+
+    <div class="report-sheet">
+        <header class="report-header">
+            <img src="{{ url_for('static', filename='images/big_brother_group.png') }}" alt="Big Brother Group" class="logo">
+            <div>
+                <h1>{{ get_text('car_report_title') }}</h1>
+                <div class="meta">ID: {{ item.ID }} · {{ get_text('car_submitted_at') }}:
+                    {{ item.SubmittedAt.strftime('%Y-%m-%d %H:%M') if item.SubmittedAt else '' }}
+                </div>
+            </div>
+        </header>
+
+        <div class="report-body">
+            <table class="field-table">
+                <tr>
+                    <th>{{ get_text('car_use_date') }}</th>
+                    <td>
+                        {{ item.UseDate.strftime('%Y-%m-%d') if item.UseDate else '' }}
+                        {% if item.usedateto and item.usedateto != item.UseDate %}
+                        ~ {{ item.usedateto.strftime('%Y-%m-%d') }}
+                        {% endif %}
+                    </td>
+                </tr>
+                {% if item.usedateto and item.usedateto != item.UseDate %}
+                <tr>
+                    <th>{{ get_text('car_use_date_to') }}</th>
+                    <td>{{ item.usedateto.strftime('%Y-%m-%d') }}</td>
+                </tr>
+                {% endif %}
+                <tr>
+                    <th>{{ get_text('car_all_day') }}</th>
+                    <td>{% if item.is_allday %}{{ get_text('car_all_day') }}{% else %}—{% endif %}</td>
+                </tr>
+                <tr>
+                    <th>{{ get_text('car_time_from') }} / {{ get_text('car_time_to') }}</th>
+                    <td>
+                        {% if item.is_allday %}
+                        {{ get_text('car_all_day') }}
+                        {% else %}
+                        {{ item.TimeFrom.strftime('%H:%M') if item.TimeFrom else '' }}
+                        —
+                        {{ item.TimeTo.strftime('%H:%M') if item.TimeTo else '' }}
+                        {% endif %}
+                    </td>
+                </tr>
+                <tr>
+                    <th>{{ get_text('company') }}</th>
+                    <td>{{ item.Company or '—' }}</td>
+                </tr>
+                <tr>
+                    <th>{{ get_text('car_vehicle_select') }}</th>
+                    <td>{{ item.VehicleLabel or '' }}</td>
+                </tr>
+                <tr>
+                    <th>{{ get_text('car_location') }}</th>
+                    <td>{{ item.Location or '' }}</td>
+                </tr>
+                <tr>
+                    <th>{{ get_text('car_requester') }}</th>
+                    <td>{{ item.UserName or '' }}</td>
+                </tr>
+                <tr>
+                    <th>{{ get_text('car_driver') }}</th>
+                    <td>{{ item.DriverName or '' }}</td>
+                </tr>
+                <tr>
+                    <th>{{ get_text('car_remark') }}</th>
+                    <td>{{ item.Remark or '—' }}</td>
+                </tr>
+                <tr>
+                    <th>{{ get_text('car_approved') }}</th>
+                    <td>{{ item.Approved or '—' }}</td>
+                </tr>
+            </table>
+
+            {% if vehicle_image %}
+            <div class="vehicle-photo">
+                <img src="{{ url_for('static', filename=vehicle_image) }}" alt="{{ item.VehicleLabel }}">
+                <div class="caption">{{ item.VehicleLabel }}</div>
+            </div>
+            {% endif %}
+        </div>
+
+        <div class="sign-row">
+            <div class="sign-box">
+                <div class="sign-line">{{ get_text('car_requester') }}</div>
+            </div>
+            <div class="sign-box">
+                <div class="sign-line">{{ get_text('car_approved') }}</div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="{{ session.get('language', 'ko') }}">
+<html lang="{{ session.get('language', 'en') }}">
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -277,21 +277,19 @@
 
             <div class="form-row" style="margin-top:6px;">
                 <div class="form-group">
-                    <label for="cost_center">{{ get_text('cost_center') or '비용센터' }}</label>
-                    <select id="cost_center" name="cost_center">
-                        <option value="RECYCLE">RECYCLE</option>
-                        <option value="INJECTION">INJECTION</option>
+                    <label for="company">{{ get_text('company') or '회사' }}</label>
+                    <select id="company" name="company"{% if company_options %} required{% endif %}>
+                        <option value="">{{ get_text('select') or '선택' }}</option>
+                        {% for opt in company_options %}
+                        <option value="{{ opt.value }}">{{ opt.label }}</option>
+                        {% endfor %}
                     </select>
                 </div>
 
                 <div class="form-group">
-                    <label for="actual_type">{{ get_text('actual_type') or '계정유형' }}</label>
-                    <select id="actual_type" name="actual_type">
-                        <option value="ASSET">{{ get_text('actual_type_asset') or '자산' }}</option>
-                        <option value="LIABILITY">{{ get_text('actual_type_liability') or '부채' }}</option>
-                        <option value="REVENUE">{{ get_text('actual_type_revenue') or '수익' }}</option>
-                        <option value="EXPENSE" selected>{{ get_text('actual_type_expense') or '비용' }}</option>
-                    </select>
+                    <label for="actual_type_display">{{ get_text('actual_type') or '계정유형' }}</label>
+                    <input type="text" id="actual_type_display" value="{{ get_text('actual_type_expense') or '비용' }}" readonly>
+                    <input type="hidden" id="actual_type" name="actual_type" value="EXPENSE">
                 </div>
 
                 <div class="form-group">
@@ -362,6 +360,16 @@
                     <label for="payment">{{ get_text('payment') or '지급' }}</label>
                     <input type="text" id="payment" name="payment" class="numeric-input" inputmode="decimal" placeholder="0.00">
                 </div>
+            </div>
+
+            <!-- Type: 첫 열만 사용 — 위 WHT 행의 wht_rate 칸과 동일 너비·정렬 -->
+            <div class="form-row" style="margin-top:8px;">
+                <div class="form-group">
+                    <label for="atype">{{ get_text('type') or 'Type' }}</label>
+                    <input type="text" id="atype" name="atype" maxlength="100" class="numeric-input" placeholder="{{ get_text('enter_type') or '' }}">
+                </div>
+                <div class="form-group" aria-hidden="true"></div>
+                <div class="form-group" aria-hidden="true"></div>
             </div>
 
             <div class="form-row" style="margin-top:8px;">
@@ -466,10 +474,8 @@
         applyVatDefault();
     });
 
-    /* Account picker: fetch /account/hierarchy and let user pick one node.
-       Only display nodes whose code prefix matches selected actual_type.
-       Prefix mapping can be adjusted below if your chart uses different ranges. */
-    (async function(){
+    /* Account picker: 회사별 계정 (실적 목록과 동일 API, prefix 필터 없음) */
+    (function(){
       const modal = document.getElementById('acctPickerModal');
       const backdrop = document.getElementById('acctPickerBackdrop');
       const openBtn = document.getElementById('openAccountPicker');
@@ -480,22 +486,9 @@
       const searchInput = document.getElementById('acctPickerSearch');
       const displayInput = document.getElementById('actual_code_display');
       const valueInput = document.getElementById('actual_code');
-      const actualTypeSelect = document.getElementById('actual_type');
 
       let treeData = null;
       let selectedNode = null;
-
-      const typePrefixMap = {
-        'ASSET': ['1'],
-        'LIABILITY': ['2'],
-        'REVENUE': ['4'],
-        'EXPENSE': ['5']
-      };
-
-      function codeMatchesPrefixes(code, prefixes) {
-        if (!code) return false;
-        return prefixes.some(p => String(code).startsWith(p));
-      }
 
       // show expanded by default
       const DEFAULT_EXPANDED = true;
@@ -580,35 +573,23 @@
         }
       }
 
-      function filterByActualType(fullTree, actualType) {
-        const prefixes = typePrefixMap[actualType] || [];
-        if (!prefixes.length) return fullTree;
-        function prune(node) {
-          if (codeMatchesPrefixes(node.code, prefixes)) {
-            return { ...node, children: (node.children||[]).map(prune).filter(Boolean) };
-          }
-          const child = (node.children||[]).map(prune).filter(Boolean);
-          if (child.length) return { code: node.code, name: node.name, children: child };
-          return null;
-        }
-        return fullTree.map(prune).filter(Boolean);
-      }
-
       async function loadTree() {
         container.innerHTML = '<div class="loading">로딩 중...</div>';
         try {
-          const res = await fetch('{{ url_for("base.account_hierarchy_api") }}', { headers: {'X-Requested-With':'XMLHttpRequest'}, credentials: 'same-origin' });
+          const companyEl = document.getElementById('company');
+          const selectedCompany = (companyEl && companyEl.value) ? String(companyEl.value).trim() : '';
+          const endpoint = '{{ url_for("accounting.account_actual_code_options") }}';
+          const url = selectedCompany ? `${endpoint}?company=${encodeURIComponent(selectedCompany)}` : endpoint;
+          const res = await fetch(url, { headers: {'X-Requested-With':'XMLHttpRequest'}, credentials: 'same-origin' });
           if (!res.ok) throw new Error('failed to load ' + res.status);
           const ct = res.headers.get('content-type') || '';
           const txt = await res.text();
           if (!ct.includes('application/json')) {
-            console.error('account_hierarchy_api returned non-json:', txt.slice(0,1000));
+            console.error('account_actual_code_options returned non-json:', txt.slice(0,1000));
             throw new Error('non-json response');
           }
           treeData = JSON.parse(txt);
-          const chosen = actualTypeSelect?.value || '';
-          const pruned = filterByActualType(treeData, chosen);
-          renderTree(pruned);
+          renderTree(treeData);
         } catch (e) {
           container.innerHTML = '<div class="error">로드 실패</div>';
           console.error(e);
@@ -617,11 +598,7 @@
 
       openBtn?.addEventListener('click', () => {
         modal.classList.add('open'); modal.setAttribute('aria-hidden','false');
-        if (!treeData) loadTree();
-        else {
-          const pruned = filterByActualType(treeData, actualTypeSelect?.value || '');
-          renderTree(pruned);
-        }
+        loadTree();
       });
       closeBtn?.addEventListener('click', ()=>{ modal.classList.remove('open'); modal.setAttribute('aria-hidden','true'); });
       backdrop?.addEventListener('click', ()=>{ modal.classList.remove('open'); modal.setAttribute('aria-hidden','true'); });
@@ -637,7 +614,7 @@
       searchInput?.addEventListener('input', (e) => {
         const q = (e.target.value || '').trim().toLowerCase();
         if (!treeData) return;
-        if (!q) { const pruned = filterByActualType(treeData, actualTypeSelect?.value || ''); renderTree(pruned); return; }
+        if (!q) { renderTree(treeData); return; }
         const matches = new Set();
         function walk(node, ancestors=[]) {
           const text = ((node.code||'') + ' ' + (node.name||'')).toLowerCase();
@@ -654,10 +631,8 @@
           if (child.length) return { code: node.code, name: node.name, children: child };
           return null;
         }
-        const prunedAll = treeData.map(prune).filter(Boolean);
-        const prunedByType = filterByActualType(prunedAll, actualTypeSelect?.value || '');
-        renderTree(prunedByType);
-        // keep search results expanded
+        const pruned = treeData.map(prune).filter(Boolean);
+        renderTree(pruned);
         container.querySelectorAll('.node-children').forEach(ul=>{ ul.classList.remove('collapsed'); ul.classList.add('expanded'); });
       });
 
@@ -903,7 +878,7 @@
                     const sel = accountSelect.selectedOptions[0];
                     const bank = sel?.dataset?.bank || '';
                     const accountNum = sel?.dataset?.account || (sel?.value || '');
-                    note.textContent = bank ? ('대표계좌: ' + bank + ' ' + accountNum) : '{{ get_text("representative_account_shown_first") or "대표계좌가 먼저 표시됩니다." }}';
+                    note.textContent = bank ? ('{{ get_text("representative_account_prefix") }} ' + bank + ' ' + accountNum) : '{{ get_text("representative_account_shown_first") }}';
                 } else {
                     note.textContent = '';
                 }

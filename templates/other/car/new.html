@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+<html lang="{{ session.get('language', 'ko') }}">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ get_text('car_form_title') }} - BROTHER MIS</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/product_code.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" crossorigin="anonymous" />
+    <style>
+        .content-area {
+            flex: 1;
+            padding: 40px 0;
+            width: 100%;
+            max-width: 1100px;
+            margin: 0 auto;
+            box-sizing: border-box;
+        }
+
+        .form-container {
+            background-color: #fff;
+            border-radius: 8px;
+            padding: 30px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .page-title {
+            font-size: 22px;
+            margin-bottom: 25px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #007bff;
+            color: #2c3e50;
+        }
+
+        .form-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 16px;
+            margin-bottom: 20px;
+        }
+
+        .form-col {
+            flex: 1 1 0;
+            min-width: 140px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-row .form-group {
+            margin-bottom: 0;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+            color: #333;
+            font-size: 14px;
+        }
+
+        .form-group label.required::after {
+            content: " *";
+            color: #dc3545;
+        }
+
+        .form-group input[type="date"],
+        .form-group input[type="time"],
+        .form-group input[type="text"],
+        .form-group textarea {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid #ced4da;
+            border-radius: 4px;
+            font-size: 14px;
+            box-sizing: border-box;
+        }
+
+        .form-group textarea {
+            min-height: 80px;
+            resize: vertical;
+        }
+
+        .vehicle-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 12px;
+        }
+
+        @media (max-width: 640px) {
+            .vehicle-grid { grid-template-columns: 1fr; }
+        }
+
+        .vehicle-option {
+            border: 2px solid #dee2e6;
+            border-radius: 8px;
+            overflow: hidden;
+            cursor: pointer;
+            transition: border-color 0.15s;
+        }
+
+        .vehicle-option.selected {
+            border-color: #007bff;
+            box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.2);
+        }
+
+        .vehicle-option input {
+            position: absolute;
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .vehicle-option__img-wrap {
+            width: 100%;
+            aspect-ratio: 16 / 10;
+            background: #f8f9fa;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+        }
+
+        .vehicle-option__img-wrap img {
+            display: block;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            object-position: center center;
+        }
+
+        .vehicle-option__label {
+            display: flex;
+            align-items: flex-start;
+            gap: 8px;
+            padding: 10px 12px;
+            font-size: 12px;
+            line-height: 1.35;
+        }
+
+        .vehicle-option__radio {
+            flex-shrink: 0;
+            width: 16px;
+            height: 16px;
+            border: 2px solid #adb5bd;
+            border-radius: 50%;
+            margin-top: 2px;
+        }
+
+        .vehicle-option.selected .vehicle-option__radio {
+            border-color: #007bff;
+            background: radial-gradient(circle, #007bff 45%, transparent 48%);
+        }
+
+        .button-group {
+            margin-top: 28px;
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+        }
+
+        .btn {
+            padding: 8px 20px;
+            border: none;
+            border-radius: 4px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            min-width: 100px;
+            text-decoration: none;
+            display: inline-block;
+            text-align: center;
+        }
+
+        .btn-primary { background: #0d6efd; color: #fff; }
+        .btn-secondary { background: #6c757d; color: #fff; }
+
+        .flash-msg {
+            padding: 10px 14px;
+            border-radius: 6px;
+            margin-bottom: 16px;
+            font-size: 13px;
+        }
+
+        .flash-msg.error {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .flash-msg.success {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .flash-msg--conflict {
+            border-left: 4px solid #dc3545;
+        }
+
+        .flash-msg--conflict .flash-msg__title {
+            display: block;
+            font-size: 15px;
+            font-weight: 700;
+            margin-bottom: 6px;
+        }
+
+        .flash-msg--conflict .flash-msg__body {
+            margin: 0;
+            font-size: 14px;
+            line-height: 1.45;
+        }
+
+        .input-readonly {
+            background-color: #e9ecef;
+            cursor: not-allowed;
+        }
+    </style>
+</head>
+<body>
+    {% include 'nav.html' %}
+
+    <main class="content-area">
+        <div class="form-container">
+            <div class="page-title">{{ get_text('car_form_title') }}</div>
+
+            {% with messages = get_flashed_messages(with_categories=true) %}
+            {% for category, message in messages %}
+            {% if message == 'car_schedule_conflict' %}
+            <div class="flash-msg {{ category }} flash-msg--conflict" role="alert">
+                <span class="flash-msg__title">{{ get_text('car_schedule_conflict_title') }}</span>
+                <p class="flash-msg__body">{{ get_text('car_schedule_conflict') }}</p>
+            </div>
+            {% else %}
+            <div class="flash-msg {{ category }}">
+                {{ get_text(message) if message.startswith('car_') else message }}
+            </div>
+            {% endif %}
+            {% endfor %}
+            {% endwith %}
+
+            <form method="post" action="{{ url_for('other.car_new') }}" id="carForm" novalidate>
+                <div class="form-row">
+                    <div class="form-col">
+                        <div class="form-group">
+                            <label for="use_date" class="required">{{ get_text('car_use_date') }}</label>
+                            <input type="date" id="use_date" name="use_date" required
+                                   value="{{ form.get('use_date', default_use_date) }}">
+                        </div>
+                    </div>
+                    <div class="form-col">
+                        <div class="form-group">
+                            <label for="use_date_to">{{ get_text('car_use_date_to') }}</label>
+                            <input type="date" id="use_date_to" name="use_date_to"
+                                   value="{{ form.get('use_date_to', default_use_date) }}">
+                        </div>
+                    </div>
+                    <div class="form-col" style="display:flex;align-items:flex-end;padding-bottom:8px;">
+                        <label style="display:flex;align-items:center;gap:8px;font-weight:500;cursor:pointer;margin:0;">
+                            <input type="checkbox" id="is_allday" name="is_allday" value="1"
+                                   {% if form.get('is_allday') in ('1', 'on', 'true', True) %}checked{% endif %}>
+                            {{ get_text('car_all_day') }}
+                        </label>
+                    </div>
+                </div>
+
+                <div class="form-row" id="timeRow">
+                    <div class="form-col">
+                        <div class="form-group">
+                            <label for="time_from" class="required">{{ get_text('car_time_from') }}</label>
+                            <input type="time" id="time_from" name="time_from" required
+                                   value="{{ form.get('time_from', '') }}">
+                        </div>
+                    </div>
+                    <div class="form-col">
+                        <div class="form-group">
+                            <label for="time_to" class="required">{{ get_text('car_time_to') }}</label>
+                            <input type="time" id="time_to" name="time_to" required
+                                   value="{{ form.get('time_to', '') }}">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="company" class="required">{{ get_text('company') }}</label>
+                    <select id="company" name="company" required style="width:100%; max-width:320px; padding:8px 12px; border:1px solid #ced4da; border-radius:4px; font-size:14px;">
+                        <option value="">-- {{ get_text('select') }} --</option>
+                        {% for c in company_options %}
+                        <option value="{{ c.value }}" {% if form.get('company') == c.value %}selected{% endif %}>
+                            {{ c.label }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label class="required">{{ get_text('car_vehicle_select') }}</label>
+                    <div class="vehicle-grid">
+                        {% for v in vehicles %}
+                        <label class="vehicle-option{% if form.get('vehicle_code') == v.code %} selected{% endif %}">
+                            <input type="radio" name="vehicle_code" value="{{ v.code }}"
+                                   {% if form.get('vehicle_code') == v.code %}checked{% endif %} required>
+                            <div class="vehicle-option__img-wrap">
+                                <img src="{{ url_for('static', filename=v.image) }}" alt="{{ v.label }}"
+                                     onerror="this.style.display='none'">
+                            </div>
+                            <div class="vehicle-option__label">
+                                <span class="vehicle-option__radio"></span>
+                                <span>{{ v.label }}</span>
+                            </div>
+                        </label>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-col">
+                        <div class="form-group">
+                            <label for="location" class="required">{{ get_text('car_location') }}</label>
+                            <input type="text" id="location" name="location" required maxlength="500"
+                                   value="{{ form.get('location', '') }}">
+                        </div>
+                    </div>
+                    <div class="form-col">
+                        <div class="form-group">
+                            <label for="user_name" class="required">{{ get_text('car_requester') }}</label>
+                            <input type="text" id="user_name" name="user_name" required maxlength="200"
+                                   value="{{ form.get('user_name', default_user_name) }}"
+                                   readonly class="input-readonly">
+                        </div>
+                    </div>
+                    <div class="form-col">
+                        <div class="form-group">
+                            <label for="driver_name" class="required">{{ get_text('car_driver') }}</label>
+                            <input type="text" id="driver_name" name="driver_name" required maxlength="200"
+                                   value="{{ form.get('driver_name', default_driver_name) }}">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="remark">{{ get_text('car_remark') }}</label>
+                    <textarea id="remark" name="remark" maxlength="4000">{{ form.get('remark', '') }}</textarea>
+                </div>
+
+                <div class="button-group">
+                    <button type="submit" class="btn btn-primary">{{ get_text('save') or get_text('car_submit') }}</button>
+                    <a href="{{ url_for('other.car_management') }}" class="btn btn-secondary">{{ get_text('cancel') }}</a>
+                </div>
+            </form>
+        </div>
+    </main>
+
+    <script>
+        (function () {
+            var form = document.getElementById('carForm');
+            var isAllDay = document.getElementById('is_allday');
+            var useDate = document.getElementById('use_date');
+            var useDateTo = document.getElementById('use_date_to');
+            var timeFrom = document.getElementById('time_from');
+            var timeTo = document.getElementById('time_to');
+            var timeRangeMsg = {{ get_text('car_time_range_error')|tojson }};
+
+            function isSameUseDay() {
+                var from = (useDate && useDate.value) || '';
+                var to = (useDateTo && useDateTo.value) || '';
+                return !to || to === from;
+            }
+
+            function timeRangeInvalid() {
+                if (!timeFrom || !timeTo || isAllDay && isAllDay.checked) return false;
+                if (!isSameUseDay()) return false;
+                if (!timeFrom.value || !timeTo.value) return false;
+                return timeTo.value <= timeFrom.value;
+            }
+
+            function syncAllDay() {
+                if (!isAllDay || !timeFrom || !timeTo) return;
+                var on = isAllDay.checked;
+                timeFrom.disabled = on;
+                timeTo.disabled = on;
+                timeFrom.required = !on;
+                timeTo.required = !on;
+                if (on) {
+                    timeFrom.value = '';
+                    timeTo.value = '';
+                }
+            }
+
+            if (isAllDay) {
+                isAllDay.addEventListener('change', syncAllDay);
+                syncAllDay();
+            }
+
+            if (form) {
+                form.addEventListener('submit', function (e) {
+                    if (timeRangeInvalid()) {
+                        e.preventDefault();
+                        alert(timeRangeMsg);
+                        if (timeTo) timeTo.focus();
+                    }
+                });
+            }
+            if (timeTo) {
+                timeTo.addEventListener('change', function () {
+                    if (timeRangeInvalid()) {
+                        alert(timeRangeMsg);
+                        timeTo.focus();
+                    }
+                });
+            }
+        })();
+
+        document.querySelectorAll('.vehicle-option').forEach(function (el) {
+            el.addEventListener('click', function () {
+                document.querySelectorAll('.vehicle-option').forEach(function (o) {
+                    o.classList.remove('selected');
+                });
+                el.classList.add('selected');
+                var radio = el.querySelector('input[type=radio]');
+                if (radio) radio.checked = true;
+            });
+        });
+    </script>
+</body>
+</html>
